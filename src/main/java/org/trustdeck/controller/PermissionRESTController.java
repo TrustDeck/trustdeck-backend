@@ -105,7 +105,7 @@ public class PermissionRESTController {
 	 *         <i>query</i> parameter is missing</li>
 	 */
 	@GetMapping("/users")
-    @PreAuthorize("isAuthenticated() and hasRole('permission-manager')")
+    @PreAuthorize("isAuthenticated() and @auth.hasGlobalPermission(#root, 'global:manage-permissions')")
     @Audit
     public ResponseEntity<?> searchUsers(@RequestParam(name = "query") String query,
                                          @RequestHeader(name = "accept", required = false) String responseContentType) {
@@ -151,7 +151,7 @@ public class PermissionRESTController {
 	 * 		   <li>a <b>404-NOT_FOUND</b> status when the specified domain was not found</li>
 	 */
 	@PostMapping("/domains/{domainName}")
-	@PreAuthorize("isAuthenticated() and hasRole('permission-manager')")
+	@PreAuthorize("isAuthenticated() and @auth.hasGlobalPermission(#root, 'global:manage-permissions')")
 	@Audit
 	public ResponseEntity<?> createDomainPermissions(@PathVariable("domainName") String domainName,
 	                                                 @RequestParam(name = "userId") String userId,
@@ -292,7 +292,7 @@ public class PermissionRESTController {
 	 * 		   <li>a <b>404-NOT_FOUND</b> status when the specified project was not found</li>
 	 */
 	@PostMapping("/projects/{projectAbbreviation}")
-	@PreAuthorize("isAuthenticated() and hasRole('permission-manager')")
+	@PreAuthorize("isAuthenticated() and @auth.hasGlobalPermission(#root, 'global:manage-permissions')")
 	@Audit
 	public ResponseEntity<?> createProjectPermissions(@PathVariable("projectAbbreviation") String projectAbbreviation,
 	                                                  @RequestParam(name = "userId") String userId,
@@ -428,7 +428,7 @@ public class PermissionRESTController {
 	 * 		   or when none of the permissions could be inserted</li>
 	 */
 	@PostMapping("/global")
-	@PreAuthorize("isAuthenticated() and hasRole('permission-manager')")
+	@PreAuthorize("isAuthenticated() and @auth.hasGlobalPermission(#root, 'global:manage-permissions')")
 	@Audit
 	public ResponseEntity<?> createGlobalPermissions(@RequestParam(name = "userId") String userId,
 	                                                 @RequestBody List<PermissionDTO> permissions,
@@ -554,7 +554,7 @@ public class PermissionRESTController {
      *         permissions for the domain were not found</li>
 	 */
     @GetMapping("/domains/{domainName}")
-    @PreAuthorize("isAuthenticated() and hasRole('permission-manager')")
+    @PreAuthorize("isAuthenticated() and @auth.hasDomainPermission(#root, #domainName, 'domain:manage-permissions')")
     @Audit
     public ResponseEntity<?> getDomainPermissions(@PathVariable("domainName") String domainName,
                                                   @RequestParam(name = "userId") String userId,
@@ -600,7 +600,7 @@ public class PermissionRESTController {
      *         permissions for the project were not found</li>
 	 */
     @GetMapping("/projects/{projectAbbreviation}")
-    @PreAuthorize("isAuthenticated() and hasRole('permission-manager')")
+    @PreAuthorize("isAuthenticated() and @auth.hasProjectPermission(#root, #projectAbbreviation, 'project:manage-permissions')")
     @Audit
     public ResponseEntity<?> getProjectPermissions(@PathVariable("projectAbbreviation") String projectAbbreviation,
                                                    @RequestParam(name = "userId") String userId,
@@ -645,7 +645,7 @@ public class PermissionRESTController {
      *         for the project were not found</li>
      */
     @GetMapping("/global")
-    @PreAuthorize("isAuthenticated() and hasRole('permission-manager')")
+    @PreAuthorize("isAuthenticated() and @auth.hasGlobalPermission(#root, 'global:manage-permissions')")
     @Audit
     public ResponseEntity<?> getGlobalPermissions(@RequestParam(name = "userId") String userId,
                                                   @RequestHeader(name = "accept", required = false) String responseContentType) {
@@ -672,7 +672,7 @@ public class PermissionRESTController {
      * 		   for the user when successful</li>
      */
     @GetMapping
-    @PreAuthorize("isAuthenticated() and hasRole('permission-manager')")
+    @PreAuthorize("isAuthenticated() and @auth.hasGlobalPermission(#root, 'global:manage-permissions')")
     @Audit
     public ResponseEntity<?> getAllPermissions(@RequestHeader(name = "accept", required = false) String responseContentType) {
     	List<EffectivePermissionDTO> permissions = new ArrayList<>();
@@ -710,7 +710,7 @@ public class PermissionRESTController {
      *         not exist or cannot be resolved</li>
 	 */
     @PutMapping("/domains/{domainName}")
-    @PreAuthorize("isAuthenticated() and hasRole('permission-manager')")
+    @PreAuthorize("isAuthenticated() and @auth.hasDomainPermission(#root, #domainName, 'domain:manage-permissions')")
     @Audit
     public ResponseEntity<?> updateDomainPermissions(@PathVariable("domainName") String domainName,
                                                      @RequestParam(name = "userId") String userId,
@@ -802,7 +802,7 @@ public class PermissionRESTController {
      *         not exist or cannot be resolved</li>
 	 */
     @PutMapping("/projects/{projectAbbreviation}")
-    @PreAuthorize("isAuthenticated() and hasRole('permission-manager')")
+    @PreAuthorize("isAuthenticated() and @auth.hasProjectPermission(#root, #projectAbbreviation, 'project:manage-permissions')")
     @Audit
     public ResponseEntity<?> updateProjectPermissions(@PathVariable("projectAbbreviation") String projectAbbreviation,
                                                       @RequestParam(name = "userId") String userId,
@@ -891,7 +891,7 @@ public class PermissionRESTController {
      *         missing or the update failed</li>
      */
     @PutMapping("/global")
-    @PreAuthorize("isAuthenticated() and hasRole('permission-manager')")
+    @PreAuthorize("isAuthenticated() and @auth.hasGlobalPermission(#root, 'global:manage-permissions')")
     @Audit
     public ResponseEntity<?> updateGlobalPermissions(@RequestParam(name = "userId") String userId,
                                                     @RequestBody List<PermissionDTO> permissions,
@@ -976,7 +976,7 @@ public class PermissionRESTController {
      *         not exist or cannot be resolved</li>
 	 */
     @DeleteMapping("/domains/{domainName}")
-    @PreAuthorize("isAuthenticated() and hasRole('permission-manager')")
+    @PreAuthorize("isAuthenticated() and @auth.hasDomainPermission(#root, #domainName, 'domain:manage-permissions')")
     @Audit
     public ResponseEntity<?> deleteDomainPermissions(@PathVariable("domainName") String domainName,
                                     				 @RequestParam(name = "userId") String userId,
@@ -1107,7 +1107,7 @@ public class PermissionRESTController {
      *         does not exist or cannot be resolved</li>
 	 */
     @DeleteMapping("/projects/{projectAbbreviation}")
-    @PreAuthorize("isAuthenticated() and hasRole('permission-manager')")
+    @PreAuthorize("isAuthenticated() and @auth.hasProjectPermission(#root, #projectAbbreviation, 'project:manage-permissions'))")
     @Audit
     public ResponseEntity<?> deleteProjectPermissions(@PathVariable("projectAbbreviation") String projectAbbreviation,
     												  @RequestParam(name = "userId") String userId,
@@ -1235,7 +1235,7 @@ public class PermissionRESTController {
      *         missing or the deletion failed</li>
 	 */
     @DeleteMapping("/global")
-    @PreAuthorize("isAuthenticated() and hasRole('permission-manager')")
+    @PreAuthorize("isAuthenticated() and @auth.hasGlobalPermission(#root, 'global:manage-permissions')")
     @Audit
     public ResponseEntity<?> deleteGlobalPermissions(@RequestParam(name = "userId") String userId,
                                                      @RequestBody List<PermissionDTO> permissions,

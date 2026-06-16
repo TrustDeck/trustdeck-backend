@@ -969,9 +969,9 @@ public class DomainDBAccessService {
                 // Check if the permissions need to be adapted
                 if (newDomain.getName() != null && !oldDomain.getName().equals(newDomain.getName())) {
                 	// The domain name has changed, so we need to update the permissions
-                    if (!permissionDBService.removeDomainPermissionsForSubject(oldDomain.getName())) {
+                    if (!permissionDBService.removeDomainPermissionsForSubject(newDomain.getName())) {
                     	log.debug("Failed to remove the domain's permissions. Aborting.");
-                    	throw new PermissionManagementException(oldDomain.getName());
+                    	throw new PermissionManagementException(newDomain.getName());
                     }
                     
                     if (!permissionDBService.addDomainPermissionsForSubject(oldDomain.getId())) {

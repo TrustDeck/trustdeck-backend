@@ -368,11 +368,11 @@ public class ProjectDBService {
     	}
     	
     	// Check if the permissions need to be adapted
-        if (newAbbreviation != null && !oldProject.getName().equals(newAbbreviation)) {
+        if (newAbbreviation != null && !oldProject.getAbbreviation().equals(newAbbreviation)) {
         	// The project abbreviation has changed, so we need to update the permissions
-            if (!permissionDBService.removeProjectPermissionsForSubject(oldProject.getAbbreviation())) {
+            if (!permissionDBService.removeProjectPermissionsForSubject(newAbbreviation)) {
             	log.debug("Failed to remove the project's permissions. Aborting.");
-            	throw new PermissionManagementException(oldProject.getAbbreviation());
+            	throw new PermissionManagementException(newAbbreviation);
             }
             
             if (!permissionDBService.addProjectPermissionsForSubject(newAbbreviation)) {

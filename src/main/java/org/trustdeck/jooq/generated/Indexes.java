@@ -9,10 +9,11 @@ import org.jooq.OrderField;
 import org.jooq.impl.DSL;
 import org.jooq.impl.Internal;
 import org.trustdeck.jooq.generated.tables.Algorithm;
-import org.trustdeck.jooq.generated.tables.Auditevent;
+import org.trustdeck.jooq.generated.tables.AuditEvent;
 import org.trustdeck.jooq.generated.tables.Domain;
-import org.trustdeck.jooq.generated.tables.EntityInstance;
 import org.trustdeck.jooq.generated.tables.EntityType;
+import org.trustdeck.jooq.generated.tables.LinkageToken;
+import org.trustdeck.jooq.generated.tables.PermissionGrant;
 import org.trustdeck.jooq.generated.tables.Pseudonym;
 
 
@@ -27,14 +28,18 @@ public class Indexes {
     // -------------------------------------------------------------------------
 
     public static final Index ALGORITHM_NAME_UINDEX = Internal.createIndex(DSL.name("algorithm_name_uindex"), Algorithm.ALGORITHM, new OrderField[] { Algorithm.ALGORITHM.NAME }, false);
-    public static final Index AUDITUSERNAMEIDX = Internal.createIndex(DSL.name("auditusernameidx"), Auditevent.AUDITEVENT, new OrderField[] { Auditevent.AUDITEVENT.USERNAME }, false);
-    public static final Index ENTITY_INSTANCE_DATA_TRGM_GIN_IDX = Internal.createIndex(DSL.name("entity_instance_data_trgm_gin_idx"), EntityInstance.ENTITY_INSTANCE, new OrderField[] { EntityInstance.ENTITY_INSTANCE.DATA_TEXT }, false);
-    public static final Index ENTITY_INSTANCE_ET_PROJ_ID_IDX = Internal.createIndex(DSL.name("entity_instance_et_proj_id_idx"), EntityInstance.ENTITY_INSTANCE, new OrderField[] { EntityInstance.ENTITY_INSTANCE.ENTITY_TYPE_ID, EntityInstance.ENTITY_INSTANCE.PROJECT_ID, EntityInstance.ENTITY_INSTANCE.ID }, false);
-    public static final Index ENTITY_INSTANCE_FTS_ACTIVE_GIN_IDX = Internal.createIndex(DSL.name("entity_instance_fts_active_gin_idx"), EntityInstance.ENTITY_INSTANCE, new OrderField[] { EntityInstance.ENTITY_INSTANCE.FULL_TEXT_SEARCH_VECTOR }, false);
+    public static final Index AUDITUSERNAMEIDX = Internal.createIndex(DSL.name("auditusernameidx"), AuditEvent.AUDIT_EVENT, new OrderField[] { AuditEvent.AUDIT_EVENT.USER_NAME }, false);
     public static final Index ENTITY_TYPE_FTS_IDX = Internal.createIndex(DSL.name("entity_type_fts_idx"), EntityType.ENTITY_TYPE, new OrderField[] { EntityType.ENTITY_TYPE.FULL_TEXT_SEARCH_VECTOR }, false);
     public static final Index ENTITY_TYPE_NAME_IDX = Internal.createIndex(DSL.name("entity_type_name_idx"), EntityType.ENTITY_TYPE, new OrderField[] { EntityType.ENTITY_TYPE.NAME }, false);
     public static final Index ENTITY_TYPE_TYPE_DEFINITION_GIN_IDX = Internal.createIndex(DSL.name("entity_type_type_definition_gin_idx"), EntityType.ENTITY_TYPE, new OrderField[] { EntityType.ENTITY_TYPE.TYPE_DEFINITION }, false);
     public static final Index IDIDTYPEIDX = Internal.createIndex(DSL.name("ididtypeidx"), Pseudonym.PSEUDONYM, new OrderField[] { Pseudonym.PSEUDONYM.IDENTIFIER, Pseudonym.PSEUDONYM.IDTYPE }, false);
     public static final Index IDPSNIDX = Internal.createIndex(DSL.name("idpsnidx"), Pseudonym.PSEUDONYM, new OrderField[] { Pseudonym.PSEUDONYM.IDENTIFIER, Pseudonym.PSEUDONYM.PSEUDONYM_ }, true);
+    public static final Index IX_PERMISSION_BY_RESOURCE = Internal.createIndex(DSL.name("ix_permission_by_resource"), PermissionGrant.PERMISSION_GRANT, new OrderField[] { PermissionGrant.PERMISSION_GRANT.RESOURCE_TYPE, PermissionGrant.PERMISSION_GRANT.RESOURCE_ID }, false);
+    public static final Index IX_PERMISSION_BY_SUBJECT = Internal.createIndex(DSL.name("ix_permission_by_subject"), PermissionGrant.PERMISSION_GRANT, new OrderField[] { PermissionGrant.PERMISSION_GRANT.SUBJECT_ID }, false);
+    public static final Index IX_PERMISSION_CHECK = Internal.createIndex(DSL.name("ix_permission_check"), PermissionGrant.PERMISSION_GRANT, new OrderField[] { PermissionGrant.PERMISSION_GRANT.SUBJECT_ID, PermissionGrant.PERMISSION_GRANT.RESOURCE_TYPE, PermissionGrant.PERMISSION_GRANT.RESOURCE_ID, PermissionGrant.PERMISSION_GRANT.ACTION }, false);
+    public static final Index LINKAGE_TOKEN_BLOCK_IDX = Internal.createIndex(DSL.name("linkage_token_block_idx"), LinkageToken.LINKAGE_TOKEN, new OrderField[] { LinkageToken.LINKAGE_TOKEN.PROJECT_ID, LinkageToken.LINKAGE_TOKEN.ENTITY_TYPE_ID, LinkageToken.LINKAGE_TOKEN.TOKEN_TYPE, LinkageToken.LINKAGE_TOKEN.TOKEN_VALUE }, false);
+    public static final Index LINKAGE_TOKEN_ENTITY_INSTANCE_IDX = Internal.createIndex(DSL.name("linkage_token_entity_instance_idx"), LinkageToken.LINKAGE_TOKEN, new OrderField[] { LinkageToken.LINKAGE_TOKEN.ENTITY_TYPE_ID, LinkageToken.LINKAGE_TOKEN.ENTITY_INSTANCE_ID }, false);
+    public static final Index LINKAGE_TOKEN_LOOKUP_IDX = Internal.createIndex(DSL.name("linkage_token_lookup_idx"), LinkageToken.LINKAGE_TOKEN, new OrderField[] { LinkageToken.LINKAGE_TOKEN.PROJECT_ID, LinkageToken.LINKAGE_TOKEN.ENTITY_TYPE_ID, LinkageToken.LINKAGE_TOKEN.TAG, LinkageToken.LINKAGE_TOKEN.TOKEN_TYPE, LinkageToken.LINKAGE_TOKEN.TOKEN_VALUE }, false);
     public static final Index METADATAIDX = Internal.createIndex(DSL.name("metadataidx"), Domain.DOMAIN, new OrderField[] { Domain.DOMAIN.NAME }, true);
+    public static final Index UQ_PERMISSION_GRANT = Internal.createIndex(DSL.name("uq_permission_grant"), PermissionGrant.PERMISSION_GRANT, new OrderField[] { PermissionGrant.PERMISSION_GRANT.SUBJECT_ID, PermissionGrant.PERMISSION_GRANT.RESOURCE_TYPE, PermissionGrant.PERMISSION_GRANT.RESOURCE_ID, PermissionGrant.PERMISSION_GRANT.ACTION }, true);
 }

@@ -14,7 +14,6 @@ import org.jooq.Field;
 import org.jooq.ForeignKey;
 import org.jooq.Function11;
 import org.jooq.Identity;
-import org.jooq.Index;
 import org.jooq.JSONB;
 import org.jooq.Name;
 import org.jooq.Record;
@@ -29,7 +28,6 @@ import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
-import org.trustdeck.jooq.generated.Indexes;
 import org.trustdeck.jooq.generated.Keys;
 import org.trustdeck.jooq.generated.Public;
 import org.trustdeck.jooq.generated.tables.records.EntityInstanceRecord;
@@ -153,11 +151,6 @@ public class EntityInstance extends TableImpl<EntityInstanceRecord> {
     @Override
     public Schema getSchema() {
         return aliased() ? null : Public.PUBLIC;
-    }
-
-    @Override
-    public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.ENTITY_INSTANCE_DATA_TRGM_GIN_IDX, Indexes.ENTITY_INSTANCE_ET_PROJ_ID_IDX, Indexes.ENTITY_INSTANCE_FTS_ACTIVE_GIN_IDX);
     }
 
     @Override
