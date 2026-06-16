@@ -147,24 +147,6 @@ public class LinkageToken extends TableImpl<LinkageTokenRecord> {
     }
 
     @Override
-    public List<ForeignKey<LinkageTokenRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.LINKAGE_TOKEN__LINKAGE_TOKEN_ENTITY_INSTANCE_FK);
-    }
-
-    private transient EntityInstance _entityInstance;
-
-    /**
-     * Get the implicit join path to the <code>public.entity_instance</code>
-     * table.
-     */
-    public EntityInstance entityInstance() {
-        if (_entityInstance == null)
-            _entityInstance = new EntityInstance(this, Keys.LINKAGE_TOKEN__LINKAGE_TOKEN_ENTITY_INSTANCE_FK);
-
-        return _entityInstance;
-    }
-
-    @Override
     public LinkageToken as(String alias) {
         return new LinkageToken(DSL.name(alias), this);
     }
