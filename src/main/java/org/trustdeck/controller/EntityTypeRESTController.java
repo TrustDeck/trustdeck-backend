@@ -609,7 +609,7 @@ public class EntityTypeRESTController {
 		// Evaluate result
 		if (types == null || types.size() == 0) {
 			log.debug("No entity types for the given query string were found.");
-			return responseService.notFound(responseContentType);
+			return responseService.ok(responseContentType, List.of());
 		}
 		
 		log.debug("Successfully found " + types.size() + " entity types.");
@@ -654,7 +654,7 @@ public class EntityTypeRESTController {
 		// Evaluate result
 		if (types == null || types.size() == 0) {
 			log.debug("No entity types for the given query string were found.");
-			return responseService.notFound(responseContentType);
+			return responseService.ok(responseContentType, List.of());
 		}
 		
 		log.debug("Successfully found " + types.size() + " entity types.");

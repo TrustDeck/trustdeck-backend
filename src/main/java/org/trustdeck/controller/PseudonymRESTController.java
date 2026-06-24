@@ -1462,7 +1462,7 @@ public class PseudonymRESTController {
 		// Evaluate result
 		if (pseudonyms == null || pseudonyms.size() == 0) {
 			log.debug("No pseudonyms for the given query string were found.");
-			return responseService.notFound(responseContentType);
+			return responseService.ok(responseContentType, List.of());
 		} else if (pseudonyms.size() > MAX_NUMBER_OF_SEARCH_RESULTS) {
 			log.debug("Successfully queried the database and found more than " + MAX_NUMBER_OF_SEARCH_RESULTS + " pseudonyms, so the result list was truncated.");
 			return responseService.partialContent(responseContentType, pseudonyms.subList(0, MAX_NUMBER_OF_SEARCH_RESULTS));
