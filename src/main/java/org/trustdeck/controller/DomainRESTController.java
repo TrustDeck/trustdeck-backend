@@ -935,7 +935,7 @@ public class DomainRESTController {
     @GetMapping("/domains/{domainName}")
     @PreAuthorize("isAuthenticated() and @auth.hasDomainPermission(#root, #domainName, 'domain:read')")
     @Audit
-    public ResponseEntity<?> getDomain(@PathVariable(name = "name", required = true) String domainName,
+    public ResponseEntity<?> getDomain(@PathVariable(name = "domainName", required = true) String domainName,
                                        @RequestHeader(name = "accept", required = false) String responseContentType) {
         // Get domain
         Domain domain = domainDBAccessService.getDomainByName(domainName);
