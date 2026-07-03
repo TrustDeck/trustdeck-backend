@@ -98,6 +98,8 @@ public class SecurityConfig {
 		                  ).permitAll()
 		    		// Recommended for browser-based clients: allow CORS preflight requests
 		            .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+		            // Allow health-checks
+		            .requestMatchers(HttpMethod.GET, "/api/health").permitAll()
 		            // Optional: allow the actuator and health info endpoint
 		            // .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
 		            // Everything else must be authenticated

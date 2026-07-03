@@ -30,7 +30,7 @@ services:
       SPRING_PROFILES_ACTIVE: docker
       SPRING_DATASOURCE_URL: jdbc:postgresql://trustdeck-postgresql:5432/trustdeck
     healthcheck:
-      test: ["CMD-SHELL", "curl http://localhost:8080/api/ping"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/api/health"]
       interval: 10s
       timeout: 5s
       retries: 15

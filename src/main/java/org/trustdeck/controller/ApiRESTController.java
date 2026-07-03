@@ -17,6 +17,9 @@
 
 package org.trustdeck.controller;
 
+import java.time.OffsetDateTime;
+import java.util.Map;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -33,19 +36,21 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 @RestController
-@RequestMapping(value = "/api")
+@RequestMapping("/api")
 public class ApiRESTController {
 
     /**
-     * This method functions as a ping endpoint.
+     * This method functions as a health-check endpoint.
      *
-     * @return <li>a <b>200-OK</b> status</li>
+     * @return a <b>200-OK</b> status with a bit of info.
      */
-    @GetMapping(value = "/ping")
-    @Audit(auditFor = AuditUserType.HUMAN)
+    @GetMapping("/health")
+    @Audit(auditFor = AuditUserType.NONE)
     public ResponseEntity<?> ping() {
-        // The response to the ping is just a 200-OK status code
-        log.trace("Ping.");
-        return ResponseEntity.ok().build();
+    	return ResponseEntity.ok(Map.of(
+                "status", "UP",
+                "service", "trustdeck-backend",
+                "timestamp", OffsetDateTime.now().toString()
+        ));
     }
 }
