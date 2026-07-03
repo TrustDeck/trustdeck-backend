@@ -35,6 +35,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.trustdeck.algorithms.PathFinder;
 import org.trustdeck.dto.DomainDTO;
+import org.trustdeck.dto.EntityTypeDTO;
 import org.trustdeck.dto.PseudonymDTO;
 import org.trustdeck.dto.PseudonymUpdateDTO;
 import org.trustdeck.exception.DomainNotFoundException;
@@ -47,6 +48,7 @@ import org.trustdeck.exception.PermissionManagementException;
 import org.trustdeck.exception.UnexpectedResultSizeException;
 import org.trustdeck.jooq.generated.tables.daos.DomainDao;
 import org.trustdeck.jooq.generated.tables.pojos.Domain;
+import org.trustdeck.jooq.generated.tables.pojos.EntityType;
 import org.trustdeck.jooq.generated.tables.pojos.Pseudonym;
 import org.trustdeck.jooq.generated.tables.records.PseudonymRecord;
 import org.trustdeck.model.IdentifierItem;
@@ -57,6 +59,7 @@ import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.name;
 import static org.jooq.impl.DSL.select;
 import static org.trustdeck.jooq.generated.Tables.DOMAIN;
+import static org.trustdeck.jooq.generated.Tables.ENTITY_TYPE;
 import static org.trustdeck.jooq.generated.Tables.PSEUDONYM;
 
 /**
@@ -778,6 +781,50 @@ public class DomainDBAccessService {
                     .stream().map(d -> new DomainDTO().assignPojoValues(d)).toList();
         } catch (Exception e) {
             log.error("Couldn't query the database: " + e.getClass() + ": " + e.getMessage());
+            return null;
+        }
+    }
+    
+    /**
+     * Searches domains by a free-text query.
+     * 
+     * The search matches the query case-insensitively against the domain name,
+     * prefix, and description. Permission checks are intentionally not performed
+     * here; callers must filter the returned domains according to the current
+     * user's access rights before returning them to the client.
+     *
+     * @param query the free-text query used to search for domains
+     * @return a list of matching domains, ordered by domain name; an empty list if
+     *         the query is {@code null}, blank, or if no matching domains were found
+     */
+    @Transactional
+    public List<DomainDTO> searchDomains(String query) {
+        if (Assertion.isNullOrEmpty(query)) {
+            log.debug("Search query is empty.");
+            return List.of();
+        }
+        
+        try {
+        	// Allow wildcard-search with '*'
+        	if (query.trim().equalsIgnoreCase("*")) {
+        		return dsl.selectFrom(DOMAIN)
+        				  .orderBy(DOMAIN.NAME.asc())
+        				  .fetch(domain -> new DomainDTO().assignPojoValues(domain));
+        	} else {
+        		String cleanedQuery = query.trim();
+        		
+        		return dsl.selectFrom(DOMAIN)
+    	                  .where(DOMAIN.NAME.containsIgnoreCase(cleanedQuery)
+    	                		  .or(DOMAIN.PREFIX.containsIgnoreCase(cleanedQuery))
+    	                		  .or(DOMAIN.DESCRIPTION.containsIgnoreCase(cleanedQuery)))
+    	                  .orderBy(DOMAIN.NAME.asc())
+    	                  .fetch(domain -> new DomainDTO().assignPojoValues(domain));
+        	}
+        } catch (MappingException e) {
+            log.debug("Could not map entity type search result.", e);
+            return null;
+        } catch (DataAccessException e) {
+            log.debug("Searching entity types failed.", e);
             return null;
         }
     }

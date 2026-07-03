@@ -122,6 +122,7 @@ app:
       - domain:create
       - domain:create-complete
       - domain:list-all
+      - domain:search
       - project:create
       - project:list-all
       - base-type:create

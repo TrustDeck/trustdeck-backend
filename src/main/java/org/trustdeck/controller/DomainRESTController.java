@@ -111,10 +111,6 @@ public class DomainRESTController {
 
     /** The default validity time in seconds. */
     public static final String DEFAULT_VALIDITY_TIME = "30 years";
-
-    /** Enables the access to the domain specific database access methods. */
-    @Autowired
-    private DomainDBAccessService domainDBAccessService;
     
     /** The maximum length for the salt. */
     private static final int MAXIMUM_SALT_LENGTH = 256;
@@ -124,6 +120,13 @@ public class DomainRESTController {
     
     /** The minimum length for the salt. */
     private static final int MINIMUM_SALT_LENGTH = 8;
+    
+    /** The maximum number of domains that are returned in a search. */
+    private static final int MAX_NUMBER_OF_SEARCH_RESULTS = 20;
+
+    /** Enables the access to the domain specific database access methods. */
+    @Autowired
+    private DomainDBAccessService domainDBAccessService;
 
     /** Enables services for better working with responses. */
     @Autowired
@@ -929,10 +932,10 @@ public class DomainRESTController {
      * 			<li>a <b>404-NOT_FOUND</b> when no domain was found for
      * 				the given name</li>
      */
-    @GetMapping("/domains")
+    @GetMapping("/domains/{domainName}")
     @PreAuthorize("isAuthenticated() and @auth.hasDomainPermission(#root, #domainName, 'domain:read')")
     @Audit
-    public ResponseEntity<?> getDomain(@RequestParam(name = "name", required = true) String domainName,
+    public ResponseEntity<?> getDomain(@PathVariable(name = "name", required = true) String domainName,
                                        @RequestHeader(name = "accept", required = false) String responseContentType) {
         // Get domain
         Domain domain = domainDBAccessService.getDomainByName(domainName);
@@ -1393,6 +1396,64 @@ public class DomainRESTController {
             log.error("Updating the salt for the domain \"" + domainName + "\" was unsuccessful.");
             return responseService.unprocessableEntity(responseContentType);
         }
+    }
+    
+    /**
+     * This method searches for domains by a free-text query.
+     * 
+     * The controller only returns domains for which the current user has read access.
+     * If the user does not have the necessary permission to see the complete domain
+     * configuration, the returned domain is reduced to its standard view.
+     *
+     * @param query (required) the search query used to find matching domains
+     * @param responseContentType (optional) the response content type
+     * @return  <li>a <b>200-OK</b> status and a possibly empty <b>list of domains</b>
+     *              when the search was processed successfully</li>
+     *          <li>a <b>400-BAD_REQUEST</b> status when the search query is empty</li>
+     */
+    @GetMapping("/domains")
+    @PreAuthorize("isAuthenticated() and @auth.hasGlobalPermission(#root, 'domain:search')")
+    @Audit
+    public ResponseEntity<?> searchDomains(@RequestParam(name = "query", required = true) String query,
+                                           @RequestHeader(name = "accept", required = false) String responseContentType) {
+        List<DomainDTO> foundDomains = domainDBAccessService.searchDomains(query);
+        List<DomainDTO> visibleDomains = new ArrayList<>();
+        boolean canListAllDomains = authorizationService.hasGlobalPermission("domain:list-all");
+
+        if (foundDomains == null) {
+        	log.trace("The domain search failed.");
+        	return responseService.internalServerError(responseContentType);
+        } else if (foundDomains.size() == 0 || foundDomains.isEmpty()) {
+        	log.trace("No domains were found for the given query.");
+        	return responseService.ok(responseContentType, List.of());
+        }
+        
+        // Iterate over all found domains and create a list of domains of those the user is allowed to view
+        for (DomainDTO domainDTO : foundDomains) {
+            String domainName = domainDTO.getName();
+
+            // Check if the user is allowed to either read all domains or this one in particular
+            if (!canListAllDomains && !authorizationService.hasDomainPermission(domainName, "domain:read")) {
+            	// The user is not allowed to read this domain
+                continue;
+            }
+
+            // Check if the user is allowed to read the full object or only a reduced version
+            if (!authorizationService.hasDomainPermission(domainName, "complete-view")) {
+                domainDTO = domainDTO.toReducedStandardView();
+            }
+
+            // Add the domain to list of allowed ones
+            visibleDomains.add(domainDTO);
+
+            // Early break if the list of search results should become too long
+            if (visibleDomains.size() >= MAX_NUMBER_OF_SEARCH_RESULTS) {
+                break;
+            }
+        }
+
+        log.debug("Domain search for query \"" + query + "\" returned " + visibleDomains.size() + " result(s).");
+        return responseService.ok(responseContentType, visibleDomains);
     }
 	
 	/**
