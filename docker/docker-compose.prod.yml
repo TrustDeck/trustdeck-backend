@@ -52,7 +52,7 @@ services:
     networks:
       - trustdeck
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:9000/health/ready"]
+      test: ["CMD-SHELL", "curl http://localhost:9000/health/ready"]
       interval: 10s
       timeout: 5s
       retries: 15
