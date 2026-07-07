@@ -45,7 +45,6 @@ public class ApiRESTController {
      * @return a <b>200-OK</b> status with a bit of info.
      */
     @GetMapping("/health")
-    @Audit(auditFor = AuditUserType.NONE)
     public ResponseEntity<?> ping() {
     	return ResponseEntity.ok(Map.of(
                 "status", "UP",
