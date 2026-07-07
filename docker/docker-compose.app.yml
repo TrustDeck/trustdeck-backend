@@ -24,6 +24,8 @@ services:
         condition: service_healthy
       trustdeck-keycloak:
         condition: service_healthy
+    volumes:
+      - ${KAFKA_SSL_DIR:-/opt/kafka-ssl}:${KAFKA_SSL_DIR:-/opt/kafka-ssl}:ro
     ports:
       - "8080:8080"
     environment:

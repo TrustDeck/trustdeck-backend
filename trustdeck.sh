@@ -62,6 +62,50 @@ ensure_trustdeck_network() {
   fi
 }
 
+ensure_kafka_ssl_dir() {
+  local default_kafka_ssl_dir="/opt/kafka-ssl"
+  local configured_kafka_ssl_dir="${KAFKA_SSL_DIR:-}"
+
+  if [[ -n "$configured_kafka_ssl_dir" && -d "$configured_kafka_ssl_dir" && -r "$configured_kafka_ssl_dir" && -x "$configured_kafka_ssl_dir" ]]; then
+    export KAFKA_SSL_DIR="$configured_kafka_ssl_dir"
+    echo "Using Kafka SSL directory: $KAFKA_SSL_DIR"
+    return 0
+  fi
+
+  if [[ -n "$configured_kafka_ssl_dir" ]]; then
+    echo "KAFKA_SSL_DIR is set to '$configured_kafka_ssl_dir', but it is not readable/searchable."
+    echo "Falling back to default Kafka SSL directory: $default_kafka_ssl_dir"
+  else
+    echo "KAFKA_SSL_DIR is not set. Using default Kafka SSL directory: $default_kafka_ssl_dir"
+  fi
+
+  if [[ ! -d "$default_kafka_ssl_dir" ]]; then
+    echo "Creating Kafka SSL directory: $default_kafka_ssl_dir"
+
+    if [[ -w "$(dirname "$default_kafka_ssl_dir")" ]]; then
+      mkdir -p "$default_kafka_ssl_dir"
+    elif command -v sudo >/dev/null 2>&1; then
+      sudo mkdir -p "$default_kafka_ssl_dir"
+    else
+      echo "Cannot create '$default_kafka_ssl_dir'. Create it manually or run with sufficient permissions."
+      exit 1
+    fi
+  fi
+
+  if [[ ! -r "$default_kafka_ssl_dir" || ! -x "$default_kafka_ssl_dir" ]]; then
+    echo "Making Kafka SSL directory readable/searchable: $default_kafka_ssl_dir"
+
+    if command -v sudo >/dev/null 2>&1; then
+      sudo chmod 0755 "$default_kafka_ssl_dir"
+    else
+      echo "'$default_kafka_ssl_dir' exists but is not readable/searchable. Fix permissions manually."
+      exit 1
+    fi
+  fi
+
+  export KAFKA_SSL_DIR="$default_kafka_ssl_dir"
+}
+
 # Method for checking docker container health status
 wait_for_healthy() {
   local container="$1"
@@ -150,7 +194,6 @@ wait_for_trustdeck_db_schema() {
 start_postgres_for_codegen() {
   echo "Starting PostgreSQL first for jOOQ code generation ..."
 
-  load_env_for_local_checks
   ensure_trustdeck_network
 
   $SUDO_DOCKER docker compose \
@@ -197,6 +240,14 @@ build_backend_jar() {
 # Method that encapsulates the development startup commands
 start_dev() {
   echo "Starting Keycloak and PostgreSQL in dev mode ..."
+
+  # Export all variables from trustdeck.env to current shell
+  load_env_for_local_checks
+
+  # Ensure KAFKA_SSL_DIR is set and points to a readable/searchable directory.
+  # Falls back to /opt/kafka-ssl if missing or unusable.
+  ensure_kafka_ssl_dir
+
   $SUDO_DOCKER docker compose --project-name "trustdeck-dev" --env-file "$ENV_FILE" -f "$DEV_COMPOSE" up -d
 
   # Wait for DB + Keycloak to be ready
@@ -204,9 +255,6 @@ start_dev() {
   wait_for_healthy "$KEYCLOAK_CONTAINER"
 
   echo "Running backend via Maven ..."
-
-  # Export all variables from trustdeck.env to current shell
-  load_env_for_local_checks
 
   mvn clean compile -f "$ROOT_DIR/pom.xml" -Dlog4j2.contextSelector=org.apache.logging.log4j.core.async.AsyncLoggerContextSelector org.springframework.boot:spring-boot-maven-plugin:run -Dorg.jooq.no-logo=true -Dorg.jooq.no-tips=true
 }
@@ -222,6 +270,13 @@ stop_dev() {
 # Method that encapsulates the production startup commands
 start_prod() {
   echo "Building and starting full production stack (PostgreSQL, Keycloak, TrustDeck backend) ..."
+  
+  # Export all variables from trustdeck.env to current shell
+  load_env_for_local_checks
+
+  # Ensure KAFKA_SSL_DIR is set and points to a readable/searchable directory.
+  # Falls back to /opt/kafka-ssl if missing or unusable.
+  ensure_kafka_ssl_dir
 
   # jOOQ code generation in pom.xml connects to localhost:5432/trustdeck,
   # so PostgreSQL must be running and initialized before Maven builds the JAR.
@@ -238,7 +293,7 @@ start_prod() {
   wait_for_healthy "$KEYCLOAK_CONTAINER"
 
   echo "Building/recreating TrustDeck backend container with the freshly generated JAR ..."
-  $SUDO_DOCKER docker compose \
+  $SUDO_DOCKER env KAFKA_SSL_DIR="$KAFKA_SSL_DIR" docker compose \
     --project-name "trustdeck" \
     --env-file "$ENV_FILE" \
     -f "$PROD_COMPOSE" \
