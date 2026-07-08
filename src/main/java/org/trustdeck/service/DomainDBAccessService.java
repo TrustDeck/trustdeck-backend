@@ -35,7 +35,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.trustdeck.algorithms.PathFinder;
 import org.trustdeck.dto.DomainDTO;
-import org.trustdeck.dto.EntityTypeDTO;
 import org.trustdeck.dto.PseudonymDTO;
 import org.trustdeck.dto.PseudonymUpdateDTO;
 import org.trustdeck.exception.DomainNotFoundException;
@@ -48,7 +47,6 @@ import org.trustdeck.exception.PermissionManagementException;
 import org.trustdeck.exception.UnexpectedResultSizeException;
 import org.trustdeck.jooq.generated.tables.daos.DomainDao;
 import org.trustdeck.jooq.generated.tables.pojos.Domain;
-import org.trustdeck.jooq.generated.tables.pojos.EntityType;
 import org.trustdeck.jooq.generated.tables.pojos.Pseudonym;
 import org.trustdeck.jooq.generated.tables.records.PseudonymRecord;
 import org.trustdeck.model.IdentifierItem;
@@ -59,7 +57,6 @@ import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.name;
 import static org.jooq.impl.DSL.select;
 import static org.trustdeck.jooq.generated.Tables.DOMAIN;
-import static org.trustdeck.jooq.generated.Tables.ENTITY_TYPE;
 import static org.trustdeck.jooq.generated.Tables.PSEUDONYM;
 
 /**
@@ -114,7 +111,7 @@ public class DomainDBAccessService {
     @Transactional
     public Domain getDomainByName(String domainName) {
     	// Check if all the necessary arguments are available
-    	if (Assertion.isNullOrEmpty(domainName.trim())) {
+    	if (Assertion.isNullOrEmpty(domainName)) {
     		log.trace("The given domain name is null or empty.");
     		return null;
     	}
