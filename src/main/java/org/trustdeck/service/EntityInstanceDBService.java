@@ -391,6 +391,35 @@ public class EntityInstanceDBService {
             log.debug("Search query is empty.");
             return null;
         }
+    	
+    	// Support wildcard-search (limited to 250)
+		if (query.trim().equals("*")) {
+			Condition condition = ENTITY_INSTANCE.IS_DELETED.eq(false);
+			if (entityTypeId != null) {
+				condition = condition.and(ENTITY_INSTANCE.ENTITY_TYPE_ID.eq(entityTypeId));
+			}
+
+			try {
+				List<EntityInstance> results = dsl.selectFrom(ENTITY_INSTANCE)
+						.where(condition)
+						.orderBy(ENTITY_INSTANCE.UPDATED_AT.desc(), ENTITY_INSTANCE.CREATED_AT.desc(), ENTITY_INSTANCE.TRUSTDECK_ID.asc())
+						.limit(250)
+						.fetchInto(EntityInstance.class);
+
+				if (results == null || results.isEmpty()) {
+					log.trace("No entity instance matched the find-all query.");
+					return null;
+				}
+
+				return results.stream().map(e -> new EntityInstanceDTO().assignPojoValues(e)).toList();
+            } catch (MappingException e) {
+                log.debug("Could not map entity instance search result.", e);
+                return null;
+            } catch (DataAccessException f) {
+                log.debug("Searching entity instances failed.", f);
+                return null;
+            }
+    	}
 
         // Split query-parts on whitespace; every part should match at least one column
         String[] parts = query.trim().split("\\s+");

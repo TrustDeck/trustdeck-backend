@@ -24,8 +24,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.trustdeck.security.audittrail.annotation.Audit;
-import org.trustdeck.security.audittrail.usertype.AuditUserType;
 
 import lombok.extern.slf4j.Slf4j;
 

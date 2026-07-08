@@ -573,6 +573,32 @@ public class PseudonymDBAccessService {
             log.debug("Search query is empty.");
             return null;
         }
+    	
+    	// Allow wildcard-search with '*'
+        if (query.trim().equals("*")) {
+            List<Pseudonym> results;
+            try {
+                // Return all currently valid pseudonyms in the given domain scope
+                Field<LocalDateTime> now = DSL.currentLocalDateTime();
+
+                results = dsl.selectFrom(PSEUDONYM)
+                        .where(PSEUDONYM.DOMAINID.eq(domainId))
+                        .and(PSEUDONYM.VALIDFROM.le(now))
+                        .and(PSEUDONYM.VALIDTO.gt(now))
+                        .orderBy(PSEUDONYM.IDENTIFIER.asc(), PSEUDONYM.IDTYPE.asc())
+                        .limit(500)
+                        .fetchInto(Pseudonym.class);
+            } catch (MappingException e) {
+                log.debug("Could not map pseudonym search result.", e);
+                return null;
+            } catch (DataAccessException e) {
+                log.debug("Searching pseudonyms failed.", e);
+                return null;
+            }
+
+            // Return all currently valid pseudonyms
+            return results.stream().map(p -> new PseudonymDTO().assignPojoValues(p)).toList();
+        }
 
         // Split query-parts on whitespaces; every part should match at least one column
         String[] parts = query.trim().split("\\s+");

@@ -376,7 +376,7 @@ public class EntityTypeDBService {
     	}
     	
     	if (usedBy != 0) {
-    		log.debug("The entity type was referenced by " + usedBy + "entit" + (usedBy == 1 ? "y" : "ies") + " and can therefore not be updated.");
+    		log.debug("The entity type was referenced by " + usedBy + " entit" + (usedBy == 1 ? "y" : "ies") + " and can therefore not be updated.");
     		return null;
     	}
     	
@@ -426,7 +426,7 @@ public class EntityTypeDBService {
         }
     	
     	// Allow wildcard-search with '*'
-    	if (query.trim().equalsIgnoreCase("*")) {
+    	if (query.trim().equals("*")) {
     		List<EntityType> results;
             try {
         		// Check if we are searching for a base-type (projectId not given)
@@ -454,7 +454,7 @@ public class EntityTypeDBService {
             }
     		
             // Return all the types
-    		return results.stream().map(row -> new EntityTypeDTO().assignPojoValues(row)).toList();
+    		return results.stream().map(e -> new EntityTypeDTO().assignPojoValues(e)).toList();
     	}
 
         // Split query-parts on whitespaces; every part should match at least one column
