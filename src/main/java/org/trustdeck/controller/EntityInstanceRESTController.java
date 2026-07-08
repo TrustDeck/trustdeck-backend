@@ -236,7 +236,7 @@ public class EntityInstanceRESTController {
 				p.setPsn(psn);
 				p.setValidFrom(domain.getValidfrom());
 	            p.setValidFromInherited(true);
-	            p.setValidTo(domain.getValidfrom());
+	            p.setValidTo(domain.getValidto());
 	            p.setValidToInherited(true);
 	            p.setDomainName(domain.getName());
 				
