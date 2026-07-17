@@ -241,6 +241,18 @@ public class ResponseService {
     }
 
     /**
+     * Conflict (409) response entity with a body.
+     *
+     * @param <T> the type parameter
+     * @param mediaType the media type
+     * @param body the conflict details
+     * @return the response entity
+     */
+    public <T> ResponseEntity<T> conflict(String mediaType, T body) {
+        return this.createResponseEntityFromBody(HttpStatus.CONFLICT, mediaType, body, null);
+    }
+
+    /**
      * Insufficient storage (507) response entity.
      *
      * @param <T> the type parameter

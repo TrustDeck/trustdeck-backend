@@ -23,6 +23,7 @@ import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.trustdeck.linkage.model.EntityLinkageConfig;
 import org.trustdeck.linkage.model.LinkageFieldRule;
 import org.trustdeck.linkage.model.LinkageToken;
 import org.trustdeck.linkage.model.LinkageTokenType;
@@ -34,11 +35,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * This service generates record linkage tokens from entity instance payloads.
- * It applies linkage field rules to raw JSON values and transforms them into
- * normalized, phonetic encoded, and blocking tokens that can be used for 
- * candidate generation and candidate scoring.
- * 
+ * Generates record-linkage tokens from complete entity payloads.
+ * Entity-level configuration selects the privacy mode and PPRL parameters;
+ * field rules control participation, pre-processing, blocking, and weight.
+ *
  * @author Armin Müller
  */
 @Service
@@ -57,50 +57,59 @@ public class LinkageTokenService {
      * Generates record linkage tokens for a payload according to the provided linkage field rules.
      * For each linkage-enabled field, the raw input value is normalized first and then transformed
      * into one or more tokens for exact matching, phonetic matching, and blocking.
-     * 
+     *
+     * @param entityConfig the entity-level linkage configuration
      * @param rules the linkage field rules that determine how tokens should be generated
      * @param payload the JSON payload from which the linkage tokens should be derived
      * @param projectId the (internal) database ID of the project in which the record linkage takes place
      * @param entityTypeId the (internal) database ID of the entity type of the record for which RL is done
      * @return the list of generated linkage tokens
      */
-    public List<LinkageToken> buildTokens(List<LinkageFieldRule> rules, JsonNode payload, int projectId, int entityTypeId) {
+    public List<LinkageToken> buildTokens(EntityLinkageConfig entityConfig, List<LinkageFieldRule> rules, JsonNode payload, int projectId, int entityTypeId) {
+        // Ensure non-null linkage configuration and rules-list
+    	EntityLinkageConfig effectiveConfig = entityConfig == null ? new EntityLinkageConfig() : entityConfig;
+        if (!effectiveConfig.isEnabled() || rules == null || rules.isEmpty()) {
+            return List.of();
+        }
+
+        // Handle each rule for each attribute in the payload
         List<LinkageToken> tokens = new ArrayList<>();
-
-        // Apply rules
         for (LinkageFieldRule rule : rules) {
-        	// Retrieve the node of interest from payload
-        	List<JsonNode> valueNodes = getNodesByPath(payload, rule.getPath());
-    		if (valueNodes.isEmpty()) {
-    			continue;
-    		}
+            for (JsonNode valueNode : getNodesByPath(payload, rule.getPath())) {
+                String rawValue = valueNode.asText(null);
+                if (Assertion.isNullOrEmpty(rawValue)) {
+                    continue;
+                }
+                
+                // Normalize the raw values
+                String normalized = switch (rule.getType()) {
+                    case "date" -> normalizationService.normalizeDate(rawValue);
+                    default -> normalizationService.normalize(rawValue, rule.getNormalizers());
+                };
 
-    		for (JsonNode valueNode : valueNodes) {
-	            // Transform into a string
-	            String rawValue = valueNode.asText(null);
-	            if (Assertion.isNullOrEmpty(rawValue)) {
-	                continue;
-	            }
-	            
-	            // Normalize with the given normalization rules
-	            String normalized = 
-	            		switch (rule.getType()) {
-			                case "date" -> normalizationService.normalizeDate(rawValue);
-			                default -> normalizationService.normalize(rawValue, rule.getNormalizers());
-			            };
-	
-	            if (normalized == null) {
-	                continue;
-	            }
-	            
-				// Generate either plaintext linkage tokens or privacy-preserving linkage tokens
-				// In PPRL mode, no plaintext normalized, phonetic, or prefix tokens are generated
-				if (rule.usesPprl()) {
-					tokens.addAll(buildPPRLTokens(rule, normalized, projectId, entityTypeId));
-				} else {
-					tokens.addAll(buildPlainTokens(rule, normalized));
-				}
-    		}
+                if (Assertion.isNullOrEmpty(normalized)) {
+                    continue;
+                }
+
+                // Build PPRL or plain-text tokens
+                if (effectiveConfig.usesPprl()) {
+                    tokens.addAll(buildPprlTokens(rule, normalized, rule.getTag(), false, effectiveConfig.getPprlConfig(), projectId, entityTypeId));
+
+                    // Encoders remain attribute-level: in PPRL mode, their output is protected with a separate  
+                    // context tag so it can only match the same encoder output of the same semantic attribute.
+                    if (rule.getEncoders() != null) {
+                        for (String encoder : rule.getEncoders()) {
+                            String encoded = normalizationService.phoneticEncode(normalized, encoder);
+                            if (Assertion.isNotNullOrEmpty(encoded)) {
+                                String encodedTag = rule.getTag() + ":encoder:" + encoder.toLowerCase();
+                                tokens.addAll(buildPprlTokens(rule, encoded, encodedTag, true, effectiveConfig.getPprlConfig(), projectId, entityTypeId));
+                            }
+                        }
+                    }
+                } else {
+                    tokens.addAll(buildPlainTokens(rule, normalized));
+                }
+            }
         }
 
         return tokens;
@@ -143,61 +152,94 @@ public class LinkageTokenService {
 	}
 	
 	/**
-	 * Generates privacy-preserving linkage tokens for a normalized value.
-	 * Depending on the PPRL method, this creates either an HMAC exact token or an
-	 * n-gram Bloom filter with protected band tokens for candidate generation.
-	 * 
-	 * @param rule the linkage field rule
-	 * @param normalized the normalized field value
+     * Generates protected score and blocking tokens. The PPRL algorithm and all Bloom-filter parameters 
+     * are entity-level. Blocking remains field-level: "exact" creates a protected exact block, "bloomBands" 
+     * creates protected Bloom-band blocks, and "phonetic" creates a protected exact block for an encoded value.
+     * 
+	 * @param rule the linkage field rule defining blocking and weight settings
+	 * @param preparedValue the normalized or encoded field value
+	 * @param tokenTag the tag used to separate tokens belonging to different value variants
+	 * @param encodedValue whether the prepared value was produced by a field encoder
+	 * @param configuredPprl the entity-level PPRL configuration; may be {@code null}
 	 * @param projectId the project ID used for PPRL context separation
 	 * @param entityTypeId the entity type ID used for PPRL context separation
-	 * @return the generated PPRL linkage tokens
+	 * @return the generated PPRL score and blocking tokens
 	 */
-	private List<LinkageToken> buildPPRLTokens(LinkageFieldRule rule, String normalized, int projectId, int entityTypeId) {
-		List<LinkageToken> tokens = new ArrayList<>();
-		
-		// Get or create a PPRL config
-		PPRLConfig config = rule.getPprlConfig() == null ? new PPRLConfig() : rule.getPprlConfig();
+    private List<LinkageToken> buildPprlTokens(LinkageFieldRule rule, String preparedValue, String tokenTag, boolean encodedValue, PPRLConfig configuredPprl, int projectId, int entityTypeId) {
+    	// Check if the project and type context are given
+    	if (projectId <= 0 || entityTypeId <= 0) {
+            throw new IllegalArgumentException("PPRL token generation requires projectId and entityTypeId.");
+        }
 
-		// Check if the project and type context are given
-		if (projectId <= 0 || entityTypeId <= 0) {
-			throw new IllegalArgumentException("PPRL token generation requires projectId and entityTypeId.");
-		}
+    	// Get or create the entity-level PPRL config
+        PPRLConfig config = configuredPprl == null ? new PPRLConfig() : configuredPprl;
+        List<LinkageToken> tokens = new ArrayList<>();
+        String method = config.getMethod() == null ? PPRLConfig.METHOD_NGRAM_BLOOM_FILTER : config.getMethod();
 
-		// Generate tokens based on the generation method defined in the config or use default
-		String method = config.getMethod() == null ? PPRLConfig.METHOD_NGRAM_BLOOM_FILTER : config.getMethod();
-		switch (method.trim().toLowerCase()) {
-			case "hmacexact" -> {
-				// Exact PPRL mode: only an HMAC-protected value is stored
-				String exact = pprlEncodingService.hmacExact(projectId, entityTypeId, rule.getTag(), normalized);
-				tokens.add(new LinkageToken(rule.getPath(), rule.getTag(), LinkageTokenType.PPRL_EXACT, exact, rule.getWeight()));
+        // Encoded values use phonetic blocking, while normalized values use exact blocking
+        boolean exactBlocking = encodedValue ? hasBlocking(rule, "phonetic") : hasBlocking(rule, "exact");
 
-				// The exact HMAC is also usable as a protected blocking key
-				tokens.add(new LinkageToken(rule.getPath(), rule.getTag(), LinkageTokenType.PPRL_BLOCK, exact, rule.getWeight()));
-			}
-			case "ngrambloomfilter" -> {
-				// Fuzzy PPRL mode: n-grams are encoded into a protected Bloom filter
-				BitSet bloomFilter = pprlEncodingService.buildBloomFilter(projectId, entityTypeId, rule.getTag(), normalized, config);
-				String encodedBloom = pprlEncodingService.encodeBloomFilter(bloomFilter, config.getLength());
+        // Generate score and blocking tokens based on the entity-level PPRL method
+        switch (method.trim().toLowerCase()) {
+            case "hmacexact" -> {
+            	// Generate the protected exact token used for scoring
+                String exact = pprlEncodingService.hmacExact(projectId, entityTypeId, tokenTag, preparedValue);
+                tokens.add(new LinkageToken(rule.getPath(), tokenTag, LinkageTokenType.PPRL_EXACT, exact, rule.getWeight()));
+                
+                // Reuse the exact token as a blocking key if configured for the field
+                if (exactBlocking) {
+                    tokens.add(new LinkageToken(rule.getPath(), tokenTag, LinkageTokenType.PPRL_BLOCK, exact, rule.getWeight()));
+                }
+            }
+            case "ngrambloomfilter" -> {
+            	// Encode the prepared value into a protected Bloom filter for fuzzy scoring
+            	BitSet bloomFilter = pprlEncodingService.buildBloomFilter(projectId, entityTypeId, tokenTag, preparedValue, config);
+                String encodedBloom = pprlEncodingService.encodeBloomFilter(bloomFilter, config.getLength());
+                
+                tokens.add(new LinkageToken(rule.getPath(), tokenTag, LinkageTokenType.PPRL_BLOOM, encodedBloom, rule.getWeight()));
 
-				tokens.add(new LinkageToken(rule.getPath(), rule.getTag(), LinkageTokenType.PPRL_BLOOM, encodedBloom, rule.getWeight()));
+                // Generate Bloom-band blocking tokens only for non-encoded values
+                if (!encodedValue && hasBlocking(rule, "bloomBands")) {
+                    for (String bandToken : pprlEncodingService.buildBloomBandTokens(projectId, entityTypeId, tokenTag, bloomFilter, config)) {
+                        tokens.add(new LinkageToken(rule.getPath(), tokenTag, LinkageTokenType.PPRL_BLOCK, bandToken, rule.getWeight()));
+                    }
+                }
 
-				// Bloom filter bands are used for fast candidate generation
-				for (String bandToken : pprlEncodingService.buildBloomBandTokens(projectId, entityTypeId, rule.getTag(), bloomFilter, config)) {
-					tokens.add(new LinkageToken(rule.getPath(), rule.getTag(), LinkageTokenType.PPRL_BLOCK, bandToken, rule.getWeight()));
-				}
+                // Generate the exact HMAC once if needed for scoring or blocking
+                String exact = null;
+                if (config.isExact() || exactBlocking) {
+                    exact = pprlEncodingService.hmacExact(projectId, entityTypeId, tokenTag, preparedValue);
+                }
+                
+                // Add optional exact-agreement scoring
+                if (config.isExact()) {
+                    tokens.add(new LinkageToken(rule.getPath(), tokenTag, LinkageTokenType.PPRL_EXACT, exact, rule.getWeight()));
+                }
+                
+                // Add exact blocking for the prepared value
+                if (exactBlocking) {
+                    tokens.add(new LinkageToken(rule.getPath(), tokenTag, LinkageTokenType.PPRL_BLOCK, exact, rule.getWeight()));
+                }
+            }
+            default -> log.debug("Unknown entity-level PPRL method \"" + method + "\".");
+        }
 
-				// Optional exact HMAC support for fields where exact agreement should provide a strong signal
-				if (config.isExact()) {
-					String exact = pprlEncodingService.hmacExact(projectId, entityTypeId, rule.getTag(), normalized);
-					tokens.add(new LinkageToken(rule.getPath(), rule.getTag(), LinkageTokenType.PPRL_EXACT, exact, rule.getWeight()));
-				}
-			}
-			default -> log.debug("Unknown PPRL method \"" + method + "\" for field \"" + rule.getPath() + "\".");
-		}
-
-		return tokens;
-	}
+        return tokens;
+    }
+    
+    /**
+     * Checks whether the field rule contains the specified blocking strategy.
+     * @param rule the linkage field rule
+     * @param expected the blocking strategy to check for
+     * @return {@code true} if the strategy is configured, otherwise {@code false}
+     */
+    private boolean hasBlocking(LinkageFieldRule rule, String expected) {
+        if (rule.getBlocking() == null) {
+            return false;
+        }
+        
+        return rule.getBlocking().stream().anyMatch(expected::equalsIgnoreCase);
+    }
 
     /**
      * Generates blocking tokens for a normalized field value according to the 
@@ -219,24 +261,15 @@ public class LinkageTokenService {
     					normalized, rule.getWeight()));
     		case "prefix3" -> {
     			// Uses the first three characters of the normalized value as the blocking key
-    			if (normalized.length() >= 3) {
-    				tokens.add(new LinkageToken(rule.getPath(), rule.getTag(), LinkageTokenType.BLOCK, 
-    						normalized.substring(0, 3), rule.getWeight()));
-    			}
+    			addPrefixBlock(tokens, rule, normalized, 3);
     		}
     		case "prefix4" -> {
     			// Uses the first four characters of the normalized value as the blocking key
-    			if (normalized.length() >= 4) {
-    				tokens.add(new LinkageToken(rule.getPath(), rule.getTag(), LinkageTokenType.BLOCK, 
-    						normalized.substring(0, 4), rule.getWeight()));
-    			}
+    			addPrefixBlock(tokens, rule, normalized, 4);
     		}
     		case "prefix6" -> {
     			// Uses the first six characters of the normalized value as the blocking key
-    			if (normalized.length() >= 6) {
-    				tokens.add(new LinkageToken(rule.getPath(), rule.getTag(), LinkageTokenType.BLOCK, 
-    						normalized.substring(0, 6), rule.getWeight()));
-    			}
+    			addPrefixBlock(tokens, rule, normalized, 6);
     		}
     		// Uses one or more phonetic encodings of the normalized value so 
     		// that similarly sounding values can fall into the same candidate group
@@ -272,6 +305,20 @@ public class LinkageTokenService {
     	}
     	
     	return tokens;
+    }
+    
+    /** 
+     * Adds a prefix-based blocking token if the normalized value is long enough.
+     * 
+     * @param tokens the list to which the blocking token is added
+     * @param rule the linkage field rule
+     * @param normalized the normalized field value
+     * @param length the required prefix length
+     */
+    private void addPrefixBlock(List<LinkageToken> tokens, LinkageFieldRule rule, String normalized, int length) {
+        if (normalized.length() >= length) {
+            tokens.add(new LinkageToken(rule.getPath(), rule.getTag(), LinkageTokenType.BLOCK, normalized.substring(0, length), rule.getWeight()));
+        }
     }
 
     /**

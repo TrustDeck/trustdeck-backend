@@ -25,11 +25,12 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * This class represents the effective record linkage rule for a single 
- * field from an EntityInstance. It contains the resolved linkage configuration 
- * that should be applied to one specific attribute path during token 
- * generation and candidate scoring.
- * 
+ * Effective record-linkage rule for one attribute of an entity.
+ *
+ * Entity-wide settings such as privacy mode and Bloom-filter parameters are
+ * intentionally not stored here. They are supplied separately through
+ * {@link EntityLinkageConfig}.
+ *
  * @author Armin Müller
  */
 @Data
@@ -52,12 +53,6 @@ public class LinkageFieldRule {
 
     /** Determines whether or not this field should be used for record linkage. */
     private boolean linkage;
-    
-    /** The privacy mode used for this field, e.g. plain or PPRL. */
-    private String privacyMode;
-
-    /** The PPRL-specific configuration for this field. */
-    private PPRLConfig pprlConfig;
 
     /** The normalization steps that should be applied to the field's value. */
     private List<String> normalizers;
@@ -68,27 +63,6 @@ public class LinkageFieldRule {
     /** The blocking strategies that should be used for candidate generation. */
     private List<String> blocking;
 
-    /** The comparator that should be used during record linkage scoring. (Not yet used / implemented.) */
-    private String comparator;
-
     /** The weight of this field during record linkage scoring. */
     private double weight;
-    
-    /**
-     * Checks whether this rule should generate privacy-preserving linkage tokens.
-     * 
-     * @return {@code true} if this rule uses PPRL mode, {@code false} otherwise
-     */
-    public boolean usesPprl() {
-    	return "pprl".equalsIgnoreCase(privacyMode);
-    }
-    
-    /**
-     * Checks whether this rule should generate privacy-preserving linkage tokens.
-     * 
-     * @return {@code true} if this rule uses PPRL mode, {@code false} otherwise
-     */
-    public boolean usesPlain() {
-    	return "plain".equalsIgnoreCase(privacyMode);
-    }
 }

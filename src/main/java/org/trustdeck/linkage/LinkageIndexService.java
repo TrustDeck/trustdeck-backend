@@ -29,6 +29,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.trustdeck.dto.EntityInstanceDTO;
 import org.trustdeck.dto.EntityTypeDTO;
+import org.trustdeck.linkage.model.EntityLinkageConfig;
 import org.trustdeck.linkage.model.LinkageFieldRule;
 import org.trustdeck.linkage.model.LinkageToken;
 import org.trustdeck.service.EntityTypeDBService;
@@ -98,10 +99,11 @@ public class LinkageIndexService {
 
         // Resolve the effective linkage field rules for the entity type
         JsonNode baseDef = baseType == null ? null : baseType.getTypeDefinition();
+        EntityLinkageConfig entityConfig = jsonSchemaService.resolveEntityLinkageConfig(entityType.getTypeDefinition(), baseDef);
         List<LinkageFieldRule> rules = jsonSchemaService.resolveLinkageFieldRules(entityType.getTypeDefinition(), baseDef);
 
         // Generate all linkage tokens for the current entity instance payload
-        List<LinkageToken> tokens = linkageTokenService.buildTokens(rules, instance.getData(), instance.getProjectID(), instance.getEntityTypeID());
+        List<LinkageToken> tokens = linkageTokenService.buildTokens(entityConfig, rules, instance.getData(), instance.getProjectID(), instance.getEntityTypeID());
         
 		// If no tokens were generated, the index is still valid after deleting old tokens
 		// (this can happen for entity types without linkage-enabled fields or empty linkage values).
@@ -141,6 +143,7 @@ public class LinkageIndexService {
 				   .set(LINKAGE_TOKEN.TOKEN_VALUE, token.getTokenValue())
 				   .set(LINKAGE_TOKEN.WEIGHT, token.getWeight())
 				   .execute();
+				
 				inserted++;
 			} catch (DataAccessException e) {
 				log.debug("Could not create new linkage token for the instance with TrustDeckID = " 

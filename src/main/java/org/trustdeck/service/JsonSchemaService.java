@@ -36,6 +36,7 @@ import java.util.stream.Collectors;
 import org.jooq.JSONB;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
+import org.trustdeck.linkage.model.EntityLinkageConfig;
 import org.trustdeck.linkage.model.LinkageFieldRule;
 import org.trustdeck.linkage.model.PPRLConfig;
 import org.trustdeck.utils.LRUCache;
@@ -434,26 +435,47 @@ public class JsonSchemaService {
 	}
 	
 	/**
-	 * Resolves the effective record linkage rules for all linkage-enabled leaf attributes
-	 * of a project-specific type definition, optionally inheriting defaults and overrides
-	 * from the corresponding base type definition.
+	 * Method to create an entity linkage configuration from the given type definition.
 	 * 
-	 * The resolution follows this order:
-	 * <ol>
-	 *   <li>default linkage configuration derived from the base type leaf node if present,
-	 *       otherwise from the project-specific leaf node</li>
-	 *   <li>tag values taken from the project-specific node if present, otherwise from the 
-	 *   	 base type node</li>
-	 *   <li>explicit linkage configuration taken from the project-specific node if present,
-	 *       otherwise from the base type node</li>
-	 * </ol>
+	 * @param typeDefinition the project-specific entity type's definition
+	 * @param baseDefinition the entity type definition of the base type that this project-specific entity is based on
+	 * @return the record linkage configuration object for this entity
+	 */
+	public EntityLinkageConfig resolveEntityLinkageConfig(JsonNode typeDefinition, JsonNode baseDefinition) {
+		// Retrieve the linkage config from base and project-specific type
+		JsonNode projectConfig = objectProperty(typeDefinition, "recordLinkage");
+		JsonNode baseConfig = objectProperty(baseDefinition, "recordLinkage");
+
+		// Build linkage config for this entity
+		EntityLinkageConfig config = new EntityLinkageConfig();
+		config.setEnabled(booleanValue(projectConfig, baseConfig, "enabled", config.isEnabled()));
+		config.setPrivacyMode(textValue(projectConfig, baseConfig, "privacyMode", config.getPrivacyMode()));
+		config.setMinScore(doubleValue(projectConfig, baseConfig, "minScore", config.getMinScore()));
+		config.setMinNormalizedScore(doubleValue(projectConfig, baseConfig, "minNormalizedScore", config.getMinNormalizedScore()));
+		config.setBloomMinSimilarity(doubleValue(projectConfig, baseConfig, "bloomMinSimilarity", config.getBloomMinSimilarity()));
+		config.setCandidateLimit(intValue(projectConfig, baseConfig, "candidateLimit", config.getCandidateLimit()));
+		config.setAutoLinkOnCreate(booleanValue(projectConfig, baseConfig, "autoLinkOnCreate", config.isAutoLinkOnCreate()));
+		config.setOnMatch(textValue(projectConfig, baseConfig, "onMatch", config.getOnMatch()));
+
+		// Decide whether or not to use PPRL
+		JsonNode projectPprl = objectProperty(projectConfig, "pprl");
+		JsonNode basePprl = objectProperty(baseConfig, "pprl");
+		config.setPprlConfig(resolvePprlConfig(projectPprl, basePprl));
+		
+		return config;
+	}
+	
+	/**
+	 * Resolves the effective record-linkage rules for all linkage-enabled leaf 
+	 * attributes of a project-specific type definition.
 	 * 
-	 * Only attributes whose effective {@code linkage} flag is set to {@code true} are included
-	 * in the returned result.
+	 * Linkage flags, tags, and linkage settings may be inherited from the 
+	 * corresponding base-type attribute. Project-specific values take precedence. 
+	 * Attributes without an effective {@code linkage} flag or default rule are skipped. 
 	 * 
-	 * @param typeDefinition the concrete project-specific type definition for which the effective linkage rules should be resolved
-	 * @param baseDefinition the base type definition that may provide inherited linkage defaults; may be {@code null}
-	 * @return the list of effective linkage field rules for all linkage-enabled leaf attributes
+	 * @param typeDefinition the project-specific type definition
+	 * @param baseDefinition the optional base-type definition
+	 * @return the resolved linkage rules for all eligible leaf attributes
 	 */
 	public List<LinkageFieldRule> resolveLinkageFieldRules(JsonNode typeDefinition, JsonNode baseDefinition) {
 		// Get a flat map of the base type's leaf nodes, if available 
@@ -505,23 +527,6 @@ public class JsonSchemaService {
 				
 				if (linkageConfigNode.has("blocking")) {
 					rule.setBlocking(jsonArrayToStringList(linkageConfigNode.get("blocking")));
-				}
-				
-				if (linkageConfigNode.has("privacyMode")) {
-					rule.setPrivacyMode(linkageConfigNode.get("privacyMode").asText("plain"));
-				}
-
-				if (linkageConfigNode.has("pprl")) {
-					rule.setPprlConfig(jsonToPPRLConfig(linkageConfigNode.get("pprl")));
-
-					// If a PPRL configuration is present, default to PPRL mode unless explicitly configured otherwise
-					if (!linkageConfigNode.has("privacyMode")) {
-						rule.setPrivacyMode("pprl");
-					}
-				}
-				
-				if (linkageConfigNode.has("comparator")) {
-					rule.setComparator(linkageConfigNode.get("comparator").asText());
 				}
 				
 				if (linkageConfigNode.has("weight")) {
@@ -962,8 +967,6 @@ public class JsonSchemaService {
 			.tag((tag != null && !tag.isBlank()) ? tag : "generic." + name)
 			.type(type)
 			.linkage(node.path("linkage").asBoolean(false))
-			.privacyMode("plain")
-			.pprlConfig(null)
 			.build();
 		
 		// If the attribute is a date, use date-related defaults
@@ -971,15 +974,13 @@ public class JsonSchemaService {
 			case "date" -> {
 				rule.setNormalizers(List.of("trim"));
 				rule.setEncoders(List.of());
-				rule.setBlocking(List.of("exact", "year", "yearMonth"));
-				rule.setComparator("date");
+				rule.setBlocking(List.of("exact", "year", "yearMonth", "bloomBands"));
 				rule.setWeight(3.0);
 			}
 			default -> {
 				rule.setNormalizers(List.of("trim", "lower", "collapseWhitespace"));
 				rule.setEncoders(List.of());
-				rule.setBlocking(List.of("exact", "prefix4"));
-				rule.setComparator("trigram");
+				rule.setBlocking(List.of("exact", "prefix4", "bloomBands"));
 				rule.setWeight(1.0);
 			}
 		}
@@ -1118,43 +1119,121 @@ public class JsonSchemaService {
 	}
 	
 	/**
-	 * Converts a JSON PPRL configuration node into a PprlConfig object.
-	 * Missing properties are filled with safe defaults.
+	 * Returns the specified child property if it exists and is a JSON object.
 	 * 
-	 * @param node the JSON node containing the PPRL configuration
-	 * @return the parsed PPRL configuration
+	 * @param parent the parent node
+	 * @param property the property name
+	 * @return the object property, or {@code null} if unavailable or not an object
 	 */
-	private PPRLConfig jsonToPPRLConfig(JsonNode node) {
+	private JsonNode objectProperty(JsonNode parent, String property) {
+		if (parent == null || !parent.isObject() || !parent.has(property) || !parent.get(property).isObject()) {
+			return null;
+		}
+		
+		return parent.get(property);
+	}
+
+	/**
+	 * Resolves a text property from the primary node, then the fallback node.
+	 * 
+	 * @param primary the preferred source node
+	 * @param fallback the fallback source node
+	 * @param property the property name
+	 * @param defaultValue the value returned if the property is unavailable
+	 * @return the resolved text value
+	 */
+	private String textValue(JsonNode primary, JsonNode fallback, String property, String defaultValue) {
+		if (primary != null && primary.hasNonNull(property)) {
+			return primary.get(property).asText(defaultValue);
+		}
+		
+		if (fallback != null && fallback.hasNonNull(property)) {
+			return fallback.get(property).asText(defaultValue);
+		}
+		
+		return defaultValue;
+	}
+
+	/**
+	 * Resolves a boolean property from the primary node, then the fallback node.
+	 * 
+	 * @param primary the preferred source node
+	 * @param fallback the fallback source node
+	 * @param property the property name
+	 * @param defaultValue the value returned if the property is unavailable
+	 * @return the resolved boolean value
+	 */
+	private boolean booleanValue(JsonNode primary, JsonNode fallback, String property, boolean defaultValue) {
+		if (primary != null && primary.hasNonNull(property)) {
+			return primary.get(property).asBoolean(defaultValue);
+		}
+		
+		if (fallback != null && fallback.hasNonNull(property)) {
+			return fallback.get(property).asBoolean(defaultValue);
+		}
+		
+		return defaultValue;
+	}
+
+	/**
+	 * Resolves a double property from the primary node, then the fallback node.
+	 * 
+	 * @param primary the preferred source node
+	 * @param fallback the fallback source node
+	 * @param property the property name
+	 * @param defaultValue the value returned if the property is unavailable
+	 * @return the resolved double value
+	 */
+	private double doubleValue(JsonNode primary, JsonNode fallback, String property, double defaultValue) {
+		if (primary != null && primary.hasNonNull(property)) {
+			return primary.get(property).asDouble(defaultValue);
+		}
+		
+		if (fallback != null && fallback.hasNonNull(property)) {
+			return fallback.get(property).asDouble(defaultValue);
+		}
+		
+		return defaultValue;
+	}
+
+	/**
+	 * Resolves an integer property from the primary node, then the fallback node.
+	 * 
+	 * @param primary the preferred source node
+	 * @param fallback the fallback source node
+	 * @param property the property name
+	 * @param defaultValue the value returned if the property is unavailable
+	 * @return the resolved integer value
+	 */
+	private int intValue(JsonNode primary, JsonNode fallback, String property, int defaultValue) {
+		if (primary != null && primary.hasNonNull(property)) {
+			return primary.get(property).asInt(defaultValue);
+		}
+		
+		if (fallback != null && fallback.hasNonNull(property)) {
+			return fallback.get(property).asInt(defaultValue);
+		}
+		
+		return defaultValue;
+	}
+
+	/**
+	 * Resolves the effective PPRL configuration using project-specific values,
+	 * inherited base values, and the defaults defined by {@link PPRLConfig}.
+	 * 
+	 * @param projectPprl the project-specific PPRL configuration
+	 * @param basePprl the inherited base-type PPRL configuration
+	 * @return the resolved PPRL configuration
+	 */
+	private PPRLConfig resolvePprlConfig(JsonNode projectPprl, JsonNode basePprl) {
 		PPRLConfig config = new PPRLConfig();
-
-		if (node == null || !node.isObject()) {
-			return config;
-		}
-
-		if (node.has("method")) {
-			config.setMethod(node.get("method").asText(PPRLConfig.METHOD_NGRAM_BLOOM_FILTER));
-		}
-
-		if (node.has("n")) {
-			config.setN(node.get("n").asInt(2));
-		}
-
-		if (node.has("length")) {
-			config.setLength(node.get("length").asInt(1024));
-		}
-
-		if (node.has("hashPositions")) {
-			config.setHashPositions(node.get("hashPositions").asInt(10));
-		}
-
-		if (node.has("bandSize")) {
-			config.setBandSize(node.get("bandSize").asInt(32));
-		}
-
-		if (node.has("exact")) {
-			config.setExact(node.get("exact").asBoolean(false));
-		}
-
+		config.setMethod(textValue(projectPprl, basePprl, "method", config.getMethod()));
+		config.setN(intValue(projectPprl, basePprl, "n", config.getN()));
+		config.setLength(intValue(projectPprl, basePprl, "length", config.getLength()));
+		config.setHashPositions(intValue(projectPprl, basePprl, "hashPositions", config.getHashPositions()));
+		config.setBandSize(intValue(projectPprl, basePprl, "bandSize", config.getBandSize()));
+		config.setExact(booleanValue(projectPprl, basePprl, "exact", config.isExact()));
+		
 		return config;
 	}
 
