@@ -40,7 +40,7 @@ public class SwaggerConfig {
         return new OpenAPI()
             .info(new Info()
                 .title("TrustDeck API")
-                .version("v2.0.1")
+                .version("v2.1.0")
                 .description("Scalable trusted third party services for registration and pseudonymization of biomedical data."));
     }
 }

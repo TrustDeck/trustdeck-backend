@@ -48,6 +48,8 @@ import org.trustdeck.exception.DuplicateEntityInstanceException;
 import org.trustdeck.exception.UnexpectedResultSizeException;
 import org.trustdeck.jooq.generated.tables.pojos.Domain;
 import org.trustdeck.linkage.LinkageIndexService;
+import org.trustdeck.linkage.model.CandidateStatus;
+import org.trustdeck.linkage.model.EntityLinkageConfig;
 import org.trustdeck.model.IdentifierItem;
 import org.trustdeck.security.audittrail.annotation.Audit;
 import org.trustdeck.service.AuthorizationService;
@@ -190,6 +192,32 @@ public class EntityInstanceRESTController {
             }
             
             return responseService.badRequest(responseContentType);
+        }
+        
+        // Apply entity-level automatic record linkage before insertion
+        EntityTypeDTO baseType = entityType.getBaseTypeName() == null ? null : entityTypeDBService.getEntityTypeByName(entityType.getBaseTypeName(), null);
+        EntityLinkageConfig linkageConfig = jsonSchemaService.resolveEntityLinkageConfig(entityType.getTypeDefinition(), baseType == null ? null : baseType.getTypeDefinition());
+
+        // Check if linkage is enabled and automatic linkage should be done
+        if (linkageConfig.isEnabled() && linkageConfig.isAutoLinkOnCreate()) {
+            // Generate candidates
+        	List<RecordLinkageCandidateDTO> candidates = recordLinkageService.findCandidates(project.getId(), entityType, entityInstanceDTO.getData(), MAX_NUMBER_OF_RECORD_LINKAGE_RESULTS, true);
+            if (candidates == null) {
+                log.debug("Automatic record linkage failed.");
+                return responseService.unprocessableEntity(responseContentType);
+            }
+
+            // Return matching entity or list of possible matches
+            if (!candidates.isEmpty()) {
+                RecordLinkageCandidateDTO bestCandidate = candidates.getFirst();
+                if (linkageConfig.returnsExistingOnMatch() && bestCandidate.getCandidateStatus() == CandidateStatus.ACTIVE) {
+                    log.info("Automatic record linkage found an existing entity; returning it instead of creating a duplicate.");
+                    return responseService.ok(responseContentType, bestCandidate.getEntityInstance());
+                }
+
+                log.info("Automatic record linkage found candidate entities; creation was rejected.");
+                return responseService.conflict(responseContentType, candidates);
+            }
         }
 		
 		// Fill the DTO that encapsulates the necessary information
