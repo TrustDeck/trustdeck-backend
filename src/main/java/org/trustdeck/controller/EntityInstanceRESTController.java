@@ -107,10 +107,6 @@ public class EntityInstanceRESTController {
 	@Autowired
 	private JsonSchemaService jsonSchemaService;
 	
-	/** Used to create, update, and remove record linkage index entries for entity instances. */
-	@Autowired
-	private LinkageIndexService linkageIndexService;
-	
 	/** Enables access to record linkage candidate search. */
 	@Autowired
 	private RecordLinkageService recordLinkageService;
@@ -282,12 +278,6 @@ public class EntityInstanceRESTController {
 			}
 		}
 		
-		// Add instance's record linkage tokens to the database
-		if (!linkageIndexService.rebuildIndex(created)) {
-			log.debug("Failed to add the instance's record linkage tokens to the database.");
-			return responseService.unprocessableEntity(responseContentType);
-		}
-		
 		log.debug("Successfully created the new instance: " + created.getTrustdeckID().toString());
 		return responseService.created(responseContentType, created);
 	}
@@ -335,7 +325,7 @@ public class EntityInstanceRESTController {
 		}
 		
 		// Retrieve instance
-		EntityInstanceDTO instance = entityInstanceDBService.getEntityInstance(trustDeckId);
+		EntityInstanceDTO instance = entityInstanceDBService.getEntityInstance(trustDeckId, project.getId());
 		
 		// Check result
 		if (instance == null) {
@@ -429,7 +419,7 @@ public class EntityInstanceRESTController {
 	    }
 	    
 	    // Retrieve the old instance
-	    EntityInstanceDTO oldInstance = entityInstanceDBService.getEntityInstance(trustDeckId);
+	    EntityInstanceDTO oldInstance = entityInstanceDBService.getEntityInstance(trustDeckId, project.getId());
 	    
 	    if (oldInstance == null) {
 	    	log.debug("Could not find the instance that should be updated.");
@@ -447,17 +437,11 @@ public class EntityInstanceRESTController {
 	    newInstance.setUpdatedAt(entityInstanceDTO.getUpdatedAt() != null ? entityInstanceDTO.getUpdatedAt() : OffsetDateTime.now());
 	    
 		// Update the instance
-		EntityInstanceDTO updated = entityInstanceDBService.updateEntityInstance(oldInstance.getId(), newInstance);
+		EntityInstanceDTO updated = entityInstanceDBService.updateEntityInstance(oldInstance.getId(), project.getId(), newInstance);
 		
 		// Evaluate the update success
 		if (updated == null) {
 			log.info("Entity instance creation failed during database access.");
-			return responseService.unprocessableEntity(responseContentType);
-		}
-		
-		// Add updated instance's record linkage tokens to the database
-		if (!linkageIndexService.rebuildIndex(updated)) {
-			log.debug("Failed to update the instance's record linkage tokens.");
 			return responseService.unprocessableEntity(responseContentType);
 		}
 		
@@ -523,7 +507,7 @@ public class EntityInstanceRESTController {
 		// Delete the instance and evaluate the result
 		boolean deleted = false;
 		try {
-			deleted = entityInstanceDBService.deleteEntityInstance(tdid);
+			deleted = entityInstanceDBService.deleteEntityInstance(tdid, project.getId());
 		} catch (UnexpectedResultSizeException e) {
 			if (e.getActual() == 0) {
 				log.debug("Could not find the entity instance that should be deleted.");
@@ -652,7 +636,7 @@ public class EntityInstanceRESTController {
 		}
 		
 		// Check if entity instance exists and is still active
-		EntityInstanceDTO instance = entityInstanceDBService.getEntityInstance(trustDeckId);
+		EntityInstanceDTO instance = entityInstanceDBService.getEntityInstance(trustDeckId, project.getId());
 		if (instance == null) {
 			log.debug("Entity instance with TrustDeckID\"" + trustDeckId + "\" was not found.");
 			return responseService.notFound(responseContentType);

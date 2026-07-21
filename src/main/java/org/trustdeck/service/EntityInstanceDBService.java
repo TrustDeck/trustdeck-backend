@@ -37,8 +37,10 @@ import org.trustdeck.dto.EntityInstanceDTO;
 import org.trustdeck.exception.CreationException;
 import org.trustdeck.exception.DuplicateEntityInstanceException;
 import org.trustdeck.exception.UnexpectedResultSizeException;
+import org.trustdeck.exception.UpdateException;
 import org.trustdeck.jooq.generated.tables.pojos.EntityInstance;
 import org.trustdeck.jooq.generated.tables.records.EntityInstanceRecord;
+import org.trustdeck.linkage.LinkageIndexService;
 import org.trustdeck.linkage.model.LinkageToken;
 import org.trustdeck.linkage.model.LinkageTokenType;
 import org.trustdeck.utils.Assertion;
@@ -69,6 +71,10 @@ public class EntityInstanceDBService {
 	@Autowired
 	private ObjectMapper objectMapper;
 	
+	/** Used to create, update, and remove record linkage index entries for entity instances. */
+	@Autowired
+	private LinkageIndexService linkageIndexService;
+	
 	/**
      * Method to insert a new entity instance into the database.
      * 
@@ -98,18 +104,27 @@ public class EntityInstanceDBService {
 	        	return null;
 	        }
 	    } catch (DataAccessException e) {
+	    	log.debug(e.getMessage());
+	    	
 	    	if (e.getMessage().contains(" already exists.")) {
 	    		// Found duplicate, abort and tell the calling method why we aborted with an exception
-	    		throw new DuplicateEntityInstanceException(e.getMessage());
+	    		throw new DuplicateEntityInstanceException("Found duplicate.");
 	    	} else {
 		    	// Inserting the new entity instance into the database failed; throw exception to abort
-		    	throw new CreationException(e.getMessage());
+		    	throw new CreationException("Inserting the new entity instance into the database failed.");
 	    	}
 	    }
+    	
+    	// Add instance's record linkage tokens to the database
+    	EntityInstanceDTO dto = new EntityInstanceDTO().assignPojoValues(new EntityInstance(createdEntityInstance));
+    	if (!linkageIndexService.rebuildIndex(dto)) {
+			log.debug("Failed to add the instance's record linkage tokens to the database.");
+			throw new CreationException("Failed to create record linkage tokens.");
+		}
 	    
 	    // Return the entity type
         log.trace("Creating the entity instance \"" + createdEntityInstance.getTrustdeckId() + "\" was successful.");
-	    return new EntityInstanceDTO().assignPojoValues(new EntityInstance(createdEntityInstance));
+	    return dto;
     }
 
     /**
@@ -154,13 +169,14 @@ public class EntityInstanceDBService {
     
     /**
      * Method to retrieve an entity instance from the database by explicitly providing the 
-     * trustDeckID as a String, which is unique in the database.
+     * trustDeckID as a String within a project.
      * 
      * @param trustDeckID the entity instance's publicly accessible TrustDeck ID as a String
+     * @param projectID the database ID of the project that scopes the lookup
      * @return the retrieved entity instance when successfully found, or {@code null} when nothing was found
      */
-    @Transactional
-    public EntityInstanceDTO getEntityInstance(String trustDeckID) {
+    @Transactional(readOnly = true)
+    public EntityInstanceDTO getEntityInstance(String trustDeckID, int projectID) {
     	// Check if all the necessary arguments are available
     	if (Assertion.isNullOrEmpty(trustDeckID)) {
     		log.debug("Could not retrieve the entity instance, because to the TrustDeckID is missing or empty.");
@@ -176,7 +192,20 @@ public class EntityInstanceDBService {
 			return null;
 		}
     	
-    	return getEntityInstance(tdid);
+        try {
+            EntityInstance instance = dsl.selectFrom(ENTITY_INSTANCE)
+                    .where(ENTITY_INSTANCE.TRUSTDECK_ID.equal(tdid))
+                    .and(ENTITY_INSTANCE.PROJECT_ID.equal(projectID))
+                    .and(ENTITY_INSTANCE.IS_DELETED.equal(false))
+                    .fetchOneInto(EntityInstance.class);
+            return instance == null ? null : new EntityInstanceDTO().assignPojoValues(instance);
+        } catch (MappingException e) {
+            log.debug("Could not map the entity instance search result into the EntityInstance-POJO.", e);
+            return null;
+        } catch (DataAccessException e) {
+            log.debug("Searching for the entity instance in the database failed.", e);
+            return null;
+        }
     }
 
     /**
@@ -305,11 +334,12 @@ public class EntityInstanceDBService {
      * by actually removing the record from the database.
      * 
      * @param trustDeckID the entity instance's publicly accessible TrustDeck ID
+     * @param projectID the database ID of the project that scopes the deletion
      * @return {@code true} when deletion was successful, {@code false} when anything went wrong during the deletion
      * @throws UnexpectedResultSizeException when the deletion would have affected an unexpected number of database entries
      */
     @Transactional
-    public boolean deleteEntityInstance(UUID trustDeckID) throws UnexpectedResultSizeException {
+    public boolean deleteEntityInstance(UUID trustDeckID, int projectID) throws UnexpectedResultSizeException {
     	// Check if all the necessary arguments are available
     	if (trustDeckID == null) {
     		log.debug("For retrieving the entity instance, there is an argument missing or empty.");
@@ -323,7 +353,9 @@ public class EntityInstanceDBService {
     		deletedEntityInstances = dsl.update(ENTITY_INSTANCE)
 	                .set(ENTITY_INSTANCE.IS_DELETED, true)
 	                .set(ENTITY_INSTANCE.UPDATED_AT, OffsetDateTime.now())
-	                .where(ENTITY_INSTANCE.TRUSTDECK_ID.eq(trustDeckID))
+                .where(ENTITY_INSTANCE.TRUSTDECK_ID.eq(trustDeckID))
+                .and(ENTITY_INSTANCE.PROJECT_ID.eq(projectID))
+                .and(ENTITY_INSTANCE.IS_DELETED.eq(false))
 	                .execute();
         } catch (DataAccessException e) {
         	log.debug("Deleting the entity instance in the database failed.", e);
@@ -346,11 +378,12 @@ public class EntityInstanceDBService {
      * Method to update an entity instance.
      * 
      * @param oldInstanceID the entity instance database id that is needed to identify the instance that should be updated
+     * @param projectID the database ID of the project that scopes the update
      * @param newEntityInstanceDTO the entity instance object containing the data to use for the update
      * @return the updated entity instance object when successful, {@code null} when anything went wrong
      */
     @Transactional
-    public EntityInstanceDTO updateEntityInstance(long oldInstanceID, EntityInstanceDTO newEntityInstanceDTO) {
+    public EntityInstanceDTO updateEntityInstance(long oldInstanceID, int projectID, EntityInstanceDTO newEntityInstanceDTO) {
     	// Create the update-record and send it to the database
         EntityInstanceRecord updatedRecord = null;
     	try {
@@ -363,18 +396,26 @@ public class EntityInstanceDBService {
 	                .set(ENTITY_INSTANCE.IS_DELETED, newEntityInstanceDTO.getIsDeleted())
 	                .set(ENTITY_INSTANCE.CREATED_AT, newEntityInstanceDTO.getCreatedAt())
 	                .set(ENTITY_INSTANCE.UPDATED_AT, newEntityInstanceDTO.getUpdatedAt())
-	                .where(ENTITY_INSTANCE.ID.eq(oldInstanceID))
-	                .and(ENTITY_INSTANCE.IS_DELETED.ne(true))
+                .where(ENTITY_INSTANCE.ID.eq(oldInstanceID))
+	                .and(ENTITY_INSTANCE.PROJECT_ID.eq(projectID))
+                .and(ENTITY_INSTANCE.IS_DELETED.ne(true))
 	                .returning()
 	                .fetchOne();
     	} catch (DataAccessException e) {
 	    	log.error("Updating the entity instance failed.", e);
 	    	return null;
 	    }
+    	
+    	// Add instance's record linkage tokens to the database
+    	EntityInstanceDTO dto = new EntityInstanceDTO().assignPojoValues(new EntityInstance(updatedRecord));
+    	if (!linkageIndexService.rebuildIndex(dto)) {
+			log.debug("Failed to update the instance's record linkage tokens to the database.");
+			throw new UpdateException("Failed to update record linkage tokens.");
+		}
 	    
 	    // Return the updated entity instance
         log.debug("Updating the entity instance \"" + updatedRecord.getTrustdeckId() + "\" was successful.");
-	    return new EntityInstanceDTO().assignPojoValues(new EntityInstance(updatedRecord));
+	    return dto;
     }
     
     /**
@@ -599,7 +640,7 @@ public class EntityInstanceDBService {
 				.where(condition)
 				.groupBy(LINKAGE_TOKEN.ENTITY_INSTANCE_ID)
 				.orderBy(DSL.count().desc())
-				.limit(limit)
+				.limit(limit) // TODO: error
 				.fetch(LINKAGE_TOKEN.ENTITY_INSTANCE_ID);
     }
     
