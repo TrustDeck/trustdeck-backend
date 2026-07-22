@@ -63,7 +63,7 @@ import java.util.List;
 @EnableMethodSecurity
 @Slf4j
 @RequestMapping(value = "/api")
-public class PseudonymRESTController {
+public class PseudonymController {
 
     /** Enables the access to the domain specific database access methods. */
     @Autowired

@@ -17,7 +17,6 @@
 
 package org.trustdeck.controller;
 
-import org.springframework.boot.web.servlet.error.ErrorController;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -35,7 +34,7 @@ import java.util.Map;
  */
 @Slf4j
 @RestController
-public class ErrorRESTController implements ErrorController {
+public class ErrorController implements org.springframework.boot.web.servlet.error.ErrorController {
 
 	/**
 	 * Error handling method.

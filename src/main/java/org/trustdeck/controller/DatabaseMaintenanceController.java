@@ -50,7 +50,7 @@ import lombok.extern.slf4j.Slf4j;
 @EnableMethodSecurity
 @Slf4j
 @RequestMapping(value = "/api")
-public class DatabaseMaintenanceRESTController {
+public class DatabaseMaintenanceController {
 
     /** References a jOOQ configuration object that configures jOOQ's behavior when executing queries. */
     @Autowired

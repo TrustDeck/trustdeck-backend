@@ -77,7 +77,7 @@ import lombok.extern.slf4j.Slf4j;
 @EnableMethodSecurity
 @Slf4j
 @RequestMapping(value = "/api")
-public class EntityInstanceRESTController {
+public class EntityInstanceController {
 	
 	/** Enables service for working with predefined responses. */
     @Autowired

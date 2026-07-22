@@ -35,7 +35,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @RestController
 @RequestMapping("/api")
-public class ApiRESTController {
+public class ApiController {
 
     /**
      * This method functions as a health-check endpoint.

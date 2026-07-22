@@ -63,7 +63,7 @@ import org.trustdeck.utils.Utility.Pair;
 @EnableMethodSecurity
 @Slf4j
 @RequestMapping(value = "/api/permissions")
-public class PermissionRESTController {
+public class PermissionController {
 
 	/** Enables services for better working with responses. */
 	@Autowired

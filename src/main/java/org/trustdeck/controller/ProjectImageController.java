@@ -56,7 +56,7 @@ import lombok.extern.slf4j.Slf4j;
 @EnableMethodSecurity
 @Slf4j
 @RequestMapping(value = "/api")
-public class ProjectImageRESTController {
+public class ProjectImageController {
 
 	/** Enables access to the project image database functionalities. */
 	@Autowired

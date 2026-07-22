@@ -65,7 +65,7 @@ import java.util.Set;
 @EnableMethodSecurity
 @Slf4j
 @RequestMapping(value = "/api")
-public class DomainRESTController {
+public class DomainController {
 
 	/** The default value for adding a check digit to the pseudonym. */
 	public static final boolean DEFAULT_ADD_CHECK_DIGIT = true;
