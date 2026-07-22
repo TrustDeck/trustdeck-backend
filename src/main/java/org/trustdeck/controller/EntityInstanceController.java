@@ -47,6 +47,7 @@ import org.trustdeck.dto.RecordLinkageCandidateDTO;
 import org.trustdeck.exception.DuplicateEntityInstanceException;
 import org.trustdeck.exception.TooManyRecordLinkageCandidatesException;
 import org.trustdeck.exception.UnexpectedResultSizeException;
+import org.trustdeck.jooq.generated.tables.pojos.Algorithm;
 import org.trustdeck.jooq.generated.tables.pojos.Domain;
 import org.trustdeck.linkage.model.CandidateStatus;
 import org.trustdeck.linkage.model.EntityLinkageConfig;
@@ -54,6 +55,7 @@ import org.trustdeck.model.IdentifierItem;
 import org.trustdeck.security.audittrail.annotation.Audit;
 import org.trustdeck.service.AuthorizationService;
 import org.trustdeck.service.DomainDBAccessService;
+import org.trustdeck.service.AlgorithmDBService;
 import org.trustdeck.service.EntityInstanceDBService;
 import org.trustdeck.service.EntityTypeDBService;
 import org.trustdeck.service.JsonSchemaService;
@@ -98,6 +100,10 @@ public class EntityInstanceController {
 	/** Enables access to the domain data base interaction methods. */
 	@Autowired
 	private DomainDBAccessService ddba;
+
+	/** Enables the access to the domain specific database access methods. */
+	@Autowired
+	private AlgorithmDBService algorithmDBService;
 
 	/** Enables access to the pseudonym data base interaction methods. */
 	@Autowired
@@ -253,9 +259,10 @@ public class EntityInstanceController {
 				String idType = "TrustDeckID";
 				
 				// Generate a new pseudonym-value
-	            Pseudonymizer pseudonymizer = PseudonymizationFactory.getPseudonymizer(domain);
-	            String rawPseudonym = pseudonymizer.pseudonymize(identifier + idType + domain.getSalt(), domain.getPrefix());
-	            String psn = domain.getAddcheckdigit() ? pseudonymizer.addCheckDigit(rawPseudonym, domain.getLengthincludescheckdigit(), domain.getName(), domain.getPrefix()) : rawPseudonym;
+	            Algorithm algorithm = algorithmDBService.getAlgorithmByID(domain.getAlgorithmId());
+	            Pseudonymizer pseudonymizer = PseudonymizationFactory.getPseudonymizer(algorithm);
+	            String rawPseudonym = pseudonymizer.pseudonymize(identifier + idType + algorithm.getSalt(), domain.getPrefix());
+	            String psn = algorithm.getAddCheckDigit() ? pseudonymizer.addCheckDigit(rawPseudonym, algorithm.getLengthIncludesCheckDigit(), domain.getName(), domain.getPrefix()) : rawPseudonym;
 				
 				// Build pseudonym object
 	            IdentifierItem idItem = IdentifierItem.builder().identifier(identifier).idType(idType).build();

@@ -18,9 +18,6 @@
 package org.trustdeck.algorithms;
 
 import org.trustdeck.jooq.generated.tables.pojos.Algorithm;
-import org.trustdeck.jooq.generated.tables.pojos.Domain;
-import org.trustdeck.utils.Assertion;
-
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -78,63 +75,6 @@ public class PseudonymizationFactory {
                 algorithm.setName("RANDOM_LET");
                 algorithm.setAlphabet("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
                 return new RandomAlphabetPseudonymizer(true, algorithm);
-            }
-        }
-	}
-	
-	/**
-	 * Method for automatically creating the correct pseudonymizer 
-	 * depending on the desired algorithm.
-	 * 
-	 * @param domain the domain under which the pseudonyms should be stored in
-	 * @return the pre-configured pseudonymizer so that the pseudonymization step itself is easier to accomplish 
-	 */
-	public static Pseudonymizer getPseudonymizer(Domain domain) {
-		// Check if any algorithm was provided
-		if (!Assertion.isNotNullOrEmpty(domain.getAlgorithm())) {
-			log.error("There was no valid pseudonymization algorithm provided.");
-			return null;
-		}
-
-        // Select the desired pseudonymization algorithm and create a pseudonymizer
-        switch (domain.getAlgorithm().toUpperCase()) {
-            case "MD5": {
-                return new MD5Pseudonymizer(true, domain);
-            }
-            case "SHA1": {
-                return new SHA1Pseudonymizer(true, domain);
-            }
-            case "SHA2": {
-            	return new SHA2Pseudonymizer(true, domain);
-            }
-            case "SHA3": {
-            	return new SHA3Pseudonymizer(true, domain);
-            }
-            case "BLAKE3": {
-            	return new BLAKE3Pseudonymizer(true, domain);
-            }
-            case "CONSECUTIVE": {
-            	return new ConsecutivePseudonymizer(true, domain);
-            }
-            case "RANDOM_NUM": {
-            	return new RandomNumberPseudonymizer(true, domain);
-            }
-            case "RANDOM": 
-            case "RANDOM_HEX": 
-            case "RANDOM_LET": 
-            case "RANDOM_SYM": 
-            case "RANDOM_SYM_BIOS": {
-            	return new RandomAlphabetPseudonymizer(true, domain);
-            }
-            case "XXHASH": {
-            	return new XxHashPseudonymizer(true, domain);
-            }
-            default: {
-                // Unrecognized algorithm. Use default.
-                log.warn("The pseudonymization algorithm that was requested (" + domain.getAlgorithm() + ") wasn't recognized. Using random letters (A-Z) instead.");
-                domain.setAlgorithm("RANDOM_LET");
-                domain.setAlphabet("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
-                return new RandomAlphabetPseudonymizer(true, domain);
             }
         }
 	}

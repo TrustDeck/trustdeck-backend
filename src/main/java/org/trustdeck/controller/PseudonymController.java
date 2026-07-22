@@ -36,14 +36,17 @@ import org.trustdeck.algorithms.Pseudonymizer;
 import org.trustdeck.algorithms.RandomNumberPseudonymizer;
 import org.trustdeck.dto.PseudonymDTO;
 import org.trustdeck.dto.PseudonymUpdateDTO;
+import org.trustdeck.jooq.generated.tables.pojos.Algorithm;
 import org.trustdeck.jooq.generated.tables.pojos.Domain;
 import org.trustdeck.model.IdentifierItem;
 import org.trustdeck.security.audittrail.annotation.Audit;
 import org.trustdeck.service.AuthorizationService;
+import org.trustdeck.service.AlgorithmDBService;
 import org.trustdeck.service.DomainDBAccessService;
 import org.trustdeck.service.PseudonymDBAccessService;
 import org.trustdeck.service.ResponseService;
 import org.trustdeck.utils.Assertion;
+import org.trustdeck.utils.SpringBeanLocator;
 import org.trustdeck.utils.Utility;
 import org.trustdeck.utils.Utility.Pair;
 
@@ -80,6 +83,14 @@ public class PseudonymController {
     /** Provides functionality to ensure proper rights and roles when accessing the endpoints. */
     @Autowired
     private AuthorizationService authorizationService;
+    
+    /** Enables access to database interaction methods for algorithm objects. */
+    @Autowired
+    private AlgorithmDBService algorithmDBService;
+
+    private Algorithm algorithm(Domain domain) {
+        return algorithmDBService.getAlgorithmByID(domain.getAlgorithmId());
+    }
 
     /** The default maximum allowed batch size. */
     private static final int DEFAULT_PSEUDONYM_BATCH_LENGTH = 50000;
@@ -97,6 +108,8 @@ public class PseudonymController {
      * @param domain the domain to check
      */
 	private void checkDomainFillingRate(Domain domain) {
+		Algorithm algo = algorithm(domain);
+		
 		/* A high filling rate of the domain can result in too few possible pseudonyms left for generation.
 		* We can calculate a threshold for which we can reasonably probable generate pseudonyms using this formula: 
 		* 1-(1-((k-n)/k))^m > T => n < k*(1-T)^(1/m); with k being the number of theoretically possible pseudonyms 
@@ -107,8 +120,8 @@ public class PseudonymController {
 		* cases).
 		* --> Warn the user, if the domain is too full
 		*/
-		Double T = domain.getRandomalgorithmdesiredsuccessprobability();
-		Double k = Math.pow(10.0d, (double) domain.getPseudonymlength());
+		Double T = algo.getRandomAlgorithmDesiredSuccessProbability();
+		Double k = Math.pow(10.0d, (double) algo.getPseudonymLength());
 		Double n = k * Math.pow((1.0d - T), (1.0d / (double) Pseudonymizer.DEFAULT_NUMBER_OF_RETRIES));
 		
 		Integer existingPseudonyms = domainDBAccessService.getAmountOfPseudonymsInDomain(domain.getName());
@@ -194,17 +207,18 @@ public class PseudonymController {
             } else {
                 // Generate a new pseudonym
                 String prefix = (omitPrefix != null && omitPrefix) ? "" : domain.getPrefix(); // Omitting the prefix here shouldn't be the norm
-                Pseudonymizer pseudonymizer = PseudonymizationFactory.getPseudonymizer(domain);
-                pseudonym = pseudonymizer.pseudonymize(pseudonymDTO.getIdentifierItem().getIdentifier() + pseudonymDTO.getIdentifierItem().getIdType() + domain.getSalt(), prefix);
-                pseudonym = domain.getAddcheckdigit() ? pseudonymizer.addCheckDigit(pseudonym, domain.getLengthincludescheckdigit(), domain.getName(), prefix) : pseudonym;
+                Algorithm algorithm = algorithm(domain);
+                Pseudonymizer pseudonymizer = PseudonymizationFactory.getPseudonymizer(algorithm);
+                pseudonym = pseudonymizer.pseudonymize(pseudonymDTO.getIdentifierItem().getIdentifier() + pseudonymDTO.getIdentifierItem().getIdType() + algorithm.getSalt(), prefix);
+                pseudonym = algorithm.getAddCheckDigit() ? pseudonymizer.addCheckDigit(pseudonym, algorithm.getLengthIncludesCheckDigit(), domain.getName(), prefix) : pseudonym;
 
-                if (domain.getAlgorithm().toUpperCase().startsWith("RANDOM") && pseudonym.equals(RandomNumberPseudonymizer.DOMAIN_FULL)) {
+                if (algorithm.getName().toUpperCase().startsWith("RANDOM") && pseudonym.equals(RandomNumberPseudonymizer.DOMAIN_FULL)) {
                 	// Pseudonymization failed due to too many collisions. The domain reached it's filling point (~49%) 
                 	// at which the probability to generate a previously unseen pseudonym in 25 tries is no longer greater
                 	// than 99.999998%.
                 	log.warn("Couldn't generate a new pseudonym due to too many pseudonyms being already in the database. ");
                 	return responseService.insufficientStorage(responseContentType);
-                } else if (pseudonym == null && domain.getAlgorithm().toUpperCase().startsWith("RANDOM")) {
+                } else if (pseudonym == null && algorithm.getName().toUpperCase().startsWith("RANDOM")) {
                 	// Pseudonymization failed: probably no non-colliding pseudonym was found.
                 	log.warn("Pseudonymization failed for identifier \"" + pseudonymDTO.getIdentifierItem().getIdentifier() + "\" and idType \"" + pseudonymDTO.getIdentifierItem().getIdType() + "\". "
                 			+ "Probably due to collisions with other pseudonyms. Try a greater pseudonym-length.");
@@ -484,7 +498,7 @@ public class PseudonymController {
         String result = pseudonymDBAccessService.createPseudonyms(List.of(p), domain.getId(), domain.getMultiplepsnallowed()).getFirst();
         
         // If a random algorithm is used, check if we generated a duplicate. If so, retry.
-        if (domain.getAlgorithm().toUpperCase().startsWith("RANDOM")) {
+        if (algorithm(domain).getName().toUpperCase().startsWith("RANDOM")) {
 	        // Retry DEFAULT_NUMBER_OF_RETRIES - 1 times
         	for (int i = 1; i < Pseudonymizer.DEFAULT_NUMBER_OF_RETRIES; i++) {
 	        	// Check if its actually a duplicate
@@ -943,9 +957,11 @@ public class PseudonymController {
         // Generate a new pseudonym
         String prefix = (omitPrefix != null && omitPrefix) ? "" : domain.getPrefix();
         
-        Pseudonymizer pseudonymizer = PseudonymizationFactory.getPseudonymizer(domain);
-        String pseudonym = pseudonymizer.pseudonymize(identifier + idType + domain.getSalt(), prefix);
-        return domain.getAddcheckdigit() ? pseudonymizer.addCheckDigit(pseudonym, domain.getLengthincludescheckdigit(), domain.getName(), prefix) : pseudonym;
+        Algorithm algorithm = SpringBeanLocator.getBean(AlgorithmDBService.class).getAlgorithmByID(domain.getAlgorithmId());
+        Pseudonymizer pseudonymizer = PseudonymizationFactory.getPseudonymizer(algorithm);
+        String pseudonym = pseudonymizer.pseudonymize(identifier + idType + algorithm.getSalt(), prefix);
+        
+        return algorithm.getAddCheckDigit() ? pseudonymizer.addCheckDigit(pseudonym, algorithm.getLengthIncludesCheckDigit(), domain.getName(), prefix) : pseudonym;
     }
 
     /**
@@ -1359,13 +1375,14 @@ public class PseudonymController {
 								               @RequestHeader(name = "accept", required = false) String responseContentType) {
     	// Retrieve domain
     	Domain d = domainDBAccessService.getDomainByName(domainName);
+    	Algorithm a = algorithm(d);
     	
     	if (d == null) {
     		log.debug("Could not find the domain in which the validation should be performed.");
     		return responseService.notFound(responseContentType);
     	}
     	
-    	if (!d.getAddcheckdigit()) {
+        if (!a.getAddCheckDigit()) {
     		// There is no check digit to validate
     		log.debug("The domain is configured so that there is no check digit added. Therefore, no validation can be performed.");
     		return responseService.unprocessableEntity(responseContentType);
@@ -1374,7 +1391,7 @@ public class PseudonymController {
     	// Decide the character space for the check digit validation depending on the used pseudonymization algorithm
 		LuhnCheckDigit luhn;
 		
-		switch (d.getAlgorithm().toUpperCase()) {
+		switch (a.getName().toUpperCase()) {
 	        case "CONSECUTIVE":
 	        case "RANDOM":
 	        case "RANDOM_NUM": {
@@ -1408,7 +1425,7 @@ public class PseudonymController {
 	        	break;
 	        }
 			default:
-				throw new IllegalArgumentException("Unexpected algorithm: " + d.getAlgorithm());
+				throw new IllegalArgumentException("Unexpected algorithm: " + a.getName());
 		}
     	
 		// Perform validation

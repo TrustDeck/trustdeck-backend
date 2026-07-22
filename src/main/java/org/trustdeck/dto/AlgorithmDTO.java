@@ -48,31 +48,31 @@ public class AlgorithmDTO implements IObjectDTO<Algorithm, AlgorithmDTO> {
 	private String alphabet;
 	
 	/** The desired number of possible pseudonyms when using a randomness-based algorithm. */
-    private long randomAlgorithmDesiredSize;
+    private Long randomAlgorithmDesiredSize;
 	
 	/** The desired probability with which the pseudonymization should be successful when using a randomness-based algorithm. */
-    private double randomAlgorithmDesiredSuccessProbability;
+    private Double randomAlgorithmDesiredSuccessProbability;
 	
 	/** The current value of the counter when using a consecutive value-based algorithm or when multiple pseudonyms per identifier are allowed. */
-    private long consecutiveValueCounter;
+    private Long consecutiveValueCounter;
 	
 	/** The length the pseudonym should have. */
-    private int pseudonymLength;
+    private Integer pseudonymLength;
 	
 	/** The character that should be used for padding if needed. */
     private String paddingCharacter;
 	
 	/** Whether or not to add a check digit to the pseudonym. */
-    private boolean addCheckDigit;
+    private Boolean addCheckDigit;
 	
 	/** Whether or not the desired pseudonym length should include the check digit (thus, the check digit replaces the last character of the generated pseudonym). */
-    private boolean lengthIncludesCheckDigit;
+    private Boolean lengthIncludesCheckDigit;
 	
 	/** The salt value. */
     private String salt;
 	
 	/** The desired length of the salt value. */
-    private int saltLength;
+    private Integer saltLength;
 	
 	@JsonIgnore
 	@Override
@@ -84,15 +84,15 @@ public class AlgorithmDTO implements IObjectDTO<Algorithm, AlgorithmDTO> {
 	    this.setId(pojo.getId());
 	    this.setName(pojo.getName());
 	    this.setAlphabet(pojo.getAlphabet());
-	    this.setRandomAlgorithmDesiredSize(pojo.getRandomalgorithmdesiredsize());
-	    this.setRandomAlgorithmDesiredSuccessProbability(pojo.getRandomalgorithmdesiredsuccessprobability());
-	    this.setConsecutiveValueCounter(pojo.getConsecutivevaluecounter());
-	    this.setPseudonymLength(pojo.getPseudonymlength());
-	    this.setPaddingCharacter(pojo.getPaddingcharacter());
-	    this.setAddCheckDigit(pojo.getAddcheckdigit());
-	    this.setLengthIncludesCheckDigit(pojo.getLengthincludescheckdigit());
+	    this.setRandomAlgorithmDesiredSize(pojo.getRandomAlgorithmDesiredSize());
+	    this.setRandomAlgorithmDesiredSuccessProbability(pojo.getRandomAlgorithmDesiredSuccessProbability());
+	    this.setConsecutiveValueCounter(pojo.getConsecutiveValueCounter());
+	    this.setPseudonymLength(pojo.getPseudonymLength());
+	    this.setPaddingCharacter(pojo.getPaddingCharacter());
+	    this.setAddCheckDigit(pojo.getAddCheckDigit());
+	    this.setLengthIncludesCheckDigit(pojo.getLengthIncludesCheckDigit());
 	    this.setSalt(pojo.getSalt());
-	    this.setSaltLength(pojo.getSaltlength());
+	    this.setSaltLength(pojo.getSaltLength());
 	    
 	    return this;
 	}
@@ -108,15 +108,15 @@ public class AlgorithmDTO implements IObjectDTO<Algorithm, AlgorithmDTO> {
 		algorithm.setId(this.getId());
 		algorithm.setName(this.getName());
 		algorithm.setAlphabet(this.getAlphabet());
-		algorithm.setRandomalgorithmdesiredsize(this.getRandomAlgorithmDesiredSize());
-		algorithm.setRandomalgorithmdesiredsuccessprobability(this.getRandomAlgorithmDesiredSuccessProbability());
-		algorithm.setConsecutivevaluecounter(this.getConsecutiveValueCounter());
-		algorithm.setPseudonymlength(this.getPseudonymLength());
-		algorithm.setPaddingcharacter(this.getPaddingCharacter());
-		algorithm.setAddcheckdigit(this.isAddCheckDigit());
-		algorithm.setLengthincludescheckdigit(this.isLengthIncludesCheckDigit());
+		algorithm.setRandomAlgorithmDesiredSize(this.getRandomAlgorithmDesiredSize());
+		algorithm.setRandomAlgorithmDesiredSuccessProbability(this.getRandomAlgorithmDesiredSuccessProbability());
+		algorithm.setConsecutiveValueCounter(this.getConsecutiveValueCounter());
+		algorithm.setPseudonymLength(this.getPseudonymLength());
+		algorithm.setPaddingCharacter(this.getPaddingCharacter());
+		algorithm.setAddCheckDigit(this.getAddCheckDigit());
+		algorithm.setLengthIncludesCheckDigit(this.getLengthIncludesCheckDigit());
 		algorithm.setSalt(this.getSalt());
-		algorithm.setSaltlength(this.getSaltLength());
+		algorithm.setSaltLength(this.getSaltLength());
 		
         return algorithm;
     }
@@ -124,29 +124,39 @@ public class AlgorithmDTO implements IObjectDTO<Algorithm, AlgorithmDTO> {
 	@JsonIgnore
 	@Override
 	public Boolean isValidStandardView() {
-		// TODO Auto-generated method stub
-		return null;
+		return this.getId() == null;
 	}
 
 	@JsonIgnore
 	@Override
 	public AlgorithmDTO toReducedStandardView() {
-		// TODO Auto-generated method stub
-		return null;
+		this.setId(null);
+		this.setSalt(null);
+		return this;
 	}
 
 	@JsonIgnore
 	@Override
 	public String toRepresentationString() {
-		// TODO Auto-generated method stub
-		return null;
+		String out = "";
+		out += this.getId() != null ? "id: " + this.getId() + ", " : "";
+		out += this.getName() != null ? "name: " + this.getName() + ", " : "";
+		out += this.getAlphabet() != null ? "alphabet: " + this.getAlphabet() + ", " : "";
+		out += this.getRandomAlgorithmDesiredSize() != null ? "randomAlgorithmDesiredSize: " + this.getRandomAlgorithmDesiredSize() + ", " : "";
+		out += this.getRandomAlgorithmDesiredSuccessProbability() != null ? "randomAlgorithmDesiredSuccessProbability: " + this.getRandomAlgorithmDesiredSuccessProbability() + ", " : "";
+		out += this.getConsecutiveValueCounter() != null ? "consecutiveValueCounter: " + this.getConsecutiveValueCounter() + ", " : "";
+		out += this.getPseudonymLength() != null ? "pseudonymLength: " + this.getPseudonymLength() + ", " : "";
+		out += this.getPaddingCharacter() != null ? "paddingCharacter: " + this.getPaddingCharacter() + ", " : "";
+		out += this.getAddCheckDigit() != null ? "addCheckDigit: " + this.getAddCheckDigit() + ", " : "";
+		out += this.getLengthIncludesCheckDigit() != null ? "lengthIncludesCheckDigit: " + this.getLengthIncludesCheckDigit() + ", " : "";
+		out += this.getSaltLength() != null ? "saltLength: " + this.getSaltLength() + ", " : "";
+		return out.endsWith(", ") ? out.substring(0, out.length() - 2) : out;
 	}
 
 	@JsonIgnore
 	@Override
 	public Boolean validate() {
-		// TODO Auto-generated method stub
-		return null;
+		return this.getName() != null && !this.getName().isBlank();
 	}
 
 }

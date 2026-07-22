@@ -124,7 +124,8 @@ public abstract class Pseudonymizer {
 	public Pseudonymizer(String domainName) {
 		this.ddba = SpringBeanLocator.getBean(DomainDBAccessService.class);
 		Domain d = ddba.getDomainByName(domainName);
-		this.alphabet = d.getAlphabet();
+		Algorithm algorithm = SpringBeanLocator.getBean(AlgorithmDBService.class).getAlgorithmByID(d.getAlgorithmId());
+		this.alphabet = algorithm.getAlphabet();
 		this.currentValue = null;
 		this.domainName = domainName;
 		this.isAlgorithmObjectBased = false;
@@ -147,7 +148,8 @@ public abstract class Pseudonymizer {
 	public Pseudonymizer(boolean paddingWanted, int pseudonymValueLength, char paddingChar, String domainName) {
 		this.ddba = SpringBeanLocator.getBean(DomainDBAccessService.class);
 		Domain d = ddba.getDomainByName(domainName);
-		this.alphabet = d.getAlphabet();
+		Algorithm algorithm = SpringBeanLocator.getBean(AlgorithmDBService.class).getAlgorithmByID(d.getAlgorithmId());
+		this.alphabet = algorithm.getAlphabet();
 		this.currentValue = null;
 		this.domainName = domainName;
 		this.isAlgorithmObjectBased = false;
@@ -166,16 +168,17 @@ public abstract class Pseudonymizer {
 	 * @param domain the domain object containing the necessary configuration information
 	 */
 	public Pseudonymizer(boolean paddingWanted, Domain domain) {
-		this.alphabet = domain.getAlphabet();
+		Algorithm algorithm = SpringBeanLocator.getBean(AlgorithmDBService.class).getAlgorithmByID(domain.getAlgorithmId());
+		this.alphabet = algorithm.getAlphabet();
 		this.currentValue = null;
 		this.ddba = SpringBeanLocator.getBean(DomainDBAccessService.class);
 		this.domainName = domain.getName();
 		this.isAlgorithmObjectBased = false;
 		this.multiplePsnAllowed = domain.getMultiplepsnallowed();
 		this.numberOfRetries = DEFAULT_NUMBER_OF_RETRIES;
-		this.paddingChar = domain.getPaddingcharacter().charAt(0);
+		this.paddingChar = algorithm.getPaddingCharacter().charAt(0);
 		this.paddingWanted = paddingWanted;
-		this.pseudonymValueLength = domain.getPseudonymlength();
+		this.pseudonymValueLength = algorithm.getPseudonymLength();
 	}
 	
 	/**
@@ -190,13 +193,13 @@ public abstract class Pseudonymizer {
 		this.algorithmID = algorithm.getId();
 		this.algorithmName = algorithm.getName();
 		this.alphabet = algorithm.getAlphabet();
-		this.currentValue = algorithm.getConsecutivevaluecounter();
+		this.currentValue = algorithm.getConsecutiveValueCounter();
 		this.isAlgorithmObjectBased = true;
 		this.multiplePsnAllowed = false;
 		this.numberOfRetries = DEFAULT_NUMBER_OF_RETRIES;
-		this.paddingChar = algorithm.getPaddingcharacter().charAt(0);
+		this.paddingChar = algorithm.getPaddingCharacter().charAt(0);
 		this.paddingWanted = paddingWanted;
-		this.pseudonymValueLength = algorithm.getPseudonymlength();
+		this.pseudonymValueLength = algorithm.getPseudonymLength();
 	}
 	
 	/**
@@ -259,7 +262,8 @@ public abstract class Pseudonymizer {
 				return pseudonym;
 			}
 			
-			algo = domain.getAlgorithm().toUpperCase();
+			Algorithm algorithm = SpringBeanLocator.getBean(AlgorithmDBService.class).getAlgorithmByID(domain.getAlgorithmId());
+			algo = algorithm.getName().toUpperCase();
 		}
 		
 		// Shorten pseudonym when the last character should be overwritten. Exception: For
@@ -353,7 +357,8 @@ public abstract class Pseudonymizer {
 				return false;
 			}
 			
-			return ddba.updateCounter(currentValue, domainName);
+			Domain domain = ddba.getDomainByName(domainName);
+			return domain != null && SpringBeanLocator.getBean(AlgorithmDBService.class).updateCounter(currentValue, domain.getAlgorithmId());
 		} else {
 			if (algorithmID == null) {
 				return false;

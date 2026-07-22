@@ -30,6 +30,7 @@ import org.springframework.context.annotation.Scope;
 import org.trustdeck.jooq.generated.tables.interfaces.IDomain;
 import org.trustdeck.jooq.generated.tables.pojos.Domain;
 import org.trustdeck.service.DomainDBAccessService;
+import org.trustdeck.service.AlgorithmDBService;
 import org.trustdeck.utils.Assertion;
 import org.trustdeck.utils.SpringBeanLocator;
 
@@ -51,6 +52,11 @@ public class DomainDTO implements IObjectDTO<IDomain, DomainDTO> {
     @Setter(value=AccessLevel.NONE)
     @JsonIgnore
     private DomainDBAccessService domainDBAccessService = SpringBeanLocator.getBean(DomainDBAccessService.class);
+
+    @Getter(value=AccessLevel.NONE)
+    @Setter(value=AccessLevel.NONE)
+    @JsonIgnore
+    private AlgorithmDBService algorithmDBService = SpringBeanLocator.getBean(AlgorithmDBService.class);
 	
     /** The id of this domain. */
     private Integer id;
@@ -89,28 +95,10 @@ public class DomainDTO implements IObjectDTO<IDomain, DomainDTO> {
     private Boolean enforceEndDateValidityInherited;
 
     /** The algorithm used for pseudonymization. */
-    private String algorithm;
+    private AlgorithmDTO algorithm;
 
     /** Determines if the algorithm value was inherited from the super domain. */
     private Boolean algorithmInherited;
-    
-    /** The alphabet that should be used for generating new pseudonyms. */
-    private String alphabet;
-    
-    /** Determines whether or not the alphabet value was inherited from the super domain. */
-    private Boolean alphabetInherited;
-    
-    /** The amount of pseudonyms the user wants to be able to store in this domain. */
-    private Long randomAlgorithmDesiredSize;
-    
-    /** Determines whether or not the desired minimal size value was inherited from the super domain. */
-    private Boolean randomAlgorithmDesiredSizeInherited;
-    
-    /** The probability with which the algorithm should successfully generate new pseudonyms in an already partly filled domain. */
-    private Double randomAlgorithmDesiredSuccessProbability;
-    
-    /** Determines whether or not the desired success probability value was inherited from the super domain. */
-    private Boolean randomAlgorithmDesiredSuccessProbabilityInherited;
     
     /** Determines if the domain can store multiple pseudonyms per given identifier or only one (1:n vs. 1:1). */
     private Boolean multiplePsnAllowed;
@@ -118,39 +106,6 @@ public class DomainDTO implements IObjectDTO<IDomain, DomainDTO> {
     /** Determines whether or not the multiple allowed pseudonyms option was inherited from the super domain. */
     private Boolean multiplePsnAllowedInherited;
 	
-	/** A counter for consecutive numbering as the pseudonymization algorithm. */
-	private Long consecutiveValueCounter;
-
-    /** The length of the pseudonyms for this domain */
-    private Integer pseudonymLength;
-
-    /** Determines if the pseudonym length was inherited. */
-    private Boolean pseudonymLengthInherited;
-
-    /** The character that should be used for padding the pseudonyms, if necessary. */
-    private Character paddingCharacter;
-
-    /** Determines if the padding character was inherited. */
-    private Boolean paddingCharacterInherited;
-    
-    /** Determines whether or not a check digit should be added to the pseudonym. */
-    private Boolean addCheckDigit;
-    
-    /** Determines if the check digit is was inherited. */
-    private Boolean addCheckDigitInherited;
-    
-    /** Determines whether or not the check digit should be part of the pseudonym length. */
-    private Boolean lengthIncludesCheckDigit;
-    
-    /** Determines if the check digit in length inclusion status is was inherited */
-    private Boolean lengthIncludesCheckDigitInherited;
-
-    /** The salt for this domain. */
-    private String salt;
-
-    /** The salt length for this domain. */
-    private Integer saltLength;
-
     /** A description of the domain. */
     private String description;
 
@@ -177,27 +132,10 @@ public class DomainDTO implements IObjectDTO<IDomain, DomainDTO> {
         this.setEnforceStartDateValidityInherited(pojo.getEnforcestartdatevalidityinherited());
         this.setEnforceEndDateValidity(pojo.getEnforceenddatevalidity());
         this.setEnforceEndDateValidityInherited(pojo.getEnforceenddatevalidityinherited());
-        this.setAlgorithm(pojo.getAlgorithm());
-        this.setAlgorithmInherited(pojo.getAlgorithminherited());
-        this.setAlphabet(pojo.getAlphabet());
-        this.setAlphabetInherited(pojo.getAlphabetinherited());
-        this.setRandomAlgorithmDesiredSize(pojo.getRandomalgorithmdesiredsize());
-        this.setRandomAlgorithmDesiredSizeInherited(pojo.getRandomalgorithmdesiredsizeinherited());
-        this.setRandomAlgorithmDesiredSuccessProbability(pojo.getRandomalgorithmdesiredsuccessprobability());
-        this.setRandomAlgorithmDesiredSuccessProbabilityInherited(pojo.getRandomalgorithmdesiredsuccessprobabilityinherited());
+        this.setAlgorithm(pojo.getAlgorithmId() == null ? null : new AlgorithmDTO().assignPojoValues(algorithmDBService.getAlgorithmByID(pojo.getAlgorithmId())));
+        this.setAlgorithmInherited(pojo.getAlgorithmInherited());
         this.setMultiplePsnAllowed(pojo.getMultiplepsnallowed());
         this.setMultiplePsnAllowedInherited(pojo.getMultiplepsnallowedinherited());
-        this.setConsecutiveValueCounter(pojo.getConsecutivevaluecounter());
-        this.setPseudonymLength(pojo.getPseudonymlength());
-        this.setPseudonymLengthInherited(pojo.getPseudonymlengthinherited());
-        this.setPaddingCharacter(pojo.getPaddingcharacter() != null ? pojo.getPaddingcharacter().charAt(0) : null);
-        this.setPaddingCharacterInherited(pojo.getPaddingcharacterinherited());
-        this.setAddCheckDigit(pojo.getAddcheckdigit());
-        this.setAddCheckDigitInherited(pojo.getAddcheckdigitinherited());
-        this.setLengthIncludesCheckDigit(pojo.getLengthincludescheckdigit());
-        this.setLengthIncludesCheckDigitInherited(pojo.getLengthincludescheckdigitinherited());
-        this.setSalt(pojo.getSalt());
-        this.setSaltLength(pojo.getSaltlength());
         this.setDescription(Assertion.isNotNullOrEmpty(pojo.getDescription()) ? pojo.getDescription() : null);
         Domain d = (pojo.getSuperdomainid() != null && pojo.getSuperdomainid() > 0) ? domainDBAccessService.getDomainByID(pojo.getSuperdomainid()) : null;
         this.setSuperDomainName(d != null ? d.getName() : null);
@@ -218,25 +156,8 @@ public class DomainDTO implements IObjectDTO<IDomain, DomainDTO> {
                 this.getEnforceEndDateValidityInherited(),
                 this.getAlgorithm(),
                 this.getAlgorithmInherited(),
-                this.getAlphabet(),
-                this.getAlphabetInherited(),
-                this.getRandomAlgorithmDesiredSize(),
-                this.getRandomAlgorithmDesiredSizeInherited(),
-                this.getRandomAlgorithmDesiredSuccessProbability(),
-                this.getRandomAlgorithmDesiredSuccessProbabilityInherited(),
                 this.getMultiplePsnAllowed(),
                 this.getMultiplePsnAllowedInherited(),
-                this.getConsecutiveValueCounter(),
-                this.getPseudonymLength(),
-                this.getPseudonymLengthInherited(),
-                this.getPaddingCharacter(),
-                this.getPaddingCharacterInherited(),
-                this.getAddCheckDigit(),
-                this.getAddCheckDigitInherited(),
-                this.getLengthIncludesCheckDigit(),
-                this.getLengthIncludesCheckDigitInherited(),
-                this.getSalt(),
-                this.getSaltLength(),
                 this.getSuperDomainID());
     }
     
@@ -262,25 +183,8 @@ public class DomainDTO implements IObjectDTO<IDomain, DomainDTO> {
         this.setEnforceEndDateValidityInherited(null);
         this.setAlgorithm(null);
         this.setAlgorithmInherited(null);
-        this.setAlphabet(null);
-        this.setAlphabetInherited(null);
-        this.setRandomAlgorithmDesiredSize(null);
-        this.setRandomAlgorithmDesiredSizeInherited(null);
-        this.setRandomAlgorithmDesiredSuccessProbability(null);
-        this.setRandomAlgorithmDesiredSuccessProbabilityInherited(null);
         this.setMultiplePsnAllowed(null);
         this.setMultiplePsnAllowedInherited(null);
-        this.setConsecutiveValueCounter(null);
-        this.setPseudonymLength(null);
-        this.setPseudonymLengthInherited(null);
-        this.setPaddingCharacter(null);
-        this.setPaddingCharacterInherited(null);
-        this.setAddCheckDigit(null);
-        this.setAddCheckDigitInherited(null);
-        this.setLengthIncludesCheckDigit(null);
-        this.setLengthIncludesCheckDigitInherited(null);
-        this.setSalt(null);
-        this.setSaltLength(null);
         this.setSuperDomainID(null);
     	
     	return this;
@@ -306,25 +210,8 @@ public class DomainDTO implements IObjectDTO<IDomain, DomainDTO> {
         out += (this.getEnforceEndDateValidityInherited() != null) ? "enforceEndDateValidityInherited: " + this.getEnforceEndDateValidityInherited() + ", " : "";
         out += (this.getAlgorithm() != null) ? "algorithm: " + this.getAlgorithm() + ", " : "";
         out += (this.getAlgorithmInherited() != null) ? "algorithmInherited: " + this.getAlgorithmInherited() + ", " : "";
-        out += (this.getAlphabet() != null) ? "alphabet: " + this.getAlphabet() + ", " : "";
-        out += (this.getAlphabetInherited() != null) ? "alphabetInherited: " + this.getAlphabetInherited() + ", " : "";
-        out += (this.getRandomAlgorithmDesiredSize() != null) ? "randomAlgorithmDesiredSize: " + this.getRandomAlgorithmDesiredSize().toString() + ", " : "";
-        out += (this.getRandomAlgorithmDesiredSizeInherited() != null) ? "randomAlgorithmDesiredSizeInherited: " + this.getRandomAlgorithmDesiredSizeInherited() + ", " : "";
-        out += (this.getRandomAlgorithmDesiredSuccessProbability() != null) ? "randomAlgorithmDesiredSuccessProbability: " + this.getRandomAlgorithmDesiredSuccessProbability().toString() + ", " : "";
-        out += (this.getRandomAlgorithmDesiredSuccessProbabilityInherited() != null) ? "randomAlgorithmDesiredSuccessProbabilityInherited: " + this.getRandomAlgorithmDesiredSuccessProbabilityInherited() + ", " : "";
         out += (this.getMultiplePsnAllowed() != null) ? "multiplePsnAllowed: " + this.getMultiplePsnAllowed() + ", " : "";
         out += (this.getMultiplePsnAllowedInherited() != null) ? "multiplePsnAllowedInherited: " + this.getMultiplePsnAllowedInherited() + ", " : "";
-        out += (this.getConsecutiveValueCounter() != null) ? "consecutiveValueCounter: " + this.getConsecutiveValueCounter().toString() + ", " : "";
-        out += (this.getPseudonymLength() != null) ? "pseudonymLength: " + this.getPseudonymLength().toString() + ", " : "";
-        out += (this.getPseudonymLengthInherited() != null) ? "pseudonymLengthInherited: " + this.getPseudonymLengthInherited() + ", " : "";
-        out += (this.getPaddingCharacter() != null) ? "paddingCharacter: " + this.getPaddingCharacter() + ", " : "";
-        out += (this.getPaddingCharacterInherited() != null) ? "paddingCharacterInherited: " + this.getPaddingCharacterInherited() + ", " : "";
-        out += (this.getAddCheckDigit() != null) ? "addCheckDigit: " + this.getAddCheckDigit() + ", " : "";
-        out += (this.getAddCheckDigitInherited() != null) ? "addCheckDigitInherited: " + this.getAddCheckDigitInherited() + ", " : "";
-        out += (this.getLengthIncludesCheckDigit() != null) ? "lengthIncludesCheckDigit: " + this.getLengthIncludesCheckDigit() + ", " : "";
-        out += (this.getLengthIncludesCheckDigitInherited() != null) ? "lengthIncludesCheckDigitInherited: " + this.getLengthIncludesCheckDigitInherited() + ", " : "";
-        out += (this.getSalt() != null) ? "salt: " + this.getSalt() + ", " : "";
-        out += (this.getSaltLength() != null) ? "saltLength: " + this.getSaltLength() + ", " : "";
         out += (this.getDescription() != null) ? "description: " + this.getDescription() + ", " : "";
         out += (this.getSuperDomainID() != null) ? "superDomainID: " + this.getSuperDomainID() + ", " : "";
         out += (this.getSuperDomainName() != null) ? "superDomainName: " + this.getSuperDomainName() + ", " : "";

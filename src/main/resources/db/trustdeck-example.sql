@@ -70,15 +70,15 @@ CREATE TABLE public.algorithm (
     id integer NOT NULL,
     name text NOT NULL,
     alphabet text NOT NULL,
-    randomalgorithmdesiredsize bigint NOT NULL,
-    randomalgorithmdesiredsuccessprobability double precision NOT NULL,
-    consecutivevaluecounter bigint NOT NULL,
-    pseudonymlength integer NOT NULL,
-    paddingcharacter character(1) NOT NULL,
-    addcheckdigit boolean NOT NULL,
-    lengthincludescheckdigit boolean NOT NULL,
+    random_algorithm_desired_size bigint NOT NULL,
+    random_algorithm_desired_success_probability double precision NOT NULL,
+    consecutive_value_counter bigint NOT NULL,
+    pseudonym_length integer NOT NULL,
+    padding_character character(1) NOT NULL,
+    add_check_digit boolean NOT NULL,
+    length_includes_check_digit boolean NOT NULL,
     salt text NOT NULL,
-    saltlength integer NOT NULL
+    salt_length integer NOT NULL
 );
 
 
@@ -163,27 +163,10 @@ CREATE TABLE public.domain (
     enforcestartdatevalidityinherited boolean NOT NULL,
     enforceenddatevalidity boolean NOT NULL,
     enforceenddatevalidityinherited boolean NOT NULL,
-    algorithm text NOT NULL,
-    algorithminherited boolean NOT NULL,
-    alphabet text NOT NULL,
-    alphabetinherited boolean NOT NULL,
-    randomalgorithmdesiredsize bigint NOT NULL,
-    randomalgorithmdesiredsizeinherited boolean NOT NULL,
-    randomalgorithmdesiredsuccessprobability double precision NOT NULL,
-    randomalgorithmdesiredsuccessprobabilityinherited boolean NOT NULL,
+    algorithm_id integer NOT NULL,
+    algorithm_inherited boolean NOT NULL,
     multiplepsnallowed boolean NOT NULL,
     multiplepsnallowedinherited boolean NOT NULL,
-    consecutivevaluecounter bigint NOT NULL,
-    pseudonymlength integer NOT NULL,
-    pseudonymlengthinherited boolean NOT NULL,
-    paddingcharacter character(1) NOT NULL,
-    paddingcharacterinherited boolean NOT NULL,
-    addcheckdigit boolean NOT NULL,
-    addcheckdigitinherited boolean NOT NULL,
-    lengthincludescheckdigit boolean NOT NULL,
-    lengthincludescheckdigitinherited boolean NOT NULL,
-    salt text NOT NULL,
-    saltlength integer NOT NULL,
     description text,
     superdomainid integer
 );
@@ -548,11 +531,11 @@ ALTER TABLE ONLY public.pseudonym ALTER COLUMN id SET DEFAULT nextval('public.ps
 
 
 --
--- Name: algorithm algorithm_name_alphabet_randomalgorithmdesiredsize_randomal_key; Type: CONSTRAINT; Schema: public; Owner: trustdeck-manager
+-- Name: algorithm algorithm_configuration_key; Type: CONSTRAINT; Schema: public; Owner: trustdeck-manager
 --
 
 ALTER TABLE ONLY public.algorithm
-    ADD CONSTRAINT algorithm_name_alphabet_randomalgorithmdesiredsize_randomal_key UNIQUE (name, alphabet, randomalgorithmdesiredsize, randomalgorithmdesiredsuccessprobability, pseudonymlength, paddingcharacter, addcheckdigit, lengthincludescheckdigit);
+    ADD CONSTRAINT algorithm_configuration_key UNIQUE (name, alphabet, random_algorithm_desired_size, random_algorithm_desired_success_probability, pseudonym_length, padding_character, add_check_digit, length_includes_check_digit, salt, salt_length);
 
 
 --
@@ -824,6 +807,9 @@ CREATE UNIQUE INDEX uq_permission_grant ON public.permission_grant USING btree (
 ALTER TABLE ONLY public.domain
     ADD CONSTRAINT domain_superdomainid_fkey FOREIGN KEY (superdomainid) REFERENCES public.domain(id);
 
+ALTER TABLE ONLY public.domain
+    ADD CONSTRAINT domain_algorithm_id_fkey FOREIGN KEY (algorithm_id) REFERENCES public.algorithm(id);
+
 
 --
 -- Name: entity_instance entity_instance_entity_type_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: trustdeck-manager
@@ -884,4 +870,3 @@ ALTER TABLE ONLY public.pseudonym
 --
 -- PostgreSQL database dump complete
 --
-

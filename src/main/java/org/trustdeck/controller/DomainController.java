@@ -34,9 +34,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.trustdeck.dto.DomainDTO;
 import org.trustdeck.dto.DomainTreeDTO;
+import org.trustdeck.dto.AlgorithmDTO;
 import org.trustdeck.jooq.generated.tables.pojos.Domain;
 import org.trustdeck.security.audittrail.annotation.Audit;
 import org.trustdeck.service.AuthorizationService;
+import org.trustdeck.service.AlgorithmDBService;
 import org.trustdeck.service.DomainDBAccessService;
 import org.trustdeck.service.ResponseService;
 import org.trustdeck.utils.Assertion;
@@ -82,10 +84,7 @@ public class DomainController {
     /** The default value for determining if the check digit should be included in the defined pseudonym length. */
 	public static final boolean DEFAULT_LENGTH_INCLUDES_CHECK_DIGIT = false;
     
-	/** Determines the default number of retries when a generated random number is already in use. */
-	private static final int DEFAULT_NUMBER_OF_RETRIES = 3;
-
-    /** The default character used for padding pseudonyms if necessary. */
+	/** The default character used for padding pseudonyms if necessary. */
 	public static final char DEFAULT_PADDING_CHARACTER = '0';
 
     /** The default value for performing a recursive update of possible child domains. */
@@ -115,9 +114,6 @@ public class DomainController {
     /** The maximum length for the salt. */
     private static final int MAXIMUM_SALT_LENGTH = 256;
 
-    /** The minimum length for pseudonyms. */
-    private static final int MINIMUM_PSEUDONYM_LENGTH = 2;
-    
     /** The minimum length for the salt. */
     private static final int MINIMUM_SALT_LENGTH = 8;
     
@@ -135,6 +131,10 @@ public class DomainController {
     /** Provides functionality to ensure proper rights and roles when accessing the endpoints. */
     @Autowired
     private AuthorizationService authorizationService;
+
+    /** Enables access to database interaction methods for algorithm objects. */
+    @Autowired
+    private AlgorithmDBService algorithmDBService;
 
     /**
      * Method to create a new domain. Creates the record inside the
@@ -160,324 +160,7 @@ public class DomainController {
     @Audit
     public ResponseEntity<?> createDomainComplete(@RequestBody DomainDTO domainDTO,
                                                   @RequestHeader(name = "accept", required = false) String responseContentType) {
-
-        String domainName = domainDTO.getName();
-        String domainPrefix = domainDTO.getPrefix();
-        Timestamp validFrom = domainDTO.getValidFrom() != null ? Timestamp.valueOf(domainDTO.getValidFrom()) : null;
-        Timestamp validTo = domainDTO.getValidTo() != null ? Timestamp.valueOf(domainDTO.getValidTo()) : null;
-        String validityTime = domainDTO.getValidityTime();
-        Boolean enforceStartDateValidity = domainDTO.getEnforceStartDateValidity();
-        Boolean enforceEndDateValidity = domainDTO.getEnforceEndDateValidity();
-        String algorithm = domainDTO.getAlgorithm();
-        String alphabet = Utility.generateAlphabet(domainDTO.getAlgorithm(), domainDTO.getAlphabet());
-        Long randomAlgorithmDesiredSize = domainDTO.getRandomAlgorithmDesiredSize();
-        Double randomAlgorithmDesiredSuccessProbability = domainDTO.getRandomAlgorithmDesiredSuccessProbability();
-        Long consecVal = domainDTO.getConsecutiveValueCounter();
-        Boolean multiplePsnAllowed = domainDTO.getMultiplePsnAllowed();
-        Integer psnLength = domainDTO.getPseudonymLength();
-        Character paddingChar = domainDTO.getPaddingCharacter();
-        Boolean addCheckDigit = domainDTO.getAddCheckDigit();
-        Boolean lengthIncludesCheckDigit = domainDTO.getLengthIncludesCheckDigit();
-        String salt = domainDTO.getSalt();
-        Integer saltLength = domainDTO.getSaltLength();
-        String description = domainDTO.getDescription();
-        String superDomainName = domainDTO.getSuperDomainName();
-
-        if (Assertion.assertNullAll(domainName, domainPrefix, validFrom, validTo, validityTime, enforceStartDateValidity,
-                enforceEndDateValidity, algorithm, alphabet, randomAlgorithmDesiredSize, randomAlgorithmDesiredSuccessProbability, 
-                consecVal, multiplePsnAllowed, psnLength, paddingChar, addCheckDigit, lengthIncludesCheckDigit, salt, 
-                saltLength, description, superDomainName)) {
-            // An empty object was passed, so there is nothing to create.
-            log.debug("The domain DTO passed by the user was empty. Nothing to create.");
-            return responseService.unprocessableEntity(responseContentType);
-        }
-
-        // Check if the name is valid in an URI. If not, tell the user and abort
-        URI location;
-        try {
-            location = new URI("/api/pseudonymization/domain?name=" + domainName);
-        } catch (URISyntaxException e) {
-            log.debug("The domain name is not suitable to be used in a URI. Please choose another name.");
-            return responseService.notAcceptable(responseContentType);
-        }
-
-        // Get parent information if provided
-        Domain parent = null;
-        if (superDomainName != null) {
-            parent = domainDBAccessService.getDomainByName(superDomainName);
-
-            // Parent domain name was provided but not found, return a 404-NOT_FOUND 
-            if (parent == null) {
-                log.debug("Parent domain name was provided but not found.");
-                return responseService.notFound(responseContentType);
-            }
-        }
-        
-        // Ensure a proper salt length
-        saltLength = (saltLength != null && saltLength >= MINIMUM_SALT_LENGTH && saltLength <= MAXIMUM_SALT_LENGTH) ? saltLength : DEFAULT_SALT_LENGTH;
-
-        // Create a salt if not already given
-        if (salt == null || salt.trim().length() < MINIMUM_SALT_LENGTH || salt.trim().length() > MAXIMUM_SALT_LENGTH) {
-        	salt = generateSalt(saltLength);
-        }
-        
-        // Sanitize the alphabet
- 		if (alphabet.contains(";")) {
- 			log.error("The alphabet provided for the pseudonymization in domain contained a semicolon (\";\"), which is not allowed.");
- 			return responseService.unprocessableEntity(responseContentType);
- 		}
-		
-		// Ensure that the alphabet has a valid length, when a check digit is requested
-		if (addCheckDigit != null && addCheckDigit && (alphabet.length() % 2) == 1) {
-			log.warn("The alphabet provided for the pseudonymization in domain does not have an even length, "
-					+ "which is necessary for the requested check-digit-calculation. The last character was "
-					+ "therefore removed.");
-			alphabet = alphabet.substring(0, alphabet.length() - 1);
-		}
-        
-        // Ensure a valid desired success probability, if the selected algorithm is of the RANDOM-family
-        if (algorithm != null && algorithm.trim().toUpperCase().startsWith("RANDOM") && randomAlgorithmDesiredSuccessProbability != null) {
-        	if (randomAlgorithmDesiredSuccessProbability > 1.0d) {
-        		// The success probability was probably provided as a number between 0 and 100, so we transform it into [0,1] 
-        		randomAlgorithmDesiredSuccessProbability /= 100.0d;
-        	}
-        	
-        	if (randomAlgorithmDesiredSuccessProbability >= 1.0d) {
-        		// The provided number is still too big, switch to default value
-        		log.warn("The provided success probability for the pseudonymization process was too big. Switching to default value.");
-        		randomAlgorithmDesiredSuccessProbability = DEFAULT_RANDOM_ALGORITHM_DESIRED_SUCCESS_PROBABILITY;
-        	} else if (randomAlgorithmDesiredSuccessProbability <= 0.0d) {
-	    		// The provided number is zero or negative, switch to default value
-	    		log.warn("The provided success probability for the pseudonymization process was too small. Switching to default value.");
-	    		randomAlgorithmDesiredSuccessProbability = DEFAULT_RANDOM_ALGORITHM_DESIRED_SUCCESS_PROBABILITY;
-        	}
-        } else if (algorithm != null && algorithm.toUpperCase().startsWith("RANDOM") && randomAlgorithmDesiredSuccessProbability == null) {
-        	// Use default
-        	randomAlgorithmDesiredSuccessProbability = DEFAULT_RANDOM_ALGORITHM_DESIRED_SUCCESS_PROBABILITY;
-        } else {
-        	// Discard any provided information
-        	randomAlgorithmDesiredSuccessProbability = null;
-        }
-        
-        // Ensure a proper desired domain size
-        if (algorithm != null && algorithm.trim().toUpperCase().startsWith("RANDOM") && randomAlgorithmDesiredSize == null) {
-        	randomAlgorithmDesiredSize = DEFAULT_RANDOM_ALGORITHM_DESIRED_SIZE;
-        }
-        
-        // Ensure that the check digit algorithm can work if it is requested
-        if (addCheckDigit != null && addCheckDigit && (alphabet.length() % 2) != 0) {
-        	// The calculation of a check digit was requested. For the algorithm that calculates the check digit to 
-        	// work, the alphabet length must be an even number.
-        	log.debug("The calculation of a check digit was requested. For the algorithm that calculates the check digit "
-        			+ "to work, the alphabet length must be an even number.");
-            return responseService.unprocessableEntity(responseContentType);
-        }
-
-        // Ensure that a valid counter for the consecutive numbering pseudonymization algorithm is present
-        if (consecVal == null || consecVal <= 0) {
-            consecVal = 1L;
-        }
-
-        // Ensure that the pseudonyms are long enough and not null
-        if (algorithm != null && algorithm.trim().toUpperCase().startsWith("RANDOM")) {
-        	int neededPsnLength = calculatePseudonymLength(randomAlgorithmDesiredSize, randomAlgorithmDesiredSuccessProbability, alphabet);
-        	if (psnLength != null && neededPsnLength > psnLength) {
-        		log.debug("The pseudonym length needed to store the desired number of pseudonyms is smaller than the provided pseudonym length. The calculated size will be used.");
-        		psnLength = neededPsnLength;
-        	} else if (psnLength != null && neededPsnLength < psnLength) {
-        		// A length longer than the needed one was given
-        		// Nothing to do
-        	} else {
-        		psnLength = neededPsnLength;
-        	}
-        } else if (randomAlgorithmDesiredSize != null && randomAlgorithmDesiredSuccessProbability != null) {
-        	// Calculate minimal needed length for all non-random algorithms
-        	psnLength = calculatePseudonymLength(randomAlgorithmDesiredSize, randomAlgorithmDesiredSuccessProbability, alphabet);
-        }
-        
-        // If no info about the desired size was given and no length was provided, use the default
-        if (psnLength == null) {
-            psnLength = DEFAULT_PSEUDONYM_LENGTH;
-        }
-        
-        // Ensure that the pseudonyms are never too short
-        if (psnLength < MINIMUM_PSEUDONYM_LENGTH) {
-            log.warn("The requested length for pseudonyms in the domain \"" + domainName + "\" was too short "
-                    + "and therefore set to the minimum length (" + MINIMUM_PSEUDONYM_LENGTH + ").");
-            psnLength = MINIMUM_PSEUDONYM_LENGTH;
-        }
-
-        // Gather the information needed for a new domain object
-        Domain domain = new Domain();
-
-        // Start creating a new domain object
-        domain.setName(domainName);
-        domain.setPrefix(domainPrefix);
-
-        domain.setConsecutivevaluecounter(consecVal);
-        
-        domain.setDescription(description);
-        
-        domain.setSalt(salt);
-        domain.setSaltlength(salt.length());
-
-        if (parent != null) {
-            // Determine validFrom date if not given by the user
-            domain.setValidfrom((validFrom != null) ? validFrom.toLocalDateTime() : parent.getValidfrom());
-            domain.setValidfrominherited(validFrom == null);
-
-            // Determine validTo date
-            LocalDateTime vTo;
-            Boolean vToInh = false;
-            if (validTo != null) {
-                vTo = validTo.toLocalDateTime();
-            } else if (validTo == null && validityTime != null) {
-                vTo = Utility.plusValidityTime(domain.getValidfrom(), validityTime);
-            } else {
-                vTo = parent.getValidto();
-                vToInh = true;
-            }
-
-            domain.setValidto(vTo);
-            domain.setValidtoinherited(vToInh);
-
-            // Determine if the validFrom date correctness should be enforced
-            domain.setEnforcestartdatevalidity((enforceStartDateValidity != null) ? enforceStartDateValidity : parent.getEnforcestartdatevalidity());
-            domain.setEnforcestartdatevalidityinherited(enforceStartDateValidity == null);
-
-            // Determine if the validTo date correctness should be enforced
-            domain.setEnforceenddatevalidity((enforceEndDateValidity != null) ? enforceEndDateValidity : parent.getEnforceenddatevalidity());
-            domain.setEnforceenddatevalidityinherited(enforceEndDateValidity == null);
-
-            // Determine pseudonymization algorithm
-            domain.setAlgorithm((algorithm != null) ? algorithm : parent.getAlgorithm());
-            domain.setAlgorithminherited(algorithm == null);
-            
-            // Determine the alphabet used for pseudonymization
-            domain.setAlphabet((alphabet != null) ? alphabet : parent.getAlphabet());
-            domain.setAlphabetinherited(alphabet == null);
-            
-            // Determine the number of pseudonyms the user wants to create
-            domain.setRandomalgorithmdesiredsize((randomAlgorithmDesiredSize != null) ? randomAlgorithmDesiredSize : parent.getRandomalgorithmdesiredsize());
-            domain.setRandomalgorithmdesiredsizeinherited(randomAlgorithmDesiredSize == null);
-            
-            // Determine the minimum success probability for the generation of new pseudonyms
-            domain.setRandomalgorithmdesiredsuccessprobability((randomAlgorithmDesiredSuccessProbability != null) ? randomAlgorithmDesiredSuccessProbability : parent.getRandomalgorithmdesiredsuccessprobability());
-            domain.setRandomalgorithmdesiredsuccessprobabilityinherited(randomAlgorithmDesiredSuccessProbability == null);
-            
-            // Determine if multiple pseudonyms per identifier&idType combination are allowed
-            domain.setMultiplepsnallowed((multiplePsnAllowed != null) ? multiplePsnAllowed : parent.getMultiplepsnallowed());
-            domain.setMultiplepsnallowedinherited(multiplePsnAllowed == null);
-            
-            // Determine pseudonym length
-            domain.setPseudonymlength((psnLength != null) ? psnLength : parent.getPseudonymlength());
-            domain.setPseudonymlengthinherited(psnLength == null);
-
-            // Determine padding character
-            domain.setPaddingcharacter((paddingChar != null) ? paddingChar.toString() : parent.getPaddingcharacter());
-            domain.setPaddingcharacterinherited(paddingChar == null);
-
-            // Determine if a check digit should be created
-            domain.setAddcheckdigit((addCheckDigit != null) ? addCheckDigit : parent.getAddcheckdigit());
-            domain.setAddcheckdigitinherited(addCheckDigit == null);
-
-            // Determine if the check digit should be included in the length of the pseudonym
-            domain.setLengthincludescheckdigit((lengthIncludesCheckDigit != null) ? lengthIncludesCheckDigit : parent.getLengthincludescheckdigit());
-            domain.setLengthincludescheckdigitinherited(lengthIncludesCheckDigit == null);
-            
-            domain.setSuperdomainid(parent.getId());
-        } else {
-            // No parent information provided
-
-            // Check if either validTo or validityTime is given
-            if (validTo == null && validityTime == null) {
-                // Both values are missing; inform user and use default
-                log.debug("For the domain \"" + domainName + "\" there was neither an end date nor a validity period given."
-                        + " The default of " + DEFAULT_VALIDITY_TIME + " is used.");
-                validityTime = DEFAULT_VALIDITY_TIME;
-            }
-
-            // Determine validFrom date if not given by the user
-            domain.setValidfrom((validFrom != null) ? validFrom.toLocalDateTime() : LocalDateTime.now());
-            domain.setValidfrominherited(false);
-
-            // Determine expiration date
-            domain.setValidto((validTo != null) ? validTo.toLocalDateTime() : Utility.plusValidityTime(domain.getValidfrom(), validityTime));
-            domain.setValidtoinherited(false);
-
-            // Determine if the validFrom date correctness should be enforced
-            domain.setEnforcestartdatevalidity((enforceStartDateValidity != null) ? enforceStartDateValidity : DEFAULT_ENFORCE_START_DATE_VALIDITY);
-            domain.setEnforcestartdatevalidityinherited(false);
-
-            // Determine if the validTo date correctness should be enforced
-            domain.setEnforceenddatevalidity((enforceEndDateValidity != null) ? enforceEndDateValidity : DEFAULT_ENFORCE_END_DATE_VALIDITY);
-            domain.setEnforceenddatevalidityinherited(false);
-
-            // Determine pseudonymization algorithm
-            domain.setAlgorithm((algorithm != null) ? algorithm : DEFAULT_PSEUDONYMIZATION_ALGO);
-            domain.setAlgorithminherited(false);
-            
-            // Determine the alphabet used for pseudonymization
-            domain.setAlphabet((alphabet != null) ? alphabet : DEFAULT_PSEUDONYMIZATION_ALPHABET);
-            domain.setAlphabetinherited(false);
-            
-            // Determine the number of pseudonyms the user wants to create
-            domain.setRandomalgorithmdesiredsize((randomAlgorithmDesiredSize != null) ? randomAlgorithmDesiredSize : DEFAULT_RANDOM_ALGORITHM_DESIRED_SIZE);
-            domain.setRandomalgorithmdesiredsizeinherited(false);
-            
-            // Determine the minimum success probability for the generation of new pseudonyms
-            domain.setRandomalgorithmdesiredsuccessprobability((randomAlgorithmDesiredSuccessProbability != null) ? randomAlgorithmDesiredSuccessProbability : DEFAULT_RANDOM_ALGORITHM_DESIRED_SUCCESS_PROBABILITY);
-            domain.setRandomalgorithmdesiredsuccessprobabilityinherited(false);
-
-            // Determine if multiple pseudonyms per identifier&idType combination are allowed
-            domain.setMultiplepsnallowed((multiplePsnAllowed != null) ? multiplePsnAllowed : DEFAULT_ALLOW_MULTIPLE_PSN);
-            domain.setMultiplepsnallowedinherited(false);
-            
-            // Determine pseudonym length
-            domain.setPseudonymlength((psnLength != null) ? psnLength : DEFAULT_PSEUDONYM_LENGTH);
-            domain.setPseudonymlengthinherited(false);
-
-            // Determine padding character
-            domain.setPaddingcharacter((paddingChar != null) ? paddingChar.toString() : String.valueOf(DEFAULT_PADDING_CHARACTER));
-            domain.setPaddingcharacterinherited(false);
-
-            // Determine if a check digit should be created
-            domain.setAddcheckdigit((addCheckDigit != null) ? addCheckDigit : DEFAULT_ADD_CHECK_DIGIT);
-            domain.setAddcheckdigitinherited(false);
-
-            // Determine if the check digit should be included in the length of the pseudonym
-            domain.setLengthincludescheckdigit((lengthIncludesCheckDigit != null) ? lengthIncludesCheckDigit : DEFAULT_LENGTH_INCLUDES_CHECK_DIGIT);
-            domain.setLengthincludescheckdigitinherited(false);
-            
-            domain.setSuperdomainid(0);
-        }
-
-        // Insert into database
-        String result = domainDBAccessService.insertDomain(domain);
-        
-        if (result.equals(DomainDBAccessService.INSERTION_SUCCESS)) {
-            // Return a 201-CREATED status and the location to the domain inside the response header.
-        	DomainDTO createdDomDTO = new DomainDTO().assignPojoValues(domainDBAccessService.getDomainByName(domain.getName()));
-            if (!authorizationService.hasDomainPermission(createdDomDTO.getName(), "complete-view")) {
-            	createdDomDTO = createdDomDTO.toReducedStandardView();
-            }
-            
-            log.info("Successfully created the domain \"" + domainName + "\".");
-            return responseService.created(responseContentType, location, createdDomDTO);
-        } else if (result.equals(DomainDBAccessService.INSERTION_DUPLICATE)) {
-            // Nothing added since the entry is a duplicate. Return an 200-OK status.
-        	DomainDTO existingDomDTO = new DomainDTO().assignPojoValues(domainDBAccessService.getDomainByName(domain.getName()));
-            if (!authorizationService.hasDomainPermission(existingDomDTO.getName(), "complete-view")) {
-            	existingDomDTO = existingDomDTO.toReducedStandardView();
-            }
-            
-            log.info("The domain requested to be inserted was skipped because it is already in the database.");
-            return responseService.ok(responseContentType, existingDomDTO);
-        } else {
-            // Creating the domain failed. Return an error 422-UNPROCESSABLE_ENTITY.
-            log.error("Adding the domain \"" + domainName + "\" was unsuccessful.");
-            return responseService.unprocessableEntity(responseContentType);
-        }
+        return createDomain(domainDTO, responseContentType, true);
     }
 
     /**
@@ -502,232 +185,136 @@ public class DomainController {
     @Audit
     public ResponseEntity<?> createDomain(@RequestBody DomainDTO domainDTO,
                                           @RequestHeader(name = "accept", required = false) String responseContentType) {
-
-        if (!domainDTO.validate() || !domainDTO.isValidStandardView()) {
-        	log.debug("The given domain DTO is invalid, due to " + (!domainDTO.validate() ? "missing mandatory fields." : "having non-standard information."));
-        	return responseService.unprocessableEntity(responseContentType);
-        }
-
-        String domainName = domainDTO.getName();
-        String domainPrefix = domainDTO.getPrefix();
-        Timestamp validFrom = domainDTO.getValidFrom() != null ? Timestamp.valueOf(domainDTO.getValidFrom()) : null;
-        Timestamp validTo = domainDTO.getValidTo() != null ? Timestamp.valueOf(domainDTO.getValidTo()) : null;
-        String validityTime = domainDTO.getValidityTime();
-        String algorithm = domainDTO.getAlgorithm();
-        String alphabet = Utility.generateAlphabet(algorithm, null);
-        Boolean multiplePsnAllowed = domainDTO.getMultiplePsnAllowed();
-        String description = domainDTO.getDescription();
-        String superDomainName = domainDTO.getSuperDomainName();
         
-        if (Assertion.assertNullAll(domainName, domainPrefix, validFrom, validTo, validityTime, algorithm, 
-        		multiplePsnAllowed, description, superDomainName)) {
-            // An empty object was passed, so there is nothing to create.
-            log.debug("The domain DTO passed by the user was empty. Nothing to create.");
+    	if (!domainDTO.validate() || !domainDTO.isValidStandardView()) {
             return responseService.unprocessableEntity(responseContentType);
         }
+        
+    	return createDomain(domainDTO, responseContentType, false);
+    }
 
-        if (domainName == null || domainPrefix == null) {
-        	// These two attributes must be given
-        	log.debug("No name and/or no prefix were provided for the domain.");
-        	return responseService.unprocessableEntity(responseContentType);
+    /**
+     * Creates a new domain using either the complete or reduced creation mode.
+     * 
+     * Missing configuration values are inherited from the parent domain, when
+     * available. Otherwise, the corresponding default values are applied. If no
+     * algorithm is provided, the parent domain's algorithm is inherited or a new
+     * default algorithm configuration is created.
+     *
+     * @param dto the domain data to persist; must contain at least a name and prefix
+     * @param responseContentType the requested response content type; may be
+     *                            {@code null}
+     * @param complete {@code true} when the complete domain creation endpoint was
+     *                 used; {@code false} when the reduced endpoint was used
+     * @return <li>a <b>200-OK</b> status when the domain already exists</li>
+     *         <li>a <b>201-CREATED</b> status, the created domain and its
+     *             location on successful creation</li>
+     *         <li>a <b>404-NOT_FOUND</b> status when the specified parent
+     *             domain does not exist</li>
+     *         <li>a <b>406-NOT_ACCEPTABLE</b> status when the domain location
+     *             cannot be represented as a valid URI</li>
+     *         <li>a <b>422-UNPROCESSABLE_ENTITY</b> status when required
+     *             values are missing, the algorithm cannot be created or the
+     *             domain cannot be persisted</li>
+     */
+    private ResponseEntity<?> createDomain(DomainDTO dto, String responseContentType, boolean complete) {
+        if (dto.getName() == null || dto.getPrefix() == null) {
+            return responseService.unprocessableEntity(responseContentType);
         }
-
-        // Check if the name is valid in an URI. If not, tell the user and abort
+        
         URI location;
         try {
-            location = new URI("/api/pseudonymization/domain?name=" + domainName);
+            location = new URI("/api/pseudonymization/domain?name=" + dto.getName());
         } catch (URISyntaxException e) {
-            log.debug("The domain name is not suitable to be used in a URI. Please choose another name.");
             return responseService.notAcceptable(responseContentType);
         }
-
-        // Get parent information if provided
-        Domain parent = null;
-        if (superDomainName != null) {
-            parent = domainDBAccessService.getDomainByName(superDomainName);
-
-            // Parent domain name was provided but not found, return a 404-NOT_FOUND 
-            if (parent == null) {
-                log.debug("Parent domain name was provided but nothing was found.");
-                return responseService.notFound(responseContentType);
-            }
-        }
         
-        // Create a salt
-        String salt = generateSalt(DEFAULT_SALT_LENGTH);
+        Domain parent = dto.getSuperDomainName() == null ? null : domainDBAccessService.getDomainByName(dto.getSuperDomainName());
+        if (dto.getSuperDomainName() != null && parent == null) {
+            return responseService.notFound(responseContentType);
+        }
 
-        // Ensure that a valid counter for the consecutive numbering pseudonymization algorithm is present
-        long consecVal = 1L;
-
-        // Gather the information needed for a new domain object
         Domain domain = new Domain();
+        domain.setName(dto.getName());
+        domain.setPrefix(dto.getPrefix());
+        domain.setDescription(dto.getDescription());
+        domain.setValidfrom(dto.getValidFrom() != null ? dto.getValidFrom() : parent == null ? LocalDateTime.now() : parent.getValidfrom());
+        domain.setValidfrominherited(dto.getValidFrom() == null && parent != null);
+        domain.setValidto(dto.getValidTo() != null ? dto.getValidTo() : dto.getValidityTime() != null
+                ? Utility.plusValidityTime(domain.getValidfrom(), dto.getValidityTime())
+                : parent == null ? Utility.plusValidityTime(domain.getValidfrom(), DEFAULT_VALIDITY_TIME) : parent.getValidto());
+        domain.setValidtoinherited(dto.getValidTo() == null && dto.getValidityTime() == null && parent != null);
+        domain.setEnforcestartdatevalidity(dto.getEnforceStartDateValidity() != null ? dto.getEnforceStartDateValidity()
+                : parent == null ? DEFAULT_ENFORCE_START_DATE_VALIDITY : parent.getEnforcestartdatevalidity());
+        domain.setEnforcestartdatevalidityinherited(dto.getEnforceStartDateValidity() == null && parent != null);
+        domain.setEnforceenddatevalidity(dto.getEnforceEndDateValidity() != null ? dto.getEnforceEndDateValidity()
+                : parent == null ? DEFAULT_ENFORCE_END_DATE_VALIDITY : parent.getEnforceenddatevalidity());
+        domain.setEnforceenddatevalidityinherited(dto.getEnforceEndDateValidity() == null && parent != null);
+        domain.setMultiplepsnallowed(dto.getMultiplePsnAllowed() != null ? dto.getMultiplePsnAllowed()
+                : parent == null ? DEFAULT_ALLOW_MULTIPLE_PSN : parent.getMultiplepsnallowed());
+        domain.setMultiplepsnallowedinherited(dto.getMultiplePsnAllowed() == null && parent != null);
+        domain.setSuperdomainid(parent == null ? 0 : parent.getId());
 
-        // Start creating the new domain object
-        domain.setName(domainName);
-        domain.setPrefix(domainPrefix);
-        
-        domain.setConsecutivevaluecounter(consecVal);
-        
-        domain.setDescription(description);
-        
-        domain.setSalt(salt);
-        domain.setSaltlength(salt.length());
-
-        if (parent != null) {
-            // Determine validFrom date if not given by the user
-            domain.setValidfrom((validFrom != null) ? validFrom.toLocalDateTime() : parent.getValidfrom());
-            domain.setValidfrominherited(validFrom == null);
-
-            // Determine validTo date
-            LocalDateTime vTo;
-            Boolean vToInh = false;
-            if (validTo != null) {
-                vTo = validTo.toLocalDateTime();
-            } else if (validTo == null && validityTime != null) {
-                vTo = Utility.plusValidityTime(domain.getValidfrom(), validityTime);
-            } else {
-                vTo = parent.getValidto();
-                vToInh = true;
-            }
-
-            domain.setValidto(vTo);
-            domain.setValidtoinherited(vToInh);
-
-            // Determine if the validFrom date correctness should be enforced
-            domain.setEnforcestartdatevalidity(parent.getEnforcestartdatevalidity());
-            domain.setEnforcestartdatevalidityinherited(true);
-
-            // Determine if the validTo date correctness should be enforced
-            domain.setEnforceenddatevalidity(parent.getEnforceenddatevalidity());
-            domain.setEnforceenddatevalidityinherited(true);
-
-            // Determine pseudonymization algorithm
-            domain.setAlgorithm((algorithm != null) ? algorithm : parent.getAlgorithm());
-            domain.setAlgorithminherited(algorithm == null);
-            
-            // Determine the alphabet used for pseudonymization
-            domain.setAlphabet((alphabet != null) ? alphabet : parent.getAlphabet());
-            domain.setAlphabetinherited(true);
-            
-            // Determine the number of pseudonyms the user wants to create
-            domain.setRandomalgorithmdesiredsize(parent.getRandomalgorithmdesiredsize());
-            domain.setRandomalgorithmdesiredsizeinherited(true);
-            
-            // Determine the minimum success probability for the generation of new pseudonyms
-            domain.setRandomalgorithmdesiredsuccessprobability(parent.getRandomalgorithmdesiredsuccessprobability());
-            domain.setRandomalgorithmdesiredsuccessprobabilityinherited(true);
-            
-            domain.setMultiplepsnallowed((multiplePsnAllowed != null) ? multiplePsnAllowed : parent.getMultiplepsnallowed());
-            domain.setMultiplepsnallowedinherited(multiplePsnAllowed == null);
-            
-            // Determine pseudonym length
-            domain.setPseudonymlength(parent.getPseudonymlength());
-            domain.setPseudonymlengthinherited(true);
-
-            // Determine padding character
-            domain.setPaddingcharacter(parent.getPaddingcharacter());
-            domain.setPaddingcharacterinherited(true);
-
-            // Determine if a check digit should be created
-            domain.setAddcheckdigit(parent.getAddcheckdigit());
-            domain.setAddcheckdigitinherited(true);
-
-            // Determine if the check digit should be included in the length of the pseudonym
-            domain.setLengthincludescheckdigit(parent.getLengthincludescheckdigit());
-            domain.setLengthincludescheckdigitinherited(true);
-            
-            domain.setSuperdomainid(parent.getId());
+        if (dto.getAlgorithm() == null && parent != null) {
+            domain.setAlgorithmId(parent.getAlgorithmId());
+            domain.setAlgorithmInherited(true);
         } else {
-            // No parent information provided
-
-            // Check if either validTo or validityTime is given
-            if (validTo == null && validityTime == null) {
-                // Both values are missing; inform user and use default
-                log.debug("For the domain \"" + domainName + "\" there was neither an end date nor a validity period given."
-                        + " The default of " + DEFAULT_VALIDITY_TIME + " is used.");
-                validityTime = DEFAULT_VALIDITY_TIME;
+            AlgorithmDTO algorithm = dto.getAlgorithm() == null ? defaultAlgorithm() : dto.getAlgorithm();
+            Integer algorithmId = algorithmDBService.createOrGetAlgorithm(algorithm.convertToPOJO());
+            if (algorithmId == null) {
+                return responseService.unprocessableEntity(responseContentType);
             }
-
-            // Determine validFrom date if not given by the user
-            domain.setValidfrom((validFrom != null) ? validFrom.toLocalDateTime() : LocalDateTime.now());
-            domain.setValidfrominherited(false);
-
-            // Determine expiration date
-            domain.setValidto((validTo != null) ? validTo.toLocalDateTime() : Utility.plusValidityTime(domain.getValidfrom(), validityTime));
-            domain.setValidtoinherited(false);
-
-            // Determine if the validFrom date correctness should be enforced
-            domain.setEnforcestartdatevalidity(DEFAULT_ENFORCE_START_DATE_VALIDITY);
-            domain.setEnforcestartdatevalidityinherited(false);
-
-            // Determine if the validTo date correctness should be enforced
-            domain.setEnforceenddatevalidity(DEFAULT_ENFORCE_END_DATE_VALIDITY);
-            domain.setEnforceenddatevalidityinherited(false);
-
-            // Determine pseudonymization algorithm
-            domain.setAlgorithm((algorithm != null) ? algorithm : DEFAULT_PSEUDONYMIZATION_ALGO);
-            domain.setAlgorithminherited(false);
             
-            // Determine the alphabet used for pseudonymization
-            domain.setAlphabet((alphabet != null) ? alphabet : DEFAULT_PSEUDONYMIZATION_ALPHABET);
-            domain.setAlphabetinherited(false);
-            
-            // Determine the number of pseudonyms the user wants to create
-            domain.setRandomalgorithmdesiredsize(DEFAULT_RANDOM_ALGORITHM_DESIRED_SIZE);
-            domain.setRandomalgorithmdesiredsizeinherited(false);
-            
-            // Determine the minimum success probability for the generation of new pseudonyms
-            domain.setRandomalgorithmdesiredsuccessprobability(DEFAULT_RANDOM_ALGORITHM_DESIRED_SUCCESS_PROBABILITY);
-            domain.setRandomalgorithmdesiredsuccessprobabilityinherited(false);
-            
-            domain.setMultiplepsnallowed((multiplePsnAllowed != null) ? multiplePsnAllowed : DEFAULT_ALLOW_MULTIPLE_PSN);
-            domain.setMultiplepsnallowedinherited(false);
-            
-            // Determine pseudonym length
-            domain.setPseudonymlength(DEFAULT_PSEUDONYM_LENGTH);
-            domain.setPseudonymlengthinherited(false);
-
-            // Determine padding character
-            domain.setPaddingcharacter(String.valueOf(DEFAULT_PADDING_CHARACTER));
-            domain.setPaddingcharacterinherited(false);
-
-            // Determine if a check digit should be created
-            domain.setAddcheckdigit(DEFAULT_ADD_CHECK_DIGIT);
-            domain.setAddcheckdigitinherited(false);
-
-            // Determine if the check digit should be included in the length of the pseudonym
-            domain.setLengthincludescheckdigit(DEFAULT_LENGTH_INCLUDES_CHECK_DIGIT);
-            domain.setLengthincludescheckdigitinherited(false);
-            
-            domain.setSuperdomainid(0);
+            domain.setAlgorithmId(algorithmId);
+            domain.setAlgorithmInherited(false);
         }
 
-        // Insert into database
         String result = domainDBAccessService.insertDomain(domain);
+        Domain stored = domainDBAccessService.getDomainByName(domain.getName());
+        DomainDTO resultDto = stored == null ? null : new DomainDTO().assignPojoValues(stored);
         
-        if (result.equals(DomainDBAccessService.INSERTION_SUCCESS)) {
-            // Return a 201-CREATED status and the location to the domain inside the response header.
-            DomainDTO createdDomDTO = new DomainDTO().assignPojoValues(domainDBAccessService.getDomainByName(domain.getName()));
-            if (!authorizationService.hasDomainPermission(domain.getName(), "complete-view")) {
-            	createdDomDTO = createdDomDTO.toReducedStandardView();
-            }
-            
-            log.info("Successfully created the domain \"" + domainName + "\".");
-            return responseService.created(responseContentType, location, createdDomDTO);
-        } else if (result.equals(DomainDBAccessService.INSERTION_DUPLICATE)) {
-            // Nothing added since the entry is a duplicate. Return an 200-OK status.
-        	DomainDTO existingDomDTO = new DomainDTO().assignPojoValues(domainDBAccessService.getDomainByName(domain.getName()));
-            if (!authorizationService.hasDomainPermission(domain.getName(), "complete-view")) {
-            	existingDomDTO = existingDomDTO.toReducedStandardView();
-            }
-            
-            log.info("The domain requested to be inserted was skipped because it is already in the database.");
-            return responseService.ok(responseContentType, existingDomDTO);
-        } else {
-            // Creating the domain failed. Return an error 422-UNPROCESSABLE_ENTITY.
-            log.error("Adding the domain \"" + domainName + "\" was unsuccessful.");
-            return responseService.unprocessableEntity(responseContentType);
+        if (resultDto != null && !authorizationService.hasDomainPermission(resultDto.getName(), "complete-view")) {
+            resultDto.toReducedStandardView();
         }
+        
+        if (DomainDBAccessService.INSERTION_SUCCESS.equals(result)) {
+            return responseService.created(responseContentType, location, resultDto);
+        }
+        
+        if (DomainDBAccessService.INSERTION_DUPLICATE.equals(result)) {
+            return responseService.ok(responseContentType, resultDto);
+        }
+        
+        return responseService.unprocessableEntity(responseContentType);
+    }
+
+    /**
+     * Creates an algorithm DTO initialized with the default pseudonymization
+     * settings.
+     * <p>
+     * A new random salt is generated for every invocation. The returned DTO is not
+     * persisted by this method.
+     * </p>
+     *
+     * @return a newly created algorithm DTO containing the default algorithm,
+     *         alphabet, pseudonym length, random-generation settings, check-digit
+     *         settings and salt
+     */
+    private AlgorithmDTO defaultAlgorithm() {
+        AlgorithmDTO algorithm = new AlgorithmDTO();
+        algorithm.setName(DEFAULT_PSEUDONYMIZATION_ALGO);
+        algorithm.setAlphabet(DEFAULT_PSEUDONYMIZATION_ALPHABET);
+        algorithm.setRandomAlgorithmDesiredSize(DEFAULT_RANDOM_ALGORITHM_DESIRED_SIZE);
+        algorithm.setRandomAlgorithmDesiredSuccessProbability(DEFAULT_RANDOM_ALGORITHM_DESIRED_SUCCESS_PROBABILITY);
+        algorithm.setConsecutiveValueCounter(1L);
+        algorithm.setPseudonymLength(DEFAULT_PSEUDONYM_LENGTH);
+        algorithm.setPaddingCharacter(String.valueOf(DEFAULT_PADDING_CHARACTER));
+        algorithm.setAddCheckDigit(DEFAULT_ADD_CHECK_DIGIT);
+        algorithm.setLengthIncludesCheckDigit(DEFAULT_LENGTH_INCLUDES_CHECK_DIGIT);
+        algorithm.setSalt(generateSalt(DEFAULT_SALT_LENGTH));
+        algorithm.setSaltLength(DEFAULT_SALT_LENGTH);
+        
+        return algorithm;
     }
 
     /**
@@ -804,6 +391,7 @@ public class DomainController {
     	
     	String attribute;
     	Domain domain = domainDBAccessService.getDomainByName(domainName);
+		org.trustdeck.jooq.generated.tables.pojos.Algorithm algorithm = domain == null ? null : algorithmDBService.getAlgorithmByID(domain.getAlgorithmId());
     	
     	// Check if the domain was found
     	if (domain == null) {
@@ -846,28 +434,19 @@ public class DomainController {
 			attribute = domain.getEnforceenddatevalidityinherited().toString();
 			break;
 		} case "algorithm": {
-			attribute = domain.getAlgorithm();
+			attribute = algorithm.getName();
 			break;
 		} case "algorithminherited": {
-			attribute = domain.getAlgorithminherited().toString();
+			attribute = domain.getAlgorithmInherited().toString();
 			break;
 		} case "alphabet": {
-			attribute = domain.getAlphabet();
-			break;
-		} case "alphabetinherited": {
-			attribute = domain.getAlphabetinherited().toString();
+			attribute = algorithm.getAlphabet();
 			break;
 		} case "randomalgorithmdesiredsize": {
-			attribute = domain.getRandomalgorithmdesiredsize().toString();
-			break;
-		} case "randomalgorithmdesiredsizeinherited": {
-			attribute = domain.getRandomalgorithmdesiredsizeinherited().toString();
+			attribute = algorithm.getRandomAlgorithmDesiredSize().toString();
 			break;
 		} case "randomalgorithmdesiredsuccessprobability": {
-			attribute = domain.getRandomalgorithmdesiredsuccessprobability().toString();
-			break;
-		} case "randomalgorithmdesiredsuccessprobabilityinherited": {
-			attribute = domain.getRandomalgorithmdesiredsuccessprobabilityinherited().toString();
+			attribute = algorithm.getRandomAlgorithmDesiredSuccessProbability().toString();
 			break;
 		} case "multiplepsnallowed": {
 			attribute = domain.getMultiplepsnallowed().toString();
@@ -876,37 +455,25 @@ public class DomainController {
 			attribute = domain.getMultiplepsnallowedinherited().toString();
 			break;
 		} case "consecutivevaluecounter": {
-			attribute = domain.getConsecutivevaluecounter().toString();
+			attribute = algorithm.getConsecutiveValueCounter().toString();
 			break;
 		} case "pseudonymlength": {
-			attribute = domain.getPseudonymlength().toString();
-			break;
-		} case "pseudonymlengthinherited": {
-			attribute = domain.getPseudonymlengthinherited().toString();
+			attribute = algorithm.getPseudonymLength().toString();
 			break;
 		} case "paddingcharacter": {
-			attribute = domain.getPaddingcharacter();
-			break;
-		} case "paddingcharacterinherited": {
-			attribute = domain.getPaddingcharacterinherited().toString();
+			attribute = algorithm.getPaddingCharacter();
 			break;
 		} case "addcheckdigit": {
-			attribute = domain.getAddcheckdigit().toString();
-			break;
-		} case "addcheckdigitinherited": {
-			attribute = domain.getAddcheckdigitinherited().toString();
+			attribute = algorithm.getAddCheckDigit().toString();
 			break;
 		} case "lengthincludescheckdigit": {
-			attribute = domain.getLengthincludescheckdigit().toString();
-			break;
-		} case "lengthincludescheckdigitinherited": {
-			attribute = domain.getLengthincludescheckdigitinherited().toString();
+			attribute = algorithm.getLengthIncludesCheckDigit().toString();
 			break;
 		} case "salt": {
-			attribute = domain.getSalt();
+			attribute = algorithm.getSalt();
 			break;
 		} case "saltlength": {
-			attribute = domain.getSaltlength().toString();
+			attribute = algorithm.getSaltLength().toString();
 			break;
 		} case "description": {
 			attribute = domain.getDescription();
@@ -1073,33 +640,16 @@ public class DomainController {
         String validityTime = domainDTO.getValidityTime();
         Boolean enforceStartDateValidity = domainDTO.getEnforceStartDateValidity();
         Boolean enforceEndDateValidity = domainDTO.getEnforceEndDateValidity();
-        String algorithm = domainDTO.getAlgorithm();
-        String alphabet = Utility.generateAlphabet(algorithm, null);
-        Long randomAlgorithmDesiredSize = domainDTO.getRandomAlgorithmDesiredSize();
-        Double randomAlgorithmDesiredSuccessProbability = domainDTO.getRandomAlgorithmDesiredSuccessProbability();
+        AlgorithmDTO algorithm = domainDTO.getAlgorithm();
         Boolean multiplePsnAllowed = domainDTO.getMultiplePsnAllowed();
-        Long consecVal = domainDTO.getConsecutiveValueCounter();
-        Integer psnLength = domainDTO.getPseudonymLength();
-        Character paddingChar = domainDTO.getPaddingCharacter();
-        Boolean addCheckDigit = domainDTO.getAddCheckDigit();
-        Boolean lengthIncludesCheckDigit = domainDTO.getLengthIncludesCheckDigit();
-        String salt = domainDTO.getSalt();
-        Integer saltLength = domainDTO.getSaltLength();
         String description = domainDTO.getDescription();
         
         if (domainDBAccessService.getAmountOfPseudonymsInDomain(oldDomainName) > 0) {
         	log.warn("Changes to the domain configuration can introduce inconsistencies when creating further pseudonyms.");
         }
 
-        if (salt != null && !this.validateSalt(salt, false)) {
-        	// A non-valid salt value was encountered. Return a 400-BAD_REQUEST.
-            return responseService.badRequest(responseContentType);
-        }
-
         if (Assertion.assertNullAll(newDomainName, prefix, validFrom, validTo, validityTime, enforceStartDateValidity,
-                enforceEndDateValidity, algorithm, alphabet, randomAlgorithmDesiredSize, 
-                randomAlgorithmDesiredSuccessProbability, multiplePsnAllowed, consecVal, psnLength, paddingChar, 
-                addCheckDigit, lengthIncludesCheckDigit, salt, saltLength, description)) {
+                enforceEndDateValidity, algorithm, multiplePsnAllowed, description)) {
             // An empty object was passed, so there is nothing to update.
             log.debug("The domain DTO passed by the user was empty. Nothing to update.");
             return responseService.unprocessableEntity(responseContentType);
@@ -1133,28 +683,6 @@ public class DomainController {
             return responseService.notAcceptable(responseContentType);
         }
         
-        // Ensure a valid desired success probability, if the selected algorithm is of the RANDOM-family
-        if (algorithm != null && algorithm.toUpperCase().startsWith("RANDOM") && randomAlgorithmDesiredSuccessProbability != null) {
-        	
-        	if (randomAlgorithmDesiredSuccessProbability > 1.0d) {
-        		// The success probability was probably provided as a number between 0 and 100, so we transform it into [0,1] 
-        		randomAlgorithmDesiredSuccessProbability /= 100.0d;
-        	}
-        	
-        	if (randomAlgorithmDesiredSuccessProbability >= 1.0d) {
-        		// The provided number is still too big, switch to default value
-        		log.warn("The provided success probability for the pseudonymization process was too big. Will not be updated");
-        		randomAlgorithmDesiredSuccessProbability = null;
-        	} else if (randomAlgorithmDesiredSuccessProbability <= 0.0d) {
-	    		// The provided number is zero or negative, switch to default value
-	    		log.warn("The provided success probability for the pseudonymization process was too small. Will not be updated.");
-	    		randomAlgorithmDesiredSuccessProbability = null;
-	        }
-        } else {
-        	// Do not update and discard any provided information
-        	randomAlgorithmDesiredSuccessProbability = null;
-        }
-        
         // Determine validTo date
         LocalDateTime vTo = null;
         if (validTo != null) {
@@ -1179,27 +707,12 @@ public class DomainController {
         updated.setEnforcestartdatevalidityinherited((enforceStartDateValidity != null) ? false : null);
         updated.setEnforceenddatevalidity(enforceEndDateValidity);
         updated.setEnforceenddatevalidityinherited((enforceEndDateValidity != null) ? false : null);
-        updated.setAlgorithm((algorithm != null && !algorithm.trim().equals("")) ? algorithm.trim() : null);
-        updated.setAlgorithminherited((algorithm != null && !algorithm.trim().equals("")) ? false : null);
-        updated.setAlphabet((alphabet != null && !alphabet.trim().equals("")) ? alphabet.trim() : null);
-        updated.setAlphabetinherited((alphabet != null) ? false : null);
-        updated.setRandomalgorithmdesiredsize((randomAlgorithmDesiredSize != null) ? randomAlgorithmDesiredSize : null);
-        updated.setRandomalgorithmdesiredsizeinherited((randomAlgorithmDesiredSize != null) ? false : null);
-        updated.setRandomalgorithmdesiredsuccessprobability((randomAlgorithmDesiredSuccessProbability != null) ? randomAlgorithmDesiredSuccessProbability : null);
-        updated.setRandomalgorithmdesiredsuccessprobabilityinherited((randomAlgorithmDesiredSuccessProbability != null) ? false : null);
+        if (algorithm != null) {
+            updated.setAlgorithmId(algorithmDBService.createOrGetAlgorithm(algorithm.convertToPOJO()));
+            updated.setAlgorithmInherited(false);
+        }
         updated.setMultiplepsnallowed(multiplePsnAllowed);
         updated.setMultiplepsnallowedinherited((multiplePsnAllowed != null) ? false : null);
-        updated.setConsecutivevaluecounter((consecVal != null && consecVal > 0L) ? consecVal : null);
-        updated.setPseudonymlength((psnLength != null && psnLength > 0) ? psnLength : null);
-        updated.setPseudonymlengthinherited((psnLength != null && psnLength > 0) ? false : null);
-        updated.setPaddingcharacter((paddingChar != null && !Character.isWhitespace(paddingChar)) ? paddingChar.toString() : null);
-        updated.setPaddingcharacterinherited((paddingChar != null && !Character.isWhitespace(paddingChar)) ? false : null);
-        updated.setAddcheckdigit(addCheckDigit);
-        updated.setAddcheckdigitinherited((addCheckDigit != null) ? false : null);
-        updated.setLengthincludescheckdigit(lengthIncludesCheckDigit);
-        updated.setLengthincludescheckdigitinherited((lengthIncludesCheckDigit != null) ? false : null);
-        updated.setSalt(salt);
-        updated.setSaltlength((saltLength != null && saltLength >= MINIMUM_SALT_LENGTH && saltLength <= MAXIMUM_SALT_LENGTH) ? saltLength : null);
         updated.setDescription(description);
 
         // Execute update
@@ -1248,7 +761,7 @@ public class DomainController {
         Timestamp validFrom = domainDTO.getValidFrom() != null ? Timestamp.valueOf(domainDTO.getValidFrom()) : null;
         Timestamp validTo = domainDTO.getValidTo() != null ? Timestamp.valueOf(domainDTO.getValidTo()) : null;
         String validityTime = domainDTO.getValidityTime();
-        String algorithm = domainDTO.getAlgorithm();
+        AlgorithmDTO algorithm = domainDTO.getAlgorithm();
         Boolean multiplePsnAllowed = domainDTO.getMultiplePsnAllowed();
         String description = domainDTO.getDescription();
 
@@ -1307,8 +820,10 @@ public class DomainController {
         // Allow the following changes only when the domain does not contain any records yet
         if (domainDBAccessService.getAmountOfPseudonymsInDomain(old.getName()) == 0) {
             updated.setPrefix((prefix != null && !prefix.trim().equals("")) ? prefix.trim() : null);
-            updated.setAlgorithm((algorithm != null && !algorithm.trim().equals("")) ? algorithm : null);
-            updated.setAlgorithminherited((algorithm != null && !algorithm.trim().equals("")) ? false : null);
+            if (algorithm != null) {
+                updated.setAlgorithmId(algorithmDBService.createOrGetAlgorithm(algorithm.convertToPOJO()));
+                updated.setAlgorithmInherited(false);
+            }
             updated.setMultiplepsnallowed(multiplePsnAllowed);
             updated.setMultiplepsnallowedinherited((multiplePsnAllowed != null) ? false : null);
         } else {
@@ -1376,12 +891,11 @@ public class DomainController {
         }
 
         // Create update-domain
-        Domain updated = new Domain();
-        updated.setSalt(newSalt);
-        updated.setSaltlength((allowEmpty && newSalt.isBlank()) ? 0 : newSalt.length());
-
-        // Execute update
-        Domain updatedDomain = domainDBAccessService.updateDomain(old, updated, false);
+        org.trustdeck.jooq.generated.tables.pojos.Algorithm oldAlgorithm = algorithmDBService.getAlgorithmByID(old.getAlgorithmId());
+        org.trustdeck.jooq.generated.tables.pojos.Algorithm updatedAlgorithm = new org.trustdeck.jooq.generated.tables.pojos.Algorithm(oldAlgorithm);
+        updatedAlgorithm.setSalt(newSalt);
+        updatedAlgorithm.setSaltLength((allowEmpty && newSalt.isBlank()) ? 0 : newSalt.length());
+        Domain updatedDomain = algorithmDBService.updateAlgorithm(oldAlgorithm, updatedAlgorithm) != null ? old : null;
         if (updatedDomain != null) {
             // Success. Return a 200-OK status.
         	DomainDTO updatedDomDTO = new DomainDTO().assignPojoValues(updatedDomain);
@@ -1455,31 +969,6 @@ public class DomainController {
         log.debug("Domain search for query \"" + query + "\" returned " + visibleDomains.size() + " result(s).");
         return responseService.ok(responseContentType, visibleDomains);
     }
-	
-	/**
-	 * Calculate the length of pseudonyms needed so that the desired number of pseudonyms can be stored.
-	 * 
-	 * @param desiredSize the desired number of pseudonyms that can be generated for the domain in question
-	 * @param desiredSuccessProbability the desired probability of successful pseudonym generation
-	 * @param alphabet the alphabet used for generating the pseudonyms
-	 * @return the minimal length the pseudonyms must have so that the desired amount can be generated
-	 */
-	private int calculatePseudonymLength(Long desiredSize, Double desiredSuccessProbability, String alphabet) {
-		// Collect variables
-		int m = DEFAULT_NUMBER_OF_RETRIES;
-		double T = desiredSuccessProbability;
-		long n = desiredSize;
-		
-		// Calculate the amount of possible pseudonyms needed so that the desired amount of pseudonyms will be 
-		// reasonably probable created: (1-(1-((k-n)/k))^m)>T -->
-		// k > n/((1-T)^(1/m)) --> k = ⌈n/((1-T)^(1/m))⌉
-		double k = Math.ceil(n/Math.pow((1.0-T), (1.0/m)));
-		
-		// Calculate length of the pseudonyms: k = alphabet.length^psn_length
-		double psnLength = Math.ceil(Math.log(k)/Math.log(alphabet.length()));
-		
-		return (int) psnLength;
-	}
 	
 	/**
 	 * Method to generate a random salt value of a given length.

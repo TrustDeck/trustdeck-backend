@@ -111,7 +111,7 @@ public class ConsecutivePseudonymizer extends Pseudonymizer {
 		if (startValue != null && startValue > 0) {
 			counter = startValue;
 		} else {
-			counter = isAlgorithmObjectBased() ? getAdbs().getAlgorithmByID(getAlgorithmID()).getConsecutivevaluecounter() : getDdba().getDomainByName(getDomainName()).getConsecutivevaluecounter();
+			counter = isAlgorithmObjectBased() ? getAdbs().getAlgorithmByID(getAlgorithmID()).getConsecutiveValueCounter() : getAdbs().getAlgorithmByID(getDdba().getDomainByName(getDomainName()).getAlgorithmId()).getConsecutiveValueCounter();
 		}
 		
 		setCurrentValue(counter == null ? 1L : counter + 1L);

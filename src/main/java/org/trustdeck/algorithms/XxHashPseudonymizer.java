@@ -104,7 +104,7 @@ public class XxHashPseudonymizer extends Pseudonymizer {
 		// Retrieve counter if needed. Immediately update it and write it back
 		Long counter = null;
 		if (isMultiplePsnAllowed()) {
-			counter = isAlgorithmObjectBased() ? getAdbs().getAlgorithmByID(getAlgorithmID()).getConsecutivevaluecounter() : getDdba().getDomainByName(getDomainName()).getConsecutivevaluecounter();
+			counter = isAlgorithmObjectBased() ? getAdbs().getAlgorithmByID(getAlgorithmID()).getConsecutiveValueCounter() : getAdbs().getAlgorithmByID(getDdba().getDomainByName(getDomainName()).getAlgorithmId()).getConsecutiveValueCounter();
 			setCurrentValue(counter == null ? 1L : counter + 1L);
 			persist();
 		}
@@ -113,7 +113,7 @@ public class XxHashPseudonymizer extends Pseudonymizer {
 		String text = isMultiplePsnAllowed() ? identifier + counter.toString() : identifier;
 
 		// Get salt and transform it into a seed (non-numeric String to Long)
-		String salt = isAlgorithmObjectBased() ? getAdbs().getAlgorithmByID(getAlgorithmID()).getSalt() : getDdba().getDomainByName(getDomainName()).getSalt();
+		String salt = isAlgorithmObjectBased() ? getAdbs().getAlgorithmByID(getAlgorithmID()).getSalt() : getAdbs().getAlgorithmByID(getDdba().getDomainByName(getDomainName()).getAlgorithmId()).getSalt();
 		long seed = Assertion.isNotNullOrEmpty(salt) ? ByteBuffer.wrap(DigestUtils.sha256(salt)).getLong() : 0L;
 
 		// Transform the identifier into a ByteBuffer and hash it
