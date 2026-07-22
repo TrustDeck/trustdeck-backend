@@ -71,6 +71,11 @@ app:
       password: ${DATABASE_TRUSTDECK_PASSWORD}
       configuration:
         maximum-pool-size: 20
+  cors:
+    allowed-origins: "${TRUSTDECK_CORS_ALLOWED_ORIGINS:}"
+    allowed-methods: "${TRUSTDECK_CORS_ALLOWED_METHODS:GET,POST,PUT,DELETE}"
+    allowed-headers: "${TRUSTDECK_CORS_ALLOWED_HEADERS:Authorization,Content-Type,Accept,Origin}"
+    allow-credentials: ${TRUSTDECK_CORS_ALLOW_CREDENTIALS:false}
   linkage:
     pprl:
       secret: ${TRUSTDECK_PPRL_SECRET}
