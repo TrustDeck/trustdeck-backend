@@ -45,6 +45,7 @@ import org.trustdeck.dto.ProjectDTO;
 import org.trustdeck.dto.PseudonymDTO;
 import org.trustdeck.dto.RecordLinkageCandidateDTO;
 import org.trustdeck.exception.DuplicateEntityInstanceException;
+import org.trustdeck.exception.TooManyRecordLinkageCandidatesException;
 import org.trustdeck.exception.UnexpectedResultSizeException;
 import org.trustdeck.jooq.generated.tables.pojos.Domain;
 import org.trustdeck.linkage.model.CandidateStatus;
@@ -193,8 +194,15 @@ public class EntityInstanceRESTController {
         // Check if linkage is enabled and automatic linkage should be done
         if (linkageConfig.isEnabled() && linkageConfig.isAutoLinkOnCreate()) {
             // Generate candidates
-        	List<RecordLinkageCandidateDTO> candidates = recordLinkageService.findCandidates(project.getId(), entityType, entityInstanceDTO.getData(), true);
-            if (candidates == null) {
+        	List<RecordLinkageCandidateDTO> candidates;
+			try {
+				candidates = recordLinkageService.findCandidates(project.getId(), entityType, entityInstanceDTO.getData(), true);
+			} catch (TooManyRecordLinkageCandidatesException e) {
+				log.warn("Record linkage was aborted because the blocking rules produced more than " + e.getCandidateLimit() + " candidates.");
+			    return responseService.unprocessableEntity(responseContentType);
+			}
+            
+        	if (candidates == null) {
                 log.debug("Automatic record linkage failed.");
                 return responseService.unprocessableEntity(responseContentType);
             }

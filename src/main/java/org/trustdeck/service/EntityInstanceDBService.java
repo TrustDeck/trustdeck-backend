@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 import org.jooq.Condition;
@@ -37,6 +38,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.trustdeck.dto.EntityInstanceDTO;
 import org.trustdeck.exception.CreationException;
 import org.trustdeck.exception.DuplicateEntityInstanceException;
+import org.trustdeck.exception.TooManyRecordLinkageCandidatesException;
 import org.trustdeck.exception.UnexpectedResultSizeException;
 import org.trustdeck.exception.UpdateException;
 import org.trustdeck.jooq.generated.tables.pojos.EntityInstance;
@@ -592,7 +594,13 @@ public class EntityInstanceDBService {
     @Transactional(readOnly = true)
     public List<Long> findCandidateIdsByBlockingTokens(int projectId, int entityTypeId, List<LinkageToken> payloadTokens, int limit, boolean includeDeleted) {
     	// Only blocking tokens are used during candidate generation
-    	List<LinkageToken> blockTokens = payloadTokens.stream().filter(t -> t.getTokenType() != null && t.getTokenType().isCandidateGenerationToken()).toList();
+    	List<LinkageToken> blockTokens = payloadTokens.stream()
+    			.filter(Objects::nonNull)
+    			.filter(t -> t.getTokenType() != null)
+    			.filter(t -> t.getTokenType().isCandidateGenerationToken())
+    			.filter(t -> t.getTag() != null)
+                .filter(t -> t.getTokenValue() != null)
+                .distinct().toList();
 
     	// Without blocking tokens, no efficient candidate generation can be performed
     	if (blockTokens.isEmpty()) {
@@ -621,8 +629,10 @@ public class EntityInstanceDBService {
     	}
 
     	// Retrieve matching entity instance IDs, exclude soft-deleted records,
-    	// and rank candidates by the number of matching blocking tokens
-    	return dsl.select(LINKAGE_TOKEN.ENTITY_INSTANCE_ID)
+    	// and rank candidates by the number of matching blocking tokens.
+    	// Fetch one additional candidate so that an exceeded limit can be
+        // detected without retrieving the complete candidate set.
+    	List<Long> candidateIds = dsl.select(LINKAGE_TOKEN.ENTITY_INSTANCE_ID)
     			.from(LINKAGE_TOKEN)
     			.join(ENTITY_INSTANCE)
 					.on(LINKAGE_TOKEN.PROJECT_ID.eq(ENTITY_INSTANCE.PROJECT_ID))
@@ -630,9 +640,17 @@ public class EntityInstanceDBService {
 					.and(LINKAGE_TOKEN.ENTITY_INSTANCE_ID.eq(ENTITY_INSTANCE.ID))
 				.where(condition)
 				.groupBy(LINKAGE_TOKEN.ENTITY_INSTANCE_ID)
-				.orderBy(DSL.count().desc())
-				.limit(limit) // TODO: error
+				.orderBy(DSL.count().desc(), LINKAGE_TOKEN.ENTITY_INSTANCE_ID.asc())
+				.limit(limit + 1)
 				.fetch(LINKAGE_TOKEN.ENTITY_INSTANCE_ID);
+    	
+    	if (candidateIds.size() > limit) {
+            log.warn("Record-linkage blocking produced more than " + limit + " candidates for project "
+            		+ projectId + " and entity type " + entityTypeId + ".");
+            throw new TooManyRecordLinkageCandidatesException(limit);
+        }
+
+        return candidateIds;
     }
     
     /**
