@@ -20,6 +20,7 @@ package org.trustdeck.test;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.trustdeck.dto.DomainDTO;
+import org.trustdeck.dto.AlgorithmDTO;
 import org.trustdeck.service.AssertWebRequestService;
 
 import java.time.LocalDateTime;
@@ -46,46 +47,54 @@ public class TestsScenariosServiceIT extends AssertWebRequestService {
         rootDomainDto.setValidFrom(validFromTime);
         LocalDateTime validToTime = validFromTime.plusYears(20);
         rootDomainDto.setValidTo(validToTime);
-        rootDomainDto.setEnforceEndDateValidityInherited(true);
         rootDomainDto.setEnforceEndDateValidity(true);
-        rootDomainDto.setEnforceStartDateValidityInherited(true);
         rootDomainDto.setEnforceStartDateValidity(true);
-        rootDomainDto.setAlgorithmInherited(true);
-        rootDomainDto.setAlgorithm("MD5");
-        rootDomainDto.setPseudonymLength(16);
+        AlgorithmDTO algorithm = new AlgorithmDTO();
+        algorithm.setName("MD5");
+        algorithm.setAlphabet("ABCDEF0123456789");
+        algorithm.setRandomAlgorithmDesiredSize(100000000L);
+        algorithm.setRandomAlgorithmDesiredSuccessProbability(0.99999998d);
+        algorithm.setConsecutiveValueCounter(1L);
+        algorithm.setPseudonymLength(16);
+        algorithm.setPaddingCharacter("0");
+        algorithm.setAddCheckDigit(true);
+        algorithm.setLengthIncludesCheckDigit(false);
+        algorithm.setSalt("azMPTIQXJsept_4nDj5B1BXN83Bj_8VJ");
+        algorithm.setSaltLength(32);
+        rootDomainDto.setAlgorithm(algorithm);
         rootDomainDto.setDescription("That is the beginning of a long journey");
         rootDomainDto.setSuperDomainName(null);
 
         //we make the first request as a complete request and the other with reduce view
-        this.assertCreatedRequest("createScenarioRootDomainComplete", post("/api/pseudonymization/domain/complete"), null, rootDomainDto, this.getAccessToken());
+        this.assertCreatedRequest("createScenarioRootDomainComplete", post("/api/domains/complete"), null, rootDomainDto, this.getAccessToken());
 
         //create the first child
         DomainDTO childOneDomainDto = new DomainDTO();
         childOneDomainDto.setName("ProjectX-Labor");
         childOneDomainDto.setPrefix("PX-L-");
         childOneDomainDto.setSuperDomainName("ProjectX");
-        this.assertCreatedRequest("createScenarioChildOneDomainComplete", post("/api/pseudonymization/domain"), null, childOneDomainDto, this.getAccessToken());
+        this.assertCreatedRequest("createScenarioChildOneDomainComplete", post("/api/domains"), null, childOneDomainDto, this.getAccessToken());
 
         //create the first child
         DomainDTO childTwoDomainDto = new DomainDTO();
         childTwoDomainDto.setName("ProjectX-Paper");
         childTwoDomainDto.setPrefix("PX-P-");
         childTwoDomainDto.setSuperDomainName("ProjectX");
-        this.assertCreatedRequest("createScenarioChildTwoDomainComplete", post("/api/pseudonymization/domain"), null, childTwoDomainDto, this.getAccessToken());
+        this.assertCreatedRequest("createScenarioChildTwoDomainComplete", post("/api/domains"), null, childTwoDomainDto, this.getAccessToken());
 
         //create the first child
         DomainDTO childThreeDomainDto = new DomainDTO();
         childThreeDomainDto.setName("ProjectX-MRT");
         childThreeDomainDto.setPrefix("PX-MRT-");
         childThreeDomainDto.setSuperDomainName("ProjectX");
-        this.assertCreatedRequest("createScenarioChildThreeDomainComplete", post("/api/pseudonymization/domain"), null, childThreeDomainDto, this.getAccessToken());
+        this.assertCreatedRequest("createScenarioChildThreeDomainComplete", post("/api/domains"), null, childThreeDomainDto, this.getAccessToken());
 
         //create the first child
         DomainDTO childOfchildTwoDomainDto = new DomainDTO();
         childOfchildTwoDomainDto.setName("ProjectX-PaperXY");
         childOfchildTwoDomainDto.setPrefix("PX-PXY-");
         childOfchildTwoDomainDto.setSuperDomainName("ProjectX-Paper");
-        this.assertCreatedRequest("createScenarioChildOfchildTwoDomainComplete", post("/api/pseudonymization/domain"), null, childOfchildTwoDomainDto, this.getAccessToken());
+        this.assertCreatedRequest("createScenarioChildOfchildTwoDomainComplete", post("/api/domains"), null, childOfchildTwoDomainDto, this.getAccessToken());
 
     }
 
@@ -99,7 +108,7 @@ public class TestsScenariosServiceIT extends AssertWebRequestService {
         createFirstRecordDto.setId("100");
         createFirstRecordDto.setIdType("ANY-ID");
 
-        MockHttpServletResponse response = this.assertCreatedRequest("scenarioCreateFirstRecord", post("/api/pseudonymization/domain/" + domainName + "/pseudonym"), null, createFirstRecordDto, this.getAccessToken());
+        MockHttpServletResponse response = this.assertCreatedRequest("scenarioCreateFirstRecord", post("/api/domains/" + domainName + "/pseudonyms"), null, createFirstRecordDto, this.getAccessToken());
         String  content = response.getContentAsString();
         PseudonymDTO r1 = this.applySingleJsonContentToClass(content, PseudonymDTO.class);
 
@@ -107,7 +116,7 @@ public class TestsScenariosServiceIT extends AssertWebRequestService {
         createSecondRecordDto.setId("200");
         createSecondRecordDto.setIdType("ANY-ID");
 
-        response =  this.assertCreatedRequest("scenarioCreateSecondRecord", post("/api/pseudonymization/domain/" + domainName + "/pseudonym"), null, createSecondRecordDto, this.getAccessToken());
+        response =  this.assertCreatedRequest("scenarioCreateSecondRecord", post("/api/domains/" + domainName + "/pseudonyms"), null, createSecondRecordDto, this.getAccessToken());
         content = response.getContentAsString();
         PseudonymDTO r2 = this.applySingleJsonContentToClass(content, PseudonymDTO.class);
 		*/
@@ -126,7 +135,7 @@ public class TestsScenariosServiceIT extends AssertWebRequestService {
         PseudonymDTO updateRecordDto = new PseudonymDTO();
         updateRecordDto.setId("100");
         updateRecordDto.setIdType("ANY-ID");
-        this.assertOkRequest("updateRecordCompleteByPseudonym", put("/api/pseudonymization/domain/" + domainName + "/pseudonym/complete"), updateParameter, updateRecordDto, this.getAccessToken());
+        this.assertOkRequest("updateRecordCompleteByPseudonym", put("/api/domains/" + domainName + "/pseudonyms/complete"), updateParameter, updateRecordDto, this.getAccessToken());
         */
 
         /*
@@ -143,7 +152,7 @@ public class TestsScenariosServiceIT extends AssertWebRequestService {
         PseudonymDTO updateRecordDto = new PseudonymDTO();
         updateRecordDto.setPsn(r1.getPsn());
 
-        this.assertOkRequest("scenarioMergePseudonym", put("/api/pseudonymization/domain/" + domainName + "/pseudonym/complete"), updateParameter, updateRecordDto, this.getAccessToken());
+        this.assertOkRequest("scenarioMergePseudonym", put("/api/domains/" + domainName + "/pseudonyms/complete"), updateParameter, updateRecordDto, this.getAccessToken());
 
 
         Map<String, String> getParameter = new HashMap<>() {
@@ -154,7 +163,7 @@ public class TestsScenariosServiceIT extends AssertWebRequestService {
             }
         };
 
-        response = this.assertOkRequest("scenarioReadMultiple", get("/api/pseudonymization/domain/" + domainName + "/pseudonym"), getParameter, null, this.getAccessToken());
+        response = this.assertOkRequest("scenarioReadMultiple", get("/api/domains/" + domainName + "/pseudonyms"), getParameter, null, this.getAccessToken());
         content = response.getContentAsString();
         */
     }
