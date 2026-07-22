@@ -78,131 +78,131 @@ public class AlgorithmRecord extends UpdatableRecordImpl<AlgorithmRecord> implem
     }
 
     /**
-     * Setter for <code>public.algorithm.randomalgorithmdesiredsize</code>.
+     * Setter for <code>public.algorithm.random_algorithm_desired_size</code>.
      */
     @Override
-    public AlgorithmRecord setRandomalgorithmdesiredsize(Long value) {
+    public AlgorithmRecord setRandomAlgorithmDesiredSize(Long value) {
         set(3, value);
         return this;
     }
 
     /**
-     * Getter for <code>public.algorithm.randomalgorithmdesiredsize</code>.
+     * Getter for <code>public.algorithm.random_algorithm_desired_size</code>.
      */
     @NotNull
     @Override
-    public Long getRandomalgorithmdesiredsize() {
+    public Long getRandomAlgorithmDesiredSize() {
         return (Long) get(3);
     }
 
     /**
      * Setter for
-     * <code>public.algorithm.randomalgorithmdesiredsuccessprobability</code>.
+     * <code>public.algorithm.random_algorithm_desired_success_probability</code>.
      */
     @Override
-    public AlgorithmRecord setRandomalgorithmdesiredsuccessprobability(Double value) {
+    public AlgorithmRecord setRandomAlgorithmDesiredSuccessProbability(Double value) {
         set(4, value);
         return this;
     }
 
     /**
      * Getter for
-     * <code>public.algorithm.randomalgorithmdesiredsuccessprobability</code>.
+     * <code>public.algorithm.random_algorithm_desired_success_probability</code>.
      */
     @NotNull
     @Override
-    public Double getRandomalgorithmdesiredsuccessprobability() {
+    public Double getRandomAlgorithmDesiredSuccessProbability() {
         return (Double) get(4);
     }
 
     /**
-     * Setter for <code>public.algorithm.consecutivevaluecounter</code>.
+     * Setter for <code>public.algorithm.consecutive_value_counter</code>.
      */
     @Override
-    public AlgorithmRecord setConsecutivevaluecounter(Long value) {
+    public AlgorithmRecord setConsecutiveValueCounter(Long value) {
         set(5, value);
         return this;
     }
 
     /**
-     * Getter for <code>public.algorithm.consecutivevaluecounter</code>.
+     * Getter for <code>public.algorithm.consecutive_value_counter</code>.
      */
     @NotNull
     @Override
-    public Long getConsecutivevaluecounter() {
+    public Long getConsecutiveValueCounter() {
         return (Long) get(5);
     }
 
     /**
-     * Setter for <code>public.algorithm.pseudonymlength</code>.
+     * Setter for <code>public.algorithm.pseudonym_length</code>.
      */
     @Override
-    public AlgorithmRecord setPseudonymlength(Integer value) {
+    public AlgorithmRecord setPseudonymLength(Integer value) {
         set(6, value);
         return this;
     }
 
     /**
-     * Getter for <code>public.algorithm.pseudonymlength</code>.
+     * Getter for <code>public.algorithm.pseudonym_length</code>.
      */
     @NotNull
     @Override
-    public Integer getPseudonymlength() {
+    public Integer getPseudonymLength() {
         return (Integer) get(6);
     }
 
     /**
-     * Setter for <code>public.algorithm.paddingcharacter</code>.
+     * Setter for <code>public.algorithm.padding_character</code>.
      */
     @Override
-    public AlgorithmRecord setPaddingcharacter(String value) {
+    public AlgorithmRecord setPaddingCharacter(String value) {
         set(7, value);
         return this;
     }
 
     /**
-     * Getter for <code>public.algorithm.paddingcharacter</code>.
+     * Getter for <code>public.algorithm.padding_character</code>.
      */
     @NotNull
     @Size(max = 1)
     @Override
-    public String getPaddingcharacter() {
+    public String getPaddingCharacter() {
         return (String) get(7);
     }
 
     /**
-     * Setter for <code>public.algorithm.addcheckdigit</code>.
+     * Setter for <code>public.algorithm.add_check_digit</code>.
      */
     @Override
-    public AlgorithmRecord setAddcheckdigit(Boolean value) {
+    public AlgorithmRecord setAddCheckDigit(Boolean value) {
         set(8, value);
         return this;
     }
 
     /**
-     * Getter for <code>public.algorithm.addcheckdigit</code>.
+     * Getter for <code>public.algorithm.add_check_digit</code>.
      */
     @NotNull
     @Override
-    public Boolean getAddcheckdigit() {
+    public Boolean getAddCheckDigit() {
         return (Boolean) get(8);
     }
 
     /**
-     * Setter for <code>public.algorithm.lengthincludescheckdigit</code>.
+     * Setter for <code>public.algorithm.length_includes_check_digit</code>.
      */
     @Override
-    public AlgorithmRecord setLengthincludescheckdigit(Boolean value) {
+    public AlgorithmRecord setLengthIncludesCheckDigit(Boolean value) {
         set(9, value);
         return this;
     }
 
     /**
-     * Getter for <code>public.algorithm.lengthincludescheckdigit</code>.
+     * Getter for <code>public.algorithm.length_includes_check_digit</code>.
      */
     @NotNull
     @Override
-    public Boolean getLengthincludescheckdigit() {
+    public Boolean getLengthIncludesCheckDigit() {
         return (Boolean) get(9);
     }
 
@@ -225,20 +225,20 @@ public class AlgorithmRecord extends UpdatableRecordImpl<AlgorithmRecord> implem
     }
 
     /**
-     * Setter for <code>public.algorithm.saltlength</code>.
+     * Setter for <code>public.algorithm.salt_length</code>.
      */
     @Override
-    public AlgorithmRecord setSaltlength(Integer value) {
+    public AlgorithmRecord setSaltLength(Integer value) {
         set(11, value);
         return this;
     }
 
     /**
-     * Getter for <code>public.algorithm.saltlength</code>.
+     * Getter for <code>public.algorithm.salt_length</code>.
      */
     @NotNull
     @Override
-    public Integer getSaltlength() {
+    public Integer getSaltLength() {
         return (Integer) get(11);
     }
 
@@ -282,37 +282,37 @@ public class AlgorithmRecord extends UpdatableRecordImpl<AlgorithmRecord> implem
 
     @Override
     public Field<Long> field4() {
-        return Algorithm.ALGORITHM.RANDOMALGORITHMDESIREDSIZE;
+        return Algorithm.ALGORITHM.RANDOM_ALGORITHM_DESIRED_SIZE;
     }
 
     @Override
     public Field<Double> field5() {
-        return Algorithm.ALGORITHM.RANDOMALGORITHMDESIREDSUCCESSPROBABILITY;
+        return Algorithm.ALGORITHM.RANDOM_ALGORITHM_DESIRED_SUCCESS_PROBABILITY;
     }
 
     @Override
     public Field<Long> field6() {
-        return Algorithm.ALGORITHM.CONSECUTIVEVALUECOUNTER;
+        return Algorithm.ALGORITHM.CONSECUTIVE_VALUE_COUNTER;
     }
 
     @Override
     public Field<Integer> field7() {
-        return Algorithm.ALGORITHM.PSEUDONYMLENGTH;
+        return Algorithm.ALGORITHM.PSEUDONYM_LENGTH;
     }
 
     @Override
     public Field<String> field8() {
-        return Algorithm.ALGORITHM.PADDINGCHARACTER;
+        return Algorithm.ALGORITHM.PADDING_CHARACTER;
     }
 
     @Override
     public Field<Boolean> field9() {
-        return Algorithm.ALGORITHM.ADDCHECKDIGIT;
+        return Algorithm.ALGORITHM.ADD_CHECK_DIGIT;
     }
 
     @Override
     public Field<Boolean> field10() {
-        return Algorithm.ALGORITHM.LENGTHINCLUDESCHECKDIGIT;
+        return Algorithm.ALGORITHM.LENGTH_INCLUDES_CHECK_DIGIT;
     }
 
     @Override
@@ -322,7 +322,7 @@ public class AlgorithmRecord extends UpdatableRecordImpl<AlgorithmRecord> implem
 
     @Override
     public Field<Integer> field12() {
-        return Algorithm.ALGORITHM.SALTLENGTH;
+        return Algorithm.ALGORITHM.SALT_LENGTH;
     }
 
     @Override
@@ -342,37 +342,37 @@ public class AlgorithmRecord extends UpdatableRecordImpl<AlgorithmRecord> implem
 
     @Override
     public Long component4() {
-        return getRandomalgorithmdesiredsize();
+        return getRandomAlgorithmDesiredSize();
     }
 
     @Override
     public Double component5() {
-        return getRandomalgorithmdesiredsuccessprobability();
+        return getRandomAlgorithmDesiredSuccessProbability();
     }
 
     @Override
     public Long component6() {
-        return getConsecutivevaluecounter();
+        return getConsecutiveValueCounter();
     }
 
     @Override
     public Integer component7() {
-        return getPseudonymlength();
+        return getPseudonymLength();
     }
 
     @Override
     public String component8() {
-        return getPaddingcharacter();
+        return getPaddingCharacter();
     }
 
     @Override
     public Boolean component9() {
-        return getAddcheckdigit();
+        return getAddCheckDigit();
     }
 
     @Override
     public Boolean component10() {
-        return getLengthincludescheckdigit();
+        return getLengthIncludesCheckDigit();
     }
 
     @Override
@@ -382,7 +382,7 @@ public class AlgorithmRecord extends UpdatableRecordImpl<AlgorithmRecord> implem
 
     @Override
     public Integer component12() {
-        return getSaltlength();
+        return getSaltLength();
     }
 
     @Override
@@ -402,37 +402,37 @@ public class AlgorithmRecord extends UpdatableRecordImpl<AlgorithmRecord> implem
 
     @Override
     public Long value4() {
-        return getRandomalgorithmdesiredsize();
+        return getRandomAlgorithmDesiredSize();
     }
 
     @Override
     public Double value5() {
-        return getRandomalgorithmdesiredsuccessprobability();
+        return getRandomAlgorithmDesiredSuccessProbability();
     }
 
     @Override
     public Long value6() {
-        return getConsecutivevaluecounter();
+        return getConsecutiveValueCounter();
     }
 
     @Override
     public Integer value7() {
-        return getPseudonymlength();
+        return getPseudonymLength();
     }
 
     @Override
     public String value8() {
-        return getPaddingcharacter();
+        return getPaddingCharacter();
     }
 
     @Override
     public Boolean value9() {
-        return getAddcheckdigit();
+        return getAddCheckDigit();
     }
 
     @Override
     public Boolean value10() {
-        return getLengthincludescheckdigit();
+        return getLengthIncludesCheckDigit();
     }
 
     @Override
@@ -442,7 +442,7 @@ public class AlgorithmRecord extends UpdatableRecordImpl<AlgorithmRecord> implem
 
     @Override
     public Integer value12() {
-        return getSaltlength();
+        return getSaltLength();
     }
 
     @Override
@@ -465,43 +465,43 @@ public class AlgorithmRecord extends UpdatableRecordImpl<AlgorithmRecord> implem
 
     @Override
     public AlgorithmRecord value4(Long value) {
-        setRandomalgorithmdesiredsize(value);
+        setRandomAlgorithmDesiredSize(value);
         return this;
     }
 
     @Override
     public AlgorithmRecord value5(Double value) {
-        setRandomalgorithmdesiredsuccessprobability(value);
+        setRandomAlgorithmDesiredSuccessProbability(value);
         return this;
     }
 
     @Override
     public AlgorithmRecord value6(Long value) {
-        setConsecutivevaluecounter(value);
+        setConsecutiveValueCounter(value);
         return this;
     }
 
     @Override
     public AlgorithmRecord value7(Integer value) {
-        setPseudonymlength(value);
+        setPseudonymLength(value);
         return this;
     }
 
     @Override
     public AlgorithmRecord value8(String value) {
-        setPaddingcharacter(value);
+        setPaddingCharacter(value);
         return this;
     }
 
     @Override
     public AlgorithmRecord value9(Boolean value) {
-        setAddcheckdigit(value);
+        setAddCheckDigit(value);
         return this;
     }
 
     @Override
     public AlgorithmRecord value10(Boolean value) {
-        setLengthincludescheckdigit(value);
+        setLengthIncludesCheckDigit(value);
         return this;
     }
 
@@ -513,7 +513,7 @@ public class AlgorithmRecord extends UpdatableRecordImpl<AlgorithmRecord> implem
 
     @Override
     public AlgorithmRecord value12(Integer value) {
-        setSaltlength(value);
+        setSaltLength(value);
         return this;
     }
 
@@ -543,15 +543,15 @@ public class AlgorithmRecord extends UpdatableRecordImpl<AlgorithmRecord> implem
         setId(from.getId());
         setName(from.getName());
         setAlphabet(from.getAlphabet());
-        setRandomalgorithmdesiredsize(from.getRandomalgorithmdesiredsize());
-        setRandomalgorithmdesiredsuccessprobability(from.getRandomalgorithmdesiredsuccessprobability());
-        setConsecutivevaluecounter(from.getConsecutivevaluecounter());
-        setPseudonymlength(from.getPseudonymlength());
-        setPaddingcharacter(from.getPaddingcharacter());
-        setAddcheckdigit(from.getAddcheckdigit());
-        setLengthincludescheckdigit(from.getLengthincludescheckdigit());
+        setRandomAlgorithmDesiredSize(from.getRandomAlgorithmDesiredSize());
+        setRandomAlgorithmDesiredSuccessProbability(from.getRandomAlgorithmDesiredSuccessProbability());
+        setConsecutiveValueCounter(from.getConsecutiveValueCounter());
+        setPseudonymLength(from.getPseudonymLength());
+        setPaddingCharacter(from.getPaddingCharacter());
+        setAddCheckDigit(from.getAddCheckDigit());
+        setLengthIncludesCheckDigit(from.getLengthIncludesCheckDigit());
         setSalt(from.getSalt());
-        setSaltlength(from.getSaltlength());
+        setSaltLength(from.getSaltLength());
         resetChangedOnNotNull();
     }
 
@@ -575,21 +575,21 @@ public class AlgorithmRecord extends UpdatableRecordImpl<AlgorithmRecord> implem
     /**
      * Create a detached, initialised AlgorithmRecord
      */
-    public AlgorithmRecord(Integer id, String name, String alphabet, Long randomalgorithmdesiredsize, Double randomalgorithmdesiredsuccessprobability, Long consecutivevaluecounter, Integer pseudonymlength, String paddingcharacter, Boolean addcheckdigit, Boolean lengthincludescheckdigit, String salt, Integer saltlength) {
+    public AlgorithmRecord(Integer id, String name, String alphabet, Long randomAlgorithmDesiredSize, Double randomAlgorithmDesiredSuccessProbability, Long consecutiveValueCounter, Integer pseudonymLength, String paddingCharacter, Boolean addCheckDigit, Boolean lengthIncludesCheckDigit, String salt, Integer saltLength) {
         super(Algorithm.ALGORITHM);
 
         setId(id);
         setName(name);
         setAlphabet(alphabet);
-        setRandomalgorithmdesiredsize(randomalgorithmdesiredsize);
-        setRandomalgorithmdesiredsuccessprobability(randomalgorithmdesiredsuccessprobability);
-        setConsecutivevaluecounter(consecutivevaluecounter);
-        setPseudonymlength(pseudonymlength);
-        setPaddingcharacter(paddingcharacter);
-        setAddcheckdigit(addcheckdigit);
-        setLengthincludescheckdigit(lengthincludescheckdigit);
+        setRandomAlgorithmDesiredSize(randomAlgorithmDesiredSize);
+        setRandomAlgorithmDesiredSuccessProbability(randomAlgorithmDesiredSuccessProbability);
+        setConsecutiveValueCounter(consecutiveValueCounter);
+        setPseudonymLength(pseudonymLength);
+        setPaddingCharacter(paddingCharacter);
+        setAddCheckDigit(addCheckDigit);
+        setLengthIncludesCheckDigit(lengthIncludesCheckDigit);
         setSalt(salt);
-        setSaltlength(saltlength);
+        setSaltLength(saltLength);
         resetChangedOnNotNull();
     }
 
@@ -603,15 +603,15 @@ public class AlgorithmRecord extends UpdatableRecordImpl<AlgorithmRecord> implem
             setId(value.getId());
             setName(value.getName());
             setAlphabet(value.getAlphabet());
-            setRandomalgorithmdesiredsize(value.getRandomalgorithmdesiredsize());
-            setRandomalgorithmdesiredsuccessprobability(value.getRandomalgorithmdesiredsuccessprobability());
-            setConsecutivevaluecounter(value.getConsecutivevaluecounter());
-            setPseudonymlength(value.getPseudonymlength());
-            setPaddingcharacter(value.getPaddingcharacter());
-            setAddcheckdigit(value.getAddcheckdigit());
-            setLengthincludescheckdigit(value.getLengthincludescheckdigit());
+            setRandomAlgorithmDesiredSize(value.getRandomAlgorithmDesiredSize());
+            setRandomAlgorithmDesiredSuccessProbability(value.getRandomAlgorithmDesiredSuccessProbability());
+            setConsecutiveValueCounter(value.getConsecutiveValueCounter());
+            setPseudonymLength(value.getPseudonymLength());
+            setPaddingCharacter(value.getPaddingCharacter());
+            setAddCheckDigit(value.getAddCheckDigit());
+            setLengthIncludesCheckDigit(value.getLengthIncludesCheckDigit());
             setSalt(value.getSalt());
-            setSaltlength(value.getSaltlength());
+            setSaltLength(value.getSaltLength());
             resetChangedOnNotNull();
         }
     }

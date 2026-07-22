@@ -5,7 +5,6 @@ package org.trustdeck.jooq.generated.tables.interfaces;
 
 
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
@@ -138,100 +137,6 @@ public interface IDomain extends Serializable {
     public Boolean getEnforceenddatevalidityinherited();
 
     /**
-     * Setter for <code>public.domain.algorithm</code>.
-     */
-    public IDomain setAlgorithm(String value);
-
-    /**
-     * Getter for <code>public.domain.algorithm</code>.
-     */
-    @NotNull
-    public String getAlgorithm();
-
-    /**
-     * Setter for <code>public.domain.algorithminherited</code>.
-     */
-    public IDomain setAlgorithminherited(Boolean value);
-
-    /**
-     * Getter for <code>public.domain.algorithminherited</code>.
-     */
-    @NotNull
-    public Boolean getAlgorithminherited();
-
-    /**
-     * Setter for <code>public.domain.alphabet</code>.
-     */
-    public IDomain setAlphabet(String value);
-
-    /**
-     * Getter for <code>public.domain.alphabet</code>.
-     */
-    @NotNull
-    public String getAlphabet();
-
-    /**
-     * Setter for <code>public.domain.alphabetinherited</code>.
-     */
-    public IDomain setAlphabetinherited(Boolean value);
-
-    /**
-     * Getter for <code>public.domain.alphabetinherited</code>.
-     */
-    @NotNull
-    public Boolean getAlphabetinherited();
-
-    /**
-     * Setter for <code>public.domain.randomalgorithmdesiredsize</code>.
-     */
-    public IDomain setRandomalgorithmdesiredsize(Long value);
-
-    /**
-     * Getter for <code>public.domain.randomalgorithmdesiredsize</code>.
-     */
-    @NotNull
-    public Long getRandomalgorithmdesiredsize();
-
-    /**
-     * Setter for
-     * <code>public.domain.randomalgorithmdesiredsizeinherited</code>.
-     */
-    public IDomain setRandomalgorithmdesiredsizeinherited(Boolean value);
-
-    /**
-     * Getter for
-     * <code>public.domain.randomalgorithmdesiredsizeinherited</code>.
-     */
-    @NotNull
-    public Boolean getRandomalgorithmdesiredsizeinherited();
-
-    /**
-     * Setter for
-     * <code>public.domain.randomalgorithmdesiredsuccessprobability</code>.
-     */
-    public IDomain setRandomalgorithmdesiredsuccessprobability(Double value);
-
-    /**
-     * Getter for
-     * <code>public.domain.randomalgorithmdesiredsuccessprobability</code>.
-     */
-    @NotNull
-    public Double getRandomalgorithmdesiredsuccessprobability();
-
-    /**
-     * Setter for
-     * <code>public.domain.randomalgorithmdesiredsuccessprobabilityinherited</code>.
-     */
-    public IDomain setRandomalgorithmdesiredsuccessprobabilityinherited(Boolean value);
-
-    /**
-     * Getter for
-     * <code>public.domain.randomalgorithmdesiredsuccessprobabilityinherited</code>.
-     */
-    @NotNull
-    public Boolean getRandomalgorithmdesiredsuccessprobabilityinherited();
-
-    /**
      * Setter for <code>public.domain.multiplepsnallowed</code>.
      */
     public IDomain setMultiplepsnallowed(Boolean value);
@@ -254,128 +159,6 @@ public interface IDomain extends Serializable {
     public Boolean getMultiplepsnallowedinherited();
 
     /**
-     * Setter for <code>public.domain.consecutivevaluecounter</code>.
-     */
-    public IDomain setConsecutivevaluecounter(Long value);
-
-    /**
-     * Getter for <code>public.domain.consecutivevaluecounter</code>.
-     */
-    @NotNull
-    public Long getConsecutivevaluecounter();
-
-    /**
-     * Setter for <code>public.domain.pseudonymlength</code>.
-     */
-    public IDomain setPseudonymlength(Integer value);
-
-    /**
-     * Getter for <code>public.domain.pseudonymlength</code>.
-     */
-    @NotNull
-    public Integer getPseudonymlength();
-
-    /**
-     * Setter for <code>public.domain.pseudonymlengthinherited</code>.
-     */
-    public IDomain setPseudonymlengthinherited(Boolean value);
-
-    /**
-     * Getter for <code>public.domain.pseudonymlengthinherited</code>.
-     */
-    @NotNull
-    public Boolean getPseudonymlengthinherited();
-
-    /**
-     * Setter for <code>public.domain.paddingcharacter</code>.
-     */
-    public IDomain setPaddingcharacter(String value);
-
-    /**
-     * Getter for <code>public.domain.paddingcharacter</code>.
-     */
-    @NotNull
-    @Size(max = 1)
-    public String getPaddingcharacter();
-
-    /**
-     * Setter for <code>public.domain.paddingcharacterinherited</code>.
-     */
-    public IDomain setPaddingcharacterinherited(Boolean value);
-
-    /**
-     * Getter for <code>public.domain.paddingcharacterinherited</code>.
-     */
-    @NotNull
-    public Boolean getPaddingcharacterinherited();
-
-    /**
-     * Setter for <code>public.domain.addcheckdigit</code>.
-     */
-    public IDomain setAddcheckdigit(Boolean value);
-
-    /**
-     * Getter for <code>public.domain.addcheckdigit</code>.
-     */
-    @NotNull
-    public Boolean getAddcheckdigit();
-
-    /**
-     * Setter for <code>public.domain.addcheckdigitinherited</code>.
-     */
-    public IDomain setAddcheckdigitinherited(Boolean value);
-
-    /**
-     * Getter for <code>public.domain.addcheckdigitinherited</code>.
-     */
-    @NotNull
-    public Boolean getAddcheckdigitinherited();
-
-    /**
-     * Setter for <code>public.domain.lengthincludescheckdigit</code>.
-     */
-    public IDomain setLengthincludescheckdigit(Boolean value);
-
-    /**
-     * Getter for <code>public.domain.lengthincludescheckdigit</code>.
-     */
-    @NotNull
-    public Boolean getLengthincludescheckdigit();
-
-    /**
-     * Setter for <code>public.domain.lengthincludescheckdigitinherited</code>.
-     */
-    public IDomain setLengthincludescheckdigitinherited(Boolean value);
-
-    /**
-     * Getter for <code>public.domain.lengthincludescheckdigitinherited</code>.
-     */
-    @NotNull
-    public Boolean getLengthincludescheckdigitinherited();
-
-    /**
-     * Setter for <code>public.domain.salt</code>.
-     */
-    public IDomain setSalt(String value);
-
-    /**
-     * Getter for <code>public.domain.salt</code>.
-     */
-    @NotNull
-    public String getSalt();
-
-    /**
-     * Setter for <code>public.domain.saltlength</code>.
-     */
-    public IDomain setSaltlength(Integer value);
-
-    /**
-     * Getter for <code>public.domain.saltlength</code>.
-     */
-    @NotNull
-    public Integer getSaltlength();
-
-    /**
      * Setter for <code>public.domain.description</code>.
      */
     public IDomain setDescription(String value);
@@ -394,6 +177,28 @@ public interface IDomain extends Serializable {
      * Getter for <code>public.domain.superdomainid</code>.
      */
     public Integer getSuperdomainid();
+
+    /**
+     * Setter for <code>public.domain.algorithm_id</code>.
+     */
+    public IDomain setAlgorithmId(Integer value);
+
+    /**
+     * Getter for <code>public.domain.algorithm_id</code>.
+     */
+    @NotNull
+    public Integer getAlgorithmId();
+
+    /**
+     * Setter for <code>public.domain.algorithm_inherited</code>.
+     */
+    public IDomain setAlgorithmInherited(Boolean value);
+
+    /**
+     * Getter for <code>public.domain.algorithm_inherited</code>.
+     */
+    @NotNull
+    public Boolean getAlgorithmInherited();
 
     // -------------------------------------------------------------------------
     // FROM and INTO

@@ -5,7 +5,6 @@ package org.trustdeck.jooq.generated.tables.pojos;
 
 
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 
 import java.time.LocalDateTime;
 
@@ -31,29 +30,12 @@ public class Domain implements IDomain {
     private Boolean enforcestartdatevalidityinherited;
     private Boolean enforceenddatevalidity;
     private Boolean enforceenddatevalidityinherited;
-    private String algorithm;
-    private Boolean algorithminherited;
-    private String alphabet;
-    private Boolean alphabetinherited;
-    private Long randomalgorithmdesiredsize;
-    private Boolean randomalgorithmdesiredsizeinherited;
-    private Double randomalgorithmdesiredsuccessprobability;
-    private Boolean randomalgorithmdesiredsuccessprobabilityinherited;
     private Boolean multiplepsnallowed;
     private Boolean multiplepsnallowedinherited;
-    private Long consecutivevaluecounter;
-    private Integer pseudonymlength;
-    private Boolean pseudonymlengthinherited;
-    private String paddingcharacter;
-    private Boolean paddingcharacterinherited;
-    private Boolean addcheckdigit;
-    private Boolean addcheckdigitinherited;
-    private Boolean lengthincludescheckdigit;
-    private Boolean lengthincludescheckdigitinherited;
-    private String salt;
-    private Integer saltlength;
     private String description;
     private Integer superdomainid;
+    private Integer algorithmId;
+    private Boolean algorithmInherited;
 
     public Domain() {}
 
@@ -69,29 +51,12 @@ public class Domain implements IDomain {
         this.enforcestartdatevalidityinherited = value.getEnforcestartdatevalidityinherited();
         this.enforceenddatevalidity = value.getEnforceenddatevalidity();
         this.enforceenddatevalidityinherited = value.getEnforceenddatevalidityinherited();
-        this.algorithm = value.getAlgorithm();
-        this.algorithminherited = value.getAlgorithminherited();
-        this.alphabet = value.getAlphabet();
-        this.alphabetinherited = value.getAlphabetinherited();
-        this.randomalgorithmdesiredsize = value.getRandomalgorithmdesiredsize();
-        this.randomalgorithmdesiredsizeinherited = value.getRandomalgorithmdesiredsizeinherited();
-        this.randomalgorithmdesiredsuccessprobability = value.getRandomalgorithmdesiredsuccessprobability();
-        this.randomalgorithmdesiredsuccessprobabilityinherited = value.getRandomalgorithmdesiredsuccessprobabilityinherited();
         this.multiplepsnallowed = value.getMultiplepsnallowed();
         this.multiplepsnallowedinherited = value.getMultiplepsnallowedinherited();
-        this.consecutivevaluecounter = value.getConsecutivevaluecounter();
-        this.pseudonymlength = value.getPseudonymlength();
-        this.pseudonymlengthinherited = value.getPseudonymlengthinherited();
-        this.paddingcharacter = value.getPaddingcharacter();
-        this.paddingcharacterinherited = value.getPaddingcharacterinherited();
-        this.addcheckdigit = value.getAddcheckdigit();
-        this.addcheckdigitinherited = value.getAddcheckdigitinherited();
-        this.lengthincludescheckdigit = value.getLengthincludescheckdigit();
-        this.lengthincludescheckdigitinherited = value.getLengthincludescheckdigitinherited();
-        this.salt = value.getSalt();
-        this.saltlength = value.getSaltlength();
         this.description = value.getDescription();
         this.superdomainid = value.getSuperdomainid();
+        this.algorithmId = value.getAlgorithmId();
+        this.algorithmInherited = value.getAlgorithmInherited();
     }
 
     public Domain(
@@ -106,29 +71,12 @@ public class Domain implements IDomain {
         Boolean enforcestartdatevalidityinherited,
         Boolean enforceenddatevalidity,
         Boolean enforceenddatevalidityinherited,
-        String algorithm,
-        Boolean algorithminherited,
-        String alphabet,
-        Boolean alphabetinherited,
-        Long randomalgorithmdesiredsize,
-        Boolean randomalgorithmdesiredsizeinherited,
-        Double randomalgorithmdesiredsuccessprobability,
-        Boolean randomalgorithmdesiredsuccessprobabilityinherited,
         Boolean multiplepsnallowed,
         Boolean multiplepsnallowedinherited,
-        Long consecutivevaluecounter,
-        Integer pseudonymlength,
-        Boolean pseudonymlengthinherited,
-        String paddingcharacter,
-        Boolean paddingcharacterinherited,
-        Boolean addcheckdigit,
-        Boolean addcheckdigitinherited,
-        Boolean lengthincludescheckdigit,
-        Boolean lengthincludescheckdigitinherited,
-        String salt,
-        Integer saltlength,
         String description,
-        Integer superdomainid
+        Integer superdomainid,
+        Integer algorithmId,
+        Boolean algorithmInherited
     ) {
         this.id = id;
         this.name = name;
@@ -141,29 +89,12 @@ public class Domain implements IDomain {
         this.enforcestartdatevalidityinherited = enforcestartdatevalidityinherited;
         this.enforceenddatevalidity = enforceenddatevalidity;
         this.enforceenddatevalidityinherited = enforceenddatevalidityinherited;
-        this.algorithm = algorithm;
-        this.algorithminherited = algorithminherited;
-        this.alphabet = alphabet;
-        this.alphabetinherited = alphabetinherited;
-        this.randomalgorithmdesiredsize = randomalgorithmdesiredsize;
-        this.randomalgorithmdesiredsizeinherited = randomalgorithmdesiredsizeinherited;
-        this.randomalgorithmdesiredsuccessprobability = randomalgorithmdesiredsuccessprobability;
-        this.randomalgorithmdesiredsuccessprobabilityinherited = randomalgorithmdesiredsuccessprobabilityinherited;
         this.multiplepsnallowed = multiplepsnallowed;
         this.multiplepsnallowedinherited = multiplepsnallowedinherited;
-        this.consecutivevaluecounter = consecutivevaluecounter;
-        this.pseudonymlength = pseudonymlength;
-        this.pseudonymlengthinherited = pseudonymlengthinherited;
-        this.paddingcharacter = paddingcharacter;
-        this.paddingcharacterinherited = paddingcharacterinherited;
-        this.addcheckdigit = addcheckdigit;
-        this.addcheckdigitinherited = addcheckdigitinherited;
-        this.lengthincludescheckdigit = lengthincludescheckdigit;
-        this.lengthincludescheckdigitinherited = lengthincludescheckdigitinherited;
-        this.salt = salt;
-        this.saltlength = saltlength;
         this.description = description;
         this.superdomainid = superdomainid;
+        this.algorithmId = algorithmId;
+        this.algorithmInherited = algorithmInherited;
     }
 
     /**
@@ -364,156 +295,6 @@ public class Domain implements IDomain {
     }
 
     /**
-     * Getter for <code>public.domain.algorithm</code>.
-     */
-    @NotNull
-    @Override
-    public String getAlgorithm() {
-        return this.algorithm;
-    }
-
-    /**
-     * Setter for <code>public.domain.algorithm</code>.
-     */
-    @Override
-    public Domain setAlgorithm(String algorithm) {
-        this.algorithm = algorithm;
-        return this;
-    }
-
-    /**
-     * Getter for <code>public.domain.algorithminherited</code>.
-     */
-    @NotNull
-    @Override
-    public Boolean getAlgorithminherited() {
-        return this.algorithminherited;
-    }
-
-    /**
-     * Setter for <code>public.domain.algorithminherited</code>.
-     */
-    @Override
-    public Domain setAlgorithminherited(Boolean algorithminherited) {
-        this.algorithminherited = algorithminherited;
-        return this;
-    }
-
-    /**
-     * Getter for <code>public.domain.alphabet</code>.
-     */
-    @NotNull
-    @Override
-    public String getAlphabet() {
-        return this.alphabet;
-    }
-
-    /**
-     * Setter for <code>public.domain.alphabet</code>.
-     */
-    @Override
-    public Domain setAlphabet(String alphabet) {
-        this.alphabet = alphabet;
-        return this;
-    }
-
-    /**
-     * Getter for <code>public.domain.alphabetinherited</code>.
-     */
-    @NotNull
-    @Override
-    public Boolean getAlphabetinherited() {
-        return this.alphabetinherited;
-    }
-
-    /**
-     * Setter for <code>public.domain.alphabetinherited</code>.
-     */
-    @Override
-    public Domain setAlphabetinherited(Boolean alphabetinherited) {
-        this.alphabetinherited = alphabetinherited;
-        return this;
-    }
-
-    /**
-     * Getter for <code>public.domain.randomalgorithmdesiredsize</code>.
-     */
-    @NotNull
-    @Override
-    public Long getRandomalgorithmdesiredsize() {
-        return this.randomalgorithmdesiredsize;
-    }
-
-    /**
-     * Setter for <code>public.domain.randomalgorithmdesiredsize</code>.
-     */
-    @Override
-    public Domain setRandomalgorithmdesiredsize(Long randomalgorithmdesiredsize) {
-        this.randomalgorithmdesiredsize = randomalgorithmdesiredsize;
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>public.domain.randomalgorithmdesiredsizeinherited</code>.
-     */
-    @NotNull
-    @Override
-    public Boolean getRandomalgorithmdesiredsizeinherited() {
-        return this.randomalgorithmdesiredsizeinherited;
-    }
-
-    /**
-     * Setter for
-     * <code>public.domain.randomalgorithmdesiredsizeinherited</code>.
-     */
-    @Override
-    public Domain setRandomalgorithmdesiredsizeinherited(Boolean randomalgorithmdesiredsizeinherited) {
-        this.randomalgorithmdesiredsizeinherited = randomalgorithmdesiredsizeinherited;
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>public.domain.randomalgorithmdesiredsuccessprobability</code>.
-     */
-    @NotNull
-    @Override
-    public Double getRandomalgorithmdesiredsuccessprobability() {
-        return this.randomalgorithmdesiredsuccessprobability;
-    }
-
-    /**
-     * Setter for
-     * <code>public.domain.randomalgorithmdesiredsuccessprobability</code>.
-     */
-    @Override
-    public Domain setRandomalgorithmdesiredsuccessprobability(Double randomalgorithmdesiredsuccessprobability) {
-        this.randomalgorithmdesiredsuccessprobability = randomalgorithmdesiredsuccessprobability;
-        return this;
-    }
-
-    /**
-     * Getter for
-     * <code>public.domain.randomalgorithmdesiredsuccessprobabilityinherited</code>.
-     */
-    @NotNull
-    @Override
-    public Boolean getRandomalgorithmdesiredsuccessprobabilityinherited() {
-        return this.randomalgorithmdesiredsuccessprobabilityinherited;
-    }
-
-    /**
-     * Setter for
-     * <code>public.domain.randomalgorithmdesiredsuccessprobabilityinherited</code>.
-     */
-    @Override
-    public Domain setRandomalgorithmdesiredsuccessprobabilityinherited(Boolean randomalgorithmdesiredsuccessprobabilityinherited) {
-        this.randomalgorithmdesiredsuccessprobabilityinherited = randomalgorithmdesiredsuccessprobabilityinherited;
-        return this;
-    }
-
-    /**
      * Getter for <code>public.domain.multiplepsnallowed</code>.
      */
     @NotNull
@@ -550,205 +331,6 @@ public class Domain implements IDomain {
     }
 
     /**
-     * Getter for <code>public.domain.consecutivevaluecounter</code>.
-     */
-    @NotNull
-    @Override
-    public Long getConsecutivevaluecounter() {
-        return this.consecutivevaluecounter;
-    }
-
-    /**
-     * Setter for <code>public.domain.consecutivevaluecounter</code>.
-     */
-    @Override
-    public Domain setConsecutivevaluecounter(Long consecutivevaluecounter) {
-        this.consecutivevaluecounter = consecutivevaluecounter;
-        return this;
-    }
-
-    /**
-     * Getter for <code>public.domain.pseudonymlength</code>.
-     */
-    @NotNull
-    @Override
-    public Integer getPseudonymlength() {
-        return this.pseudonymlength;
-    }
-
-    /**
-     * Setter for <code>public.domain.pseudonymlength</code>.
-     */
-    @Override
-    public Domain setPseudonymlength(Integer pseudonymlength) {
-        this.pseudonymlength = pseudonymlength;
-        return this;
-    }
-
-    /**
-     * Getter for <code>public.domain.pseudonymlengthinherited</code>.
-     */
-    @NotNull
-    @Override
-    public Boolean getPseudonymlengthinherited() {
-        return this.pseudonymlengthinherited;
-    }
-
-    /**
-     * Setter for <code>public.domain.pseudonymlengthinherited</code>.
-     */
-    @Override
-    public Domain setPseudonymlengthinherited(Boolean pseudonymlengthinherited) {
-        this.pseudonymlengthinherited = pseudonymlengthinherited;
-        return this;
-    }
-
-    /**
-     * Getter for <code>public.domain.paddingcharacter</code>.
-     */
-    @NotNull
-    @Size(max = 1)
-    @Override
-    public String getPaddingcharacter() {
-        return this.paddingcharacter;
-    }
-
-    /**
-     * Setter for <code>public.domain.paddingcharacter</code>.
-     */
-    @Override
-    public Domain setPaddingcharacter(String paddingcharacter) {
-        this.paddingcharacter = paddingcharacter;
-        return this;
-    }
-
-    /**
-     * Getter for <code>public.domain.paddingcharacterinherited</code>.
-     */
-    @NotNull
-    @Override
-    public Boolean getPaddingcharacterinherited() {
-        return this.paddingcharacterinherited;
-    }
-
-    /**
-     * Setter for <code>public.domain.paddingcharacterinherited</code>.
-     */
-    @Override
-    public Domain setPaddingcharacterinherited(Boolean paddingcharacterinherited) {
-        this.paddingcharacterinherited = paddingcharacterinherited;
-        return this;
-    }
-
-    /**
-     * Getter for <code>public.domain.addcheckdigit</code>.
-     */
-    @NotNull
-    @Override
-    public Boolean getAddcheckdigit() {
-        return this.addcheckdigit;
-    }
-
-    /**
-     * Setter for <code>public.domain.addcheckdigit</code>.
-     */
-    @Override
-    public Domain setAddcheckdigit(Boolean addcheckdigit) {
-        this.addcheckdigit = addcheckdigit;
-        return this;
-    }
-
-    /**
-     * Getter for <code>public.domain.addcheckdigitinherited</code>.
-     */
-    @NotNull
-    @Override
-    public Boolean getAddcheckdigitinherited() {
-        return this.addcheckdigitinherited;
-    }
-
-    /**
-     * Setter for <code>public.domain.addcheckdigitinherited</code>.
-     */
-    @Override
-    public Domain setAddcheckdigitinherited(Boolean addcheckdigitinherited) {
-        this.addcheckdigitinherited = addcheckdigitinherited;
-        return this;
-    }
-
-    /**
-     * Getter for <code>public.domain.lengthincludescheckdigit</code>.
-     */
-    @NotNull
-    @Override
-    public Boolean getLengthincludescheckdigit() {
-        return this.lengthincludescheckdigit;
-    }
-
-    /**
-     * Setter for <code>public.domain.lengthincludescheckdigit</code>.
-     */
-    @Override
-    public Domain setLengthincludescheckdigit(Boolean lengthincludescheckdigit) {
-        this.lengthincludescheckdigit = lengthincludescheckdigit;
-        return this;
-    }
-
-    /**
-     * Getter for <code>public.domain.lengthincludescheckdigitinherited</code>.
-     */
-    @NotNull
-    @Override
-    public Boolean getLengthincludescheckdigitinherited() {
-        return this.lengthincludescheckdigitinherited;
-    }
-
-    /**
-     * Setter for <code>public.domain.lengthincludescheckdigitinherited</code>.
-     */
-    @Override
-    public Domain setLengthincludescheckdigitinherited(Boolean lengthincludescheckdigitinherited) {
-        this.lengthincludescheckdigitinherited = lengthincludescheckdigitinherited;
-        return this;
-    }
-
-    /**
-     * Getter for <code>public.domain.salt</code>.
-     */
-    @NotNull
-    @Override
-    public String getSalt() {
-        return this.salt;
-    }
-
-    /**
-     * Setter for <code>public.domain.salt</code>.
-     */
-    @Override
-    public Domain setSalt(String salt) {
-        this.salt = salt;
-        return this;
-    }
-
-    /**
-     * Getter for <code>public.domain.saltlength</code>.
-     */
-    @NotNull
-    @Override
-    public Integer getSaltlength() {
-        return this.saltlength;
-    }
-
-    /**
-     * Setter for <code>public.domain.saltlength</code>.
-     */
-    @Override
-    public Domain setSaltlength(Integer saltlength) {
-        this.saltlength = saltlength;
-        return this;
-    }
-
-    /**
      * Getter for <code>public.domain.description</code>.
      */
     @Override
@@ -779,6 +361,42 @@ public class Domain implements IDomain {
     @Override
     public Domain setSuperdomainid(Integer superdomainid) {
         this.superdomainid = superdomainid;
+        return this;
+    }
+
+    /**
+     * Getter for <code>public.domain.algorithm_id</code>.
+     */
+    @NotNull
+    @Override
+    public Integer getAlgorithmId() {
+        return this.algorithmId;
+    }
+
+    /**
+     * Setter for <code>public.domain.algorithm_id</code>.
+     */
+    @Override
+    public Domain setAlgorithmId(Integer algorithmId) {
+        this.algorithmId = algorithmId;
+        return this;
+    }
+
+    /**
+     * Getter for <code>public.domain.algorithm_inherited</code>.
+     */
+    @NotNull
+    @Override
+    public Boolean getAlgorithmInherited() {
+        return this.algorithmInherited;
+    }
+
+    /**
+     * Setter for <code>public.domain.algorithm_inherited</code>.
+     */
+    @Override
+    public Domain setAlgorithmInherited(Boolean algorithmInherited) {
+        this.algorithmInherited = algorithmInherited;
         return this;
     }
 
@@ -857,54 +475,6 @@ public class Domain implements IDomain {
         }
         else if (!this.enforceenddatevalidityinherited.equals(other.enforceenddatevalidityinherited))
             return false;
-        if (this.algorithm == null) {
-            if (other.algorithm != null)
-                return false;
-        }
-        else if (!this.algorithm.equals(other.algorithm))
-            return false;
-        if (this.algorithminherited == null) {
-            if (other.algorithminherited != null)
-                return false;
-        }
-        else if (!this.algorithminherited.equals(other.algorithminherited))
-            return false;
-        if (this.alphabet == null) {
-            if (other.alphabet != null)
-                return false;
-        }
-        else if (!this.alphabet.equals(other.alphabet))
-            return false;
-        if (this.alphabetinherited == null) {
-            if (other.alphabetinherited != null)
-                return false;
-        }
-        else if (!this.alphabetinherited.equals(other.alphabetinherited))
-            return false;
-        if (this.randomalgorithmdesiredsize == null) {
-            if (other.randomalgorithmdesiredsize != null)
-                return false;
-        }
-        else if (!this.randomalgorithmdesiredsize.equals(other.randomalgorithmdesiredsize))
-            return false;
-        if (this.randomalgorithmdesiredsizeinherited == null) {
-            if (other.randomalgorithmdesiredsizeinherited != null)
-                return false;
-        }
-        else if (!this.randomalgorithmdesiredsizeinherited.equals(other.randomalgorithmdesiredsizeinherited))
-            return false;
-        if (this.randomalgorithmdesiredsuccessprobability == null) {
-            if (other.randomalgorithmdesiredsuccessprobability != null)
-                return false;
-        }
-        else if (!this.randomalgorithmdesiredsuccessprobability.equals(other.randomalgorithmdesiredsuccessprobability))
-            return false;
-        if (this.randomalgorithmdesiredsuccessprobabilityinherited == null) {
-            if (other.randomalgorithmdesiredsuccessprobabilityinherited != null)
-                return false;
-        }
-        else if (!this.randomalgorithmdesiredsuccessprobabilityinherited.equals(other.randomalgorithmdesiredsuccessprobabilityinherited))
-            return false;
         if (this.multiplepsnallowed == null) {
             if (other.multiplepsnallowed != null)
                 return false;
@@ -917,72 +487,6 @@ public class Domain implements IDomain {
         }
         else if (!this.multiplepsnallowedinherited.equals(other.multiplepsnallowedinherited))
             return false;
-        if (this.consecutivevaluecounter == null) {
-            if (other.consecutivevaluecounter != null)
-                return false;
-        }
-        else if (!this.consecutivevaluecounter.equals(other.consecutivevaluecounter))
-            return false;
-        if (this.pseudonymlength == null) {
-            if (other.pseudonymlength != null)
-                return false;
-        }
-        else if (!this.pseudonymlength.equals(other.pseudonymlength))
-            return false;
-        if (this.pseudonymlengthinherited == null) {
-            if (other.pseudonymlengthinherited != null)
-                return false;
-        }
-        else if (!this.pseudonymlengthinherited.equals(other.pseudonymlengthinherited))
-            return false;
-        if (this.paddingcharacter == null) {
-            if (other.paddingcharacter != null)
-                return false;
-        }
-        else if (!this.paddingcharacter.equals(other.paddingcharacter))
-            return false;
-        if (this.paddingcharacterinherited == null) {
-            if (other.paddingcharacterinherited != null)
-                return false;
-        }
-        else if (!this.paddingcharacterinherited.equals(other.paddingcharacterinherited))
-            return false;
-        if (this.addcheckdigit == null) {
-            if (other.addcheckdigit != null)
-                return false;
-        }
-        else if (!this.addcheckdigit.equals(other.addcheckdigit))
-            return false;
-        if (this.addcheckdigitinherited == null) {
-            if (other.addcheckdigitinherited != null)
-                return false;
-        }
-        else if (!this.addcheckdigitinherited.equals(other.addcheckdigitinherited))
-            return false;
-        if (this.lengthincludescheckdigit == null) {
-            if (other.lengthincludescheckdigit != null)
-                return false;
-        }
-        else if (!this.lengthincludescheckdigit.equals(other.lengthincludescheckdigit))
-            return false;
-        if (this.lengthincludescheckdigitinherited == null) {
-            if (other.lengthincludescheckdigitinherited != null)
-                return false;
-        }
-        else if (!this.lengthincludescheckdigitinherited.equals(other.lengthincludescheckdigitinherited))
-            return false;
-        if (this.salt == null) {
-            if (other.salt != null)
-                return false;
-        }
-        else if (!this.salt.equals(other.salt))
-            return false;
-        if (this.saltlength == null) {
-            if (other.saltlength != null)
-                return false;
-        }
-        else if (!this.saltlength.equals(other.saltlength))
-            return false;
         if (this.description == null) {
             if (other.description != null)
                 return false;
@@ -994,6 +498,18 @@ public class Domain implements IDomain {
                 return false;
         }
         else if (!this.superdomainid.equals(other.superdomainid))
+            return false;
+        if (this.algorithmId == null) {
+            if (other.algorithmId != null)
+                return false;
+        }
+        else if (!this.algorithmId.equals(other.algorithmId))
+            return false;
+        if (this.algorithmInherited == null) {
+            if (other.algorithmInherited != null)
+                return false;
+        }
+        else if (!this.algorithmInherited.equals(other.algorithmInherited))
             return false;
         return true;
     }
@@ -1013,29 +529,12 @@ public class Domain implements IDomain {
         result = prime * result + ((this.enforcestartdatevalidityinherited == null) ? 0 : this.enforcestartdatevalidityinherited.hashCode());
         result = prime * result + ((this.enforceenddatevalidity == null) ? 0 : this.enforceenddatevalidity.hashCode());
         result = prime * result + ((this.enforceenddatevalidityinherited == null) ? 0 : this.enforceenddatevalidityinherited.hashCode());
-        result = prime * result + ((this.algorithm == null) ? 0 : this.algorithm.hashCode());
-        result = prime * result + ((this.algorithminherited == null) ? 0 : this.algorithminherited.hashCode());
-        result = prime * result + ((this.alphabet == null) ? 0 : this.alphabet.hashCode());
-        result = prime * result + ((this.alphabetinherited == null) ? 0 : this.alphabetinherited.hashCode());
-        result = prime * result + ((this.randomalgorithmdesiredsize == null) ? 0 : this.randomalgorithmdesiredsize.hashCode());
-        result = prime * result + ((this.randomalgorithmdesiredsizeinherited == null) ? 0 : this.randomalgorithmdesiredsizeinherited.hashCode());
-        result = prime * result + ((this.randomalgorithmdesiredsuccessprobability == null) ? 0 : this.randomalgorithmdesiredsuccessprobability.hashCode());
-        result = prime * result + ((this.randomalgorithmdesiredsuccessprobabilityinherited == null) ? 0 : this.randomalgorithmdesiredsuccessprobabilityinherited.hashCode());
         result = prime * result + ((this.multiplepsnallowed == null) ? 0 : this.multiplepsnallowed.hashCode());
         result = prime * result + ((this.multiplepsnallowedinherited == null) ? 0 : this.multiplepsnallowedinherited.hashCode());
-        result = prime * result + ((this.consecutivevaluecounter == null) ? 0 : this.consecutivevaluecounter.hashCode());
-        result = prime * result + ((this.pseudonymlength == null) ? 0 : this.pseudonymlength.hashCode());
-        result = prime * result + ((this.pseudonymlengthinherited == null) ? 0 : this.pseudonymlengthinherited.hashCode());
-        result = prime * result + ((this.paddingcharacter == null) ? 0 : this.paddingcharacter.hashCode());
-        result = prime * result + ((this.paddingcharacterinherited == null) ? 0 : this.paddingcharacterinherited.hashCode());
-        result = prime * result + ((this.addcheckdigit == null) ? 0 : this.addcheckdigit.hashCode());
-        result = prime * result + ((this.addcheckdigitinherited == null) ? 0 : this.addcheckdigitinherited.hashCode());
-        result = prime * result + ((this.lengthincludescheckdigit == null) ? 0 : this.lengthincludescheckdigit.hashCode());
-        result = prime * result + ((this.lengthincludescheckdigitinherited == null) ? 0 : this.lengthincludescheckdigitinherited.hashCode());
-        result = prime * result + ((this.salt == null) ? 0 : this.salt.hashCode());
-        result = prime * result + ((this.saltlength == null) ? 0 : this.saltlength.hashCode());
         result = prime * result + ((this.description == null) ? 0 : this.description.hashCode());
         result = prime * result + ((this.superdomainid == null) ? 0 : this.superdomainid.hashCode());
+        result = prime * result + ((this.algorithmId == null) ? 0 : this.algorithmId.hashCode());
+        result = prime * result + ((this.algorithmInherited == null) ? 0 : this.algorithmInherited.hashCode());
         return result;
     }
 
@@ -1054,29 +553,12 @@ public class Domain implements IDomain {
         sb.append(", ").append(enforcestartdatevalidityinherited);
         sb.append(", ").append(enforceenddatevalidity);
         sb.append(", ").append(enforceenddatevalidityinherited);
-        sb.append(", ").append(algorithm);
-        sb.append(", ").append(algorithminherited);
-        sb.append(", ").append(alphabet);
-        sb.append(", ").append(alphabetinherited);
-        sb.append(", ").append(randomalgorithmdesiredsize);
-        sb.append(", ").append(randomalgorithmdesiredsizeinherited);
-        sb.append(", ").append(randomalgorithmdesiredsuccessprobability);
-        sb.append(", ").append(randomalgorithmdesiredsuccessprobabilityinherited);
         sb.append(", ").append(multiplepsnallowed);
         sb.append(", ").append(multiplepsnallowedinherited);
-        sb.append(", ").append(consecutivevaluecounter);
-        sb.append(", ").append(pseudonymlength);
-        sb.append(", ").append(pseudonymlengthinherited);
-        sb.append(", ").append(paddingcharacter);
-        sb.append(", ").append(paddingcharacterinherited);
-        sb.append(", ").append(addcheckdigit);
-        sb.append(", ").append(addcheckdigitinherited);
-        sb.append(", ").append(lengthincludescheckdigit);
-        sb.append(", ").append(lengthincludescheckdigitinherited);
-        sb.append(", ").append(salt);
-        sb.append(", ").append(saltlength);
         sb.append(", ").append(description);
         sb.append(", ").append(superdomainid);
+        sb.append(", ").append(algorithmId);
+        sb.append(", ").append(algorithmInherited);
 
         sb.append(")");
         return sb.toString();
@@ -1099,29 +581,12 @@ public class Domain implements IDomain {
         setEnforcestartdatevalidityinherited(from.getEnforcestartdatevalidityinherited());
         setEnforceenddatevalidity(from.getEnforceenddatevalidity());
         setEnforceenddatevalidityinherited(from.getEnforceenddatevalidityinherited());
-        setAlgorithm(from.getAlgorithm());
-        setAlgorithminherited(from.getAlgorithminherited());
-        setAlphabet(from.getAlphabet());
-        setAlphabetinherited(from.getAlphabetinherited());
-        setRandomalgorithmdesiredsize(from.getRandomalgorithmdesiredsize());
-        setRandomalgorithmdesiredsizeinherited(from.getRandomalgorithmdesiredsizeinherited());
-        setRandomalgorithmdesiredsuccessprobability(from.getRandomalgorithmdesiredsuccessprobability());
-        setRandomalgorithmdesiredsuccessprobabilityinherited(from.getRandomalgorithmdesiredsuccessprobabilityinherited());
         setMultiplepsnallowed(from.getMultiplepsnallowed());
         setMultiplepsnallowedinherited(from.getMultiplepsnallowedinherited());
-        setConsecutivevaluecounter(from.getConsecutivevaluecounter());
-        setPseudonymlength(from.getPseudonymlength());
-        setPseudonymlengthinherited(from.getPseudonymlengthinherited());
-        setPaddingcharacter(from.getPaddingcharacter());
-        setPaddingcharacterinherited(from.getPaddingcharacterinherited());
-        setAddcheckdigit(from.getAddcheckdigit());
-        setAddcheckdigitinherited(from.getAddcheckdigitinherited());
-        setLengthincludescheckdigit(from.getLengthincludescheckdigit());
-        setLengthincludescheckdigitinherited(from.getLengthincludescheckdigitinherited());
-        setSalt(from.getSalt());
-        setSaltlength(from.getSaltlength());
         setDescription(from.getDescription());
         setSuperdomainid(from.getSuperdomainid());
+        setAlgorithmId(from.getAlgorithmId());
+        setAlgorithmInherited(from.getAlgorithmInherited());
     }
 
     @Override

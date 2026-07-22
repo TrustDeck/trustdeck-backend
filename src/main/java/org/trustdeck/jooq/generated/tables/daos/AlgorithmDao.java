@@ -98,110 +98,113 @@ public class AlgorithmDao extends DAOImpl<AlgorithmRecord, org.trustdeck.jooq.ge
     }
 
     /**
-     * Fetch records that have <code>randomalgorithmdesiredsize BETWEEN
+     * Fetch records that have <code>random_algorithm_desired_size BETWEEN
      * lowerInclusive AND upperInclusive</code>
      */
-    public List<org.trustdeck.jooq.generated.tables.pojos.Algorithm> fetchRangeOfRandomalgorithmdesiredsize(Long lowerInclusive, Long upperInclusive) {
-        return fetchRange(Algorithm.ALGORITHM.RANDOMALGORITHMDESIREDSIZE, lowerInclusive, upperInclusive);
+    public List<org.trustdeck.jooq.generated.tables.pojos.Algorithm> fetchRangeOfRandomAlgorithmDesiredSize(Long lowerInclusive, Long upperInclusive) {
+        return fetchRange(Algorithm.ALGORITHM.RANDOM_ALGORITHM_DESIRED_SIZE, lowerInclusive, upperInclusive);
     }
 
     /**
-     * Fetch records that have <code>randomalgorithmdesiredsize IN
+     * Fetch records that have <code>random_algorithm_desired_size IN
      * (values)</code>
      */
-    public List<org.trustdeck.jooq.generated.tables.pojos.Algorithm> fetchByRandomalgorithmdesiredsize(Long... values) {
-        return fetch(Algorithm.ALGORITHM.RANDOMALGORITHMDESIREDSIZE, values);
+    public List<org.trustdeck.jooq.generated.tables.pojos.Algorithm> fetchByRandomAlgorithmDesiredSize(Long... values) {
+        return fetch(Algorithm.ALGORITHM.RANDOM_ALGORITHM_DESIRED_SIZE, values);
     }
 
     /**
-     * Fetch records that have <code>randomalgorithmdesiredsuccessprobability
-     * BETWEEN lowerInclusive AND upperInclusive</code>
+     * Fetch records that have
+     * <code>random_algorithm_desired_success_probability BETWEEN lowerInclusive
+     * AND upperInclusive</code>
      */
-    public List<org.trustdeck.jooq.generated.tables.pojos.Algorithm> fetchRangeOfRandomalgorithmdesiredsuccessprobability(Double lowerInclusive, Double upperInclusive) {
-        return fetchRange(Algorithm.ALGORITHM.RANDOMALGORITHMDESIREDSUCCESSPROBABILITY, lowerInclusive, upperInclusive);
+    public List<org.trustdeck.jooq.generated.tables.pojos.Algorithm> fetchRangeOfRandomAlgorithmDesiredSuccessProbability(Double lowerInclusive, Double upperInclusive) {
+        return fetchRange(Algorithm.ALGORITHM.RANDOM_ALGORITHM_DESIRED_SUCCESS_PROBABILITY, lowerInclusive, upperInclusive);
     }
 
     /**
-     * Fetch records that have <code>randomalgorithmdesiredsuccessprobability IN
+     * Fetch records that have
+     * <code>random_algorithm_desired_success_probability IN (values)</code>
+     */
+    public List<org.trustdeck.jooq.generated.tables.pojos.Algorithm> fetchByRandomAlgorithmDesiredSuccessProbability(Double... values) {
+        return fetch(Algorithm.ALGORITHM.RANDOM_ALGORITHM_DESIRED_SUCCESS_PROBABILITY, values);
+    }
+
+    /**
+     * Fetch records that have <code>consecutive_value_counter BETWEEN
+     * lowerInclusive AND upperInclusive</code>
+     */
+    public List<org.trustdeck.jooq.generated.tables.pojos.Algorithm> fetchRangeOfConsecutiveValueCounter(Long lowerInclusive, Long upperInclusive) {
+        return fetchRange(Algorithm.ALGORITHM.CONSECUTIVE_VALUE_COUNTER, lowerInclusive, upperInclusive);
+    }
+
+    /**
+     * Fetch records that have <code>consecutive_value_counter IN
      * (values)</code>
      */
-    public List<org.trustdeck.jooq.generated.tables.pojos.Algorithm> fetchByRandomalgorithmdesiredsuccessprobability(Double... values) {
-        return fetch(Algorithm.ALGORITHM.RANDOMALGORITHMDESIREDSUCCESSPROBABILITY, values);
+    public List<org.trustdeck.jooq.generated.tables.pojos.Algorithm> fetchByConsecutiveValueCounter(Long... values) {
+        return fetch(Algorithm.ALGORITHM.CONSECUTIVE_VALUE_COUNTER, values);
     }
 
     /**
-     * Fetch records that have <code>consecutivevaluecounter BETWEEN
+     * Fetch records that have <code>pseudonym_length BETWEEN lowerInclusive AND
+     * upperInclusive</code>
+     */
+    public List<org.trustdeck.jooq.generated.tables.pojos.Algorithm> fetchRangeOfPseudonymLength(Integer lowerInclusive, Integer upperInclusive) {
+        return fetchRange(Algorithm.ALGORITHM.PSEUDONYM_LENGTH, lowerInclusive, upperInclusive);
+    }
+
+    /**
+     * Fetch records that have <code>pseudonym_length IN (values)</code>
+     */
+    public List<org.trustdeck.jooq.generated.tables.pojos.Algorithm> fetchByPseudonymLength(Integer... values) {
+        return fetch(Algorithm.ALGORITHM.PSEUDONYM_LENGTH, values);
+    }
+
+    /**
+     * Fetch records that have <code>padding_character BETWEEN lowerInclusive
+     * AND upperInclusive</code>
+     */
+    public List<org.trustdeck.jooq.generated.tables.pojos.Algorithm> fetchRangeOfPaddingCharacter(String lowerInclusive, String upperInclusive) {
+        return fetchRange(Algorithm.ALGORITHM.PADDING_CHARACTER, lowerInclusive, upperInclusive);
+    }
+
+    /**
+     * Fetch records that have <code>padding_character IN (values)</code>
+     */
+    public List<org.trustdeck.jooq.generated.tables.pojos.Algorithm> fetchByPaddingCharacter(String... values) {
+        return fetch(Algorithm.ALGORITHM.PADDING_CHARACTER, values);
+    }
+
+    /**
+     * Fetch records that have <code>add_check_digit BETWEEN lowerInclusive AND
+     * upperInclusive</code>
+     */
+    public List<org.trustdeck.jooq.generated.tables.pojos.Algorithm> fetchRangeOfAddCheckDigit(Boolean lowerInclusive, Boolean upperInclusive) {
+        return fetchRange(Algorithm.ALGORITHM.ADD_CHECK_DIGIT, lowerInclusive, upperInclusive);
+    }
+
+    /**
+     * Fetch records that have <code>add_check_digit IN (values)</code>
+     */
+    public List<org.trustdeck.jooq.generated.tables.pojos.Algorithm> fetchByAddCheckDigit(Boolean... values) {
+        return fetch(Algorithm.ALGORITHM.ADD_CHECK_DIGIT, values);
+    }
+
+    /**
+     * Fetch records that have <code>length_includes_check_digit BETWEEN
      * lowerInclusive AND upperInclusive</code>
      */
-    public List<org.trustdeck.jooq.generated.tables.pojos.Algorithm> fetchRangeOfConsecutivevaluecounter(Long lowerInclusive, Long upperInclusive) {
-        return fetchRange(Algorithm.ALGORITHM.CONSECUTIVEVALUECOUNTER, lowerInclusive, upperInclusive);
+    public List<org.trustdeck.jooq.generated.tables.pojos.Algorithm> fetchRangeOfLengthIncludesCheckDigit(Boolean lowerInclusive, Boolean upperInclusive) {
+        return fetchRange(Algorithm.ALGORITHM.LENGTH_INCLUDES_CHECK_DIGIT, lowerInclusive, upperInclusive);
     }
 
     /**
-     * Fetch records that have <code>consecutivevaluecounter IN (values)</code>
+     * Fetch records that have <code>length_includes_check_digit IN
+     * (values)</code>
      */
-    public List<org.trustdeck.jooq.generated.tables.pojos.Algorithm> fetchByConsecutivevaluecounter(Long... values) {
-        return fetch(Algorithm.ALGORITHM.CONSECUTIVEVALUECOUNTER, values);
-    }
-
-    /**
-     * Fetch records that have <code>pseudonymlength BETWEEN lowerInclusive AND
-     * upperInclusive</code>
-     */
-    public List<org.trustdeck.jooq.generated.tables.pojos.Algorithm> fetchRangeOfPseudonymlength(Integer lowerInclusive, Integer upperInclusive) {
-        return fetchRange(Algorithm.ALGORITHM.PSEUDONYMLENGTH, lowerInclusive, upperInclusive);
-    }
-
-    /**
-     * Fetch records that have <code>pseudonymlength IN (values)</code>
-     */
-    public List<org.trustdeck.jooq.generated.tables.pojos.Algorithm> fetchByPseudonymlength(Integer... values) {
-        return fetch(Algorithm.ALGORITHM.PSEUDONYMLENGTH, values);
-    }
-
-    /**
-     * Fetch records that have <code>paddingcharacter BETWEEN lowerInclusive AND
-     * upperInclusive</code>
-     */
-    public List<org.trustdeck.jooq.generated.tables.pojos.Algorithm> fetchRangeOfPaddingcharacter(String lowerInclusive, String upperInclusive) {
-        return fetchRange(Algorithm.ALGORITHM.PADDINGCHARACTER, lowerInclusive, upperInclusive);
-    }
-
-    /**
-     * Fetch records that have <code>paddingcharacter IN (values)</code>
-     */
-    public List<org.trustdeck.jooq.generated.tables.pojos.Algorithm> fetchByPaddingcharacter(String... values) {
-        return fetch(Algorithm.ALGORITHM.PADDINGCHARACTER, values);
-    }
-
-    /**
-     * Fetch records that have <code>addcheckdigit BETWEEN lowerInclusive AND
-     * upperInclusive</code>
-     */
-    public List<org.trustdeck.jooq.generated.tables.pojos.Algorithm> fetchRangeOfAddcheckdigit(Boolean lowerInclusive, Boolean upperInclusive) {
-        return fetchRange(Algorithm.ALGORITHM.ADDCHECKDIGIT, lowerInclusive, upperInclusive);
-    }
-
-    /**
-     * Fetch records that have <code>addcheckdigit IN (values)</code>
-     */
-    public List<org.trustdeck.jooq.generated.tables.pojos.Algorithm> fetchByAddcheckdigit(Boolean... values) {
-        return fetch(Algorithm.ALGORITHM.ADDCHECKDIGIT, values);
-    }
-
-    /**
-     * Fetch records that have <code>lengthincludescheckdigit BETWEEN
-     * lowerInclusive AND upperInclusive</code>
-     */
-    public List<org.trustdeck.jooq.generated.tables.pojos.Algorithm> fetchRangeOfLengthincludescheckdigit(Boolean lowerInclusive, Boolean upperInclusive) {
-        return fetchRange(Algorithm.ALGORITHM.LENGTHINCLUDESCHECKDIGIT, lowerInclusive, upperInclusive);
-    }
-
-    /**
-     * Fetch records that have <code>lengthincludescheckdigit IN (values)</code>
-     */
-    public List<org.trustdeck.jooq.generated.tables.pojos.Algorithm> fetchByLengthincludescheckdigit(Boolean... values) {
-        return fetch(Algorithm.ALGORITHM.LENGTHINCLUDESCHECKDIGIT, values);
+    public List<org.trustdeck.jooq.generated.tables.pojos.Algorithm> fetchByLengthIncludesCheckDigit(Boolean... values) {
+        return fetch(Algorithm.ALGORITHM.LENGTH_INCLUDES_CHECK_DIGIT, values);
     }
 
     /**
@@ -220,17 +223,17 @@ public class AlgorithmDao extends DAOImpl<AlgorithmRecord, org.trustdeck.jooq.ge
     }
 
     /**
-     * Fetch records that have <code>saltlength BETWEEN lowerInclusive AND
+     * Fetch records that have <code>salt_length BETWEEN lowerInclusive AND
      * upperInclusive</code>
      */
-    public List<org.trustdeck.jooq.generated.tables.pojos.Algorithm> fetchRangeOfSaltlength(Integer lowerInclusive, Integer upperInclusive) {
-        return fetchRange(Algorithm.ALGORITHM.SALTLENGTH, lowerInclusive, upperInclusive);
+    public List<org.trustdeck.jooq.generated.tables.pojos.Algorithm> fetchRangeOfSaltLength(Integer lowerInclusive, Integer upperInclusive) {
+        return fetchRange(Algorithm.ALGORITHM.SALT_LENGTH, lowerInclusive, upperInclusive);
     }
 
     /**
-     * Fetch records that have <code>saltlength IN (values)</code>
+     * Fetch records that have <code>salt_length IN (values)</code>
      */
-    public List<org.trustdeck.jooq.generated.tables.pojos.Algorithm> fetchBySaltlength(Integer... values) {
-        return fetch(Algorithm.ALGORITHM.SALTLENGTH, values);
+    public List<org.trustdeck.jooq.generated.tables.pojos.Algorithm> fetchBySaltLength(Integer... values) {
+        return fetch(Algorithm.ALGORITHM.SALT_LENGTH, values);
     }
 }

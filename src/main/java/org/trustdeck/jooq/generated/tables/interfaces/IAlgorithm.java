@@ -49,84 +49,84 @@ public interface IAlgorithm extends Serializable {
     public String getAlphabet();
 
     /**
-     * Setter for <code>public.algorithm.randomalgorithmdesiredsize</code>.
+     * Setter for <code>public.algorithm.random_algorithm_desired_size</code>.
      */
-    public IAlgorithm setRandomalgorithmdesiredsize(Long value);
+    public IAlgorithm setRandomAlgorithmDesiredSize(Long value);
 
     /**
-     * Getter for <code>public.algorithm.randomalgorithmdesiredsize</code>.
+     * Getter for <code>public.algorithm.random_algorithm_desired_size</code>.
      */
     @NotNull
-    public Long getRandomalgorithmdesiredsize();
+    public Long getRandomAlgorithmDesiredSize();
 
     /**
      * Setter for
-     * <code>public.algorithm.randomalgorithmdesiredsuccessprobability</code>.
+     * <code>public.algorithm.random_algorithm_desired_success_probability</code>.
      */
-    public IAlgorithm setRandomalgorithmdesiredsuccessprobability(Double value);
+    public IAlgorithm setRandomAlgorithmDesiredSuccessProbability(Double value);
 
     /**
      * Getter for
-     * <code>public.algorithm.randomalgorithmdesiredsuccessprobability</code>.
+     * <code>public.algorithm.random_algorithm_desired_success_probability</code>.
      */
     @NotNull
-    public Double getRandomalgorithmdesiredsuccessprobability();
+    public Double getRandomAlgorithmDesiredSuccessProbability();
 
     /**
-     * Setter for <code>public.algorithm.consecutivevaluecounter</code>.
+     * Setter for <code>public.algorithm.consecutive_value_counter</code>.
      */
-    public IAlgorithm setConsecutivevaluecounter(Long value);
+    public IAlgorithm setConsecutiveValueCounter(Long value);
 
     /**
-     * Getter for <code>public.algorithm.consecutivevaluecounter</code>.
-     */
-    @NotNull
-    public Long getConsecutivevaluecounter();
-
-    /**
-     * Setter for <code>public.algorithm.pseudonymlength</code>.
-     */
-    public IAlgorithm setPseudonymlength(Integer value);
-
-    /**
-     * Getter for <code>public.algorithm.pseudonymlength</code>.
+     * Getter for <code>public.algorithm.consecutive_value_counter</code>.
      */
     @NotNull
-    public Integer getPseudonymlength();
+    public Long getConsecutiveValueCounter();
 
     /**
-     * Setter for <code>public.algorithm.paddingcharacter</code>.
+     * Setter for <code>public.algorithm.pseudonym_length</code>.
      */
-    public IAlgorithm setPaddingcharacter(String value);
+    public IAlgorithm setPseudonymLength(Integer value);
 
     /**
-     * Getter for <code>public.algorithm.paddingcharacter</code>.
+     * Getter for <code>public.algorithm.pseudonym_length</code>.
+     */
+    @NotNull
+    public Integer getPseudonymLength();
+
+    /**
+     * Setter for <code>public.algorithm.padding_character</code>.
+     */
+    public IAlgorithm setPaddingCharacter(String value);
+
+    /**
+     * Getter for <code>public.algorithm.padding_character</code>.
      */
     @NotNull
     @Size(max = 1)
-    public String getPaddingcharacter();
+    public String getPaddingCharacter();
 
     /**
-     * Setter for <code>public.algorithm.addcheckdigit</code>.
+     * Setter for <code>public.algorithm.add_check_digit</code>.
      */
-    public IAlgorithm setAddcheckdigit(Boolean value);
+    public IAlgorithm setAddCheckDigit(Boolean value);
 
     /**
-     * Getter for <code>public.algorithm.addcheckdigit</code>.
-     */
-    @NotNull
-    public Boolean getAddcheckdigit();
-
-    /**
-     * Setter for <code>public.algorithm.lengthincludescheckdigit</code>.
-     */
-    public IAlgorithm setLengthincludescheckdigit(Boolean value);
-
-    /**
-     * Getter for <code>public.algorithm.lengthincludescheckdigit</code>.
+     * Getter for <code>public.algorithm.add_check_digit</code>.
      */
     @NotNull
-    public Boolean getLengthincludescheckdigit();
+    public Boolean getAddCheckDigit();
+
+    /**
+     * Setter for <code>public.algorithm.length_includes_check_digit</code>.
+     */
+    public IAlgorithm setLengthIncludesCheckDigit(Boolean value);
+
+    /**
+     * Getter for <code>public.algorithm.length_includes_check_digit</code>.
+     */
+    @NotNull
+    public Boolean getLengthIncludesCheckDigit();
 
     /**
      * Setter for <code>public.algorithm.salt</code>.
@@ -140,15 +140,15 @@ public interface IAlgorithm extends Serializable {
     public String getSalt();
 
     /**
-     * Setter for <code>public.algorithm.saltlength</code>.
+     * Setter for <code>public.algorithm.salt_length</code>.
      */
-    public IAlgorithm setSaltlength(Integer value);
+    public IAlgorithm setSaltLength(Integer value);
 
     /**
-     * Getter for <code>public.algorithm.saltlength</code>.
+     * Getter for <code>public.algorithm.salt_length</code>.
      */
     @NotNull
-    public Integer getSaltlength();
+    public Integer getSaltLength();
 
     // -------------------------------------------------------------------------
     // FROM and INTO

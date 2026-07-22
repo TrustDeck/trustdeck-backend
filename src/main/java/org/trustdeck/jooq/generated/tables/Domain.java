@@ -7,14 +7,19 @@ package org.trustdeck.jooq.generated.tables;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Function;
 
 import org.jooq.Field;
 import org.jooq.ForeignKey;
+import org.jooq.Function17;
 import org.jooq.Identity;
 import org.jooq.Index;
 import org.jooq.Name;
 import org.jooq.Record;
+import org.jooq.Records;
+import org.jooq.Row17;
 import org.jooq.Schema;
+import org.jooq.SelectField;
 import org.jooq.Table;
 import org.jooq.TableField;
 import org.jooq.TableOptions;
@@ -105,49 +110,6 @@ public class Domain extends TableImpl<DomainRecord> {
     public final TableField<DomainRecord, Boolean> ENFORCEENDDATEVALIDITYINHERITED = createField(DSL.name("enforceenddatevalidityinherited"), SQLDataType.BOOLEAN.nullable(false), this, "");
 
     /**
-     * The column <code>public.domain.algorithm</code>.
-     */
-    public final TableField<DomainRecord, String> ALGORITHM = createField(DSL.name("algorithm"), SQLDataType.CLOB.nullable(false), this, "");
-
-    /**
-     * The column <code>public.domain.algorithminherited</code>.
-     */
-    public final TableField<DomainRecord, Boolean> ALGORITHMINHERITED = createField(DSL.name("algorithminherited"), SQLDataType.BOOLEAN.nullable(false), this, "");
-
-    /**
-     * The column <code>public.domain.alphabet</code>.
-     */
-    public final TableField<DomainRecord, String> ALPHABET = createField(DSL.name("alphabet"), SQLDataType.CLOB.nullable(false), this, "");
-
-    /**
-     * The column <code>public.domain.alphabetinherited</code>.
-     */
-    public final TableField<DomainRecord, Boolean> ALPHABETINHERITED = createField(DSL.name("alphabetinherited"), SQLDataType.BOOLEAN.nullable(false), this, "");
-
-    /**
-     * The column <code>public.domain.randomalgorithmdesiredsize</code>.
-     */
-    public final TableField<DomainRecord, Long> RANDOMALGORITHMDESIREDSIZE = createField(DSL.name("randomalgorithmdesiredsize"), SQLDataType.BIGINT.nullable(false), this, "");
-
-    /**
-     * The column
-     * <code>public.domain.randomalgorithmdesiredsizeinherited</code>.
-     */
-    public final TableField<DomainRecord, Boolean> RANDOMALGORITHMDESIREDSIZEINHERITED = createField(DSL.name("randomalgorithmdesiredsizeinherited"), SQLDataType.BOOLEAN.nullable(false), this, "");
-
-    /**
-     * The column
-     * <code>public.domain.randomalgorithmdesiredsuccessprobability</code>.
-     */
-    public final TableField<DomainRecord, Double> RANDOMALGORITHMDESIREDSUCCESSPROBABILITY = createField(DSL.name("randomalgorithmdesiredsuccessprobability"), SQLDataType.DOUBLE.nullable(false), this, "");
-
-    /**
-     * The column
-     * <code>public.domain.randomalgorithmdesiredsuccessprobabilityinherited</code>.
-     */
-    public final TableField<DomainRecord, Boolean> RANDOMALGORITHMDESIREDSUCCESSPROBABILITYINHERITED = createField(DSL.name("randomalgorithmdesiredsuccessprobabilityinherited"), SQLDataType.BOOLEAN.nullable(false), this, "");
-
-    /**
      * The column <code>public.domain.multiplepsnallowed</code>.
      */
     public final TableField<DomainRecord, Boolean> MULTIPLEPSNALLOWED = createField(DSL.name("multiplepsnallowed"), SQLDataType.BOOLEAN.nullable(false), this, "");
@@ -158,61 +120,6 @@ public class Domain extends TableImpl<DomainRecord> {
     public final TableField<DomainRecord, Boolean> MULTIPLEPSNALLOWEDINHERITED = createField(DSL.name("multiplepsnallowedinherited"), SQLDataType.BOOLEAN.nullable(false), this, "");
 
     /**
-     * The column <code>public.domain.consecutivevaluecounter</code>.
-     */
-    public final TableField<DomainRecord, Long> CONSECUTIVEVALUECOUNTER = createField(DSL.name("consecutivevaluecounter"), SQLDataType.BIGINT.nullable(false), this, "");
-
-    /**
-     * The column <code>public.domain.pseudonymlength</code>.
-     */
-    public final TableField<DomainRecord, Integer> PSEUDONYMLENGTH = createField(DSL.name("pseudonymlength"), SQLDataType.INTEGER.nullable(false), this, "");
-
-    /**
-     * The column <code>public.domain.pseudonymlengthinherited</code>.
-     */
-    public final TableField<DomainRecord, Boolean> PSEUDONYMLENGTHINHERITED = createField(DSL.name("pseudonymlengthinherited"), SQLDataType.BOOLEAN.nullable(false), this, "");
-
-    /**
-     * The column <code>public.domain.paddingcharacter</code>.
-     */
-    public final TableField<DomainRecord, String> PADDINGCHARACTER = createField(DSL.name("paddingcharacter"), SQLDataType.CHAR(1).nullable(false), this, "");
-
-    /**
-     * The column <code>public.domain.paddingcharacterinherited</code>.
-     */
-    public final TableField<DomainRecord, Boolean> PADDINGCHARACTERINHERITED = createField(DSL.name("paddingcharacterinherited"), SQLDataType.BOOLEAN.nullable(false), this, "");
-
-    /**
-     * The column <code>public.domain.addcheckdigit</code>.
-     */
-    public final TableField<DomainRecord, Boolean> ADDCHECKDIGIT = createField(DSL.name("addcheckdigit"), SQLDataType.BOOLEAN.nullable(false), this, "");
-
-    /**
-     * The column <code>public.domain.addcheckdigitinherited</code>.
-     */
-    public final TableField<DomainRecord, Boolean> ADDCHECKDIGITINHERITED = createField(DSL.name("addcheckdigitinherited"), SQLDataType.BOOLEAN.nullable(false), this, "");
-
-    /**
-     * The column <code>public.domain.lengthincludescheckdigit</code>.
-     */
-    public final TableField<DomainRecord, Boolean> LENGTHINCLUDESCHECKDIGIT = createField(DSL.name("lengthincludescheckdigit"), SQLDataType.BOOLEAN.nullable(false), this, "");
-
-    /**
-     * The column <code>public.domain.lengthincludescheckdigitinherited</code>.
-     */
-    public final TableField<DomainRecord, Boolean> LENGTHINCLUDESCHECKDIGITINHERITED = createField(DSL.name("lengthincludescheckdigitinherited"), SQLDataType.BOOLEAN.nullable(false), this, "");
-
-    /**
-     * The column <code>public.domain.salt</code>.
-     */
-    public final TableField<DomainRecord, String> SALT = createField(DSL.name("salt"), SQLDataType.CLOB.nullable(false), this, "");
-
-    /**
-     * The column <code>public.domain.saltlength</code>.
-     */
-    public final TableField<DomainRecord, Integer> SALTLENGTH = createField(DSL.name("saltlength"), SQLDataType.INTEGER.nullable(false), this, "");
-
-    /**
      * The column <code>public.domain.description</code>.
      */
     public final TableField<DomainRecord, String> DESCRIPTION = createField(DSL.name("description"), SQLDataType.CLOB, this, "");
@@ -221,6 +128,16 @@ public class Domain extends TableImpl<DomainRecord> {
      * The column <code>public.domain.superdomainid</code>.
      */
     public final TableField<DomainRecord, Integer> SUPERDOMAINID = createField(DSL.name("superdomainid"), SQLDataType.INTEGER, this, "");
+
+    /**
+     * The column <code>public.domain.algorithm_id</code>.
+     */
+    public final TableField<DomainRecord, Integer> ALGORITHM_ID = createField(DSL.name("algorithm_id"), SQLDataType.INTEGER.nullable(false), this, "");
+
+    /**
+     * The column <code>public.domain.algorithm_inherited</code>.
+     */
+    public final TableField<DomainRecord, Boolean> ALGORITHM_INHERITED = createField(DSL.name("algorithm_inherited"), SQLDataType.BOOLEAN.nullable(false), this, "");
 
     private Domain(Name alias, Table<DomainRecord> aliased) {
         this(alias, aliased, null);
@@ -282,10 +199,11 @@ public class Domain extends TableImpl<DomainRecord> {
 
     @Override
     public List<ForeignKey<DomainRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.DOMAIN__DOMAIN_SUPERDOMAINID_FKEY);
+        return Arrays.asList(Keys.DOMAIN__DOMAIN_SUPERDOMAINID_FKEY, Keys.DOMAIN__DOMAIN_ALGORITHM_ID_FKEY);
     }
 
     private transient Domain _domain;
+    private transient Algorithm _algorithm;
 
     /**
      * Get the implicit join path to the <code>public.domain</code> table.
@@ -295,6 +213,16 @@ public class Domain extends TableImpl<DomainRecord> {
             _domain = new Domain(this, Keys.DOMAIN__DOMAIN_SUPERDOMAINID_FKEY);
 
         return _domain;
+    }
+
+    /**
+     * Get the implicit join path to the <code>public.algorithm</code> table.
+     */
+    public Algorithm algorithm() {
+        if (_algorithm == null)
+            _algorithm = new Algorithm(this, Keys.DOMAIN__DOMAIN_ALGORITHM_ID_FKEY);
+
+        return _algorithm;
     }
 
     @Override
@@ -334,5 +262,29 @@ public class Domain extends TableImpl<DomainRecord> {
     @Override
     public Domain rename(Table<?> name) {
         return new Domain(name.getQualifiedName(), null);
+    }
+
+    // -------------------------------------------------------------------------
+    // Row17 type methods
+    // -------------------------------------------------------------------------
+
+    @Override
+    public Row17<Integer, String, String, LocalDateTime, Boolean, LocalDateTime, Boolean, Boolean, Boolean, Boolean, Boolean, Boolean, Boolean, String, Integer, Integer, Boolean> fieldsRow() {
+        return (Row17) super.fieldsRow();
+    }
+
+    /**
+     * Convenience mapping calling {@link SelectField#convertFrom(Function)}.
+     */
+    public <U> SelectField<U> mapping(Function17<? super Integer, ? super String, ? super String, ? super LocalDateTime, ? super Boolean, ? super LocalDateTime, ? super Boolean, ? super Boolean, ? super Boolean, ? super Boolean, ? super Boolean, ? super Boolean, ? super Boolean, ? super String, ? super Integer, ? super Integer, ? super Boolean, ? extends U> from) {
+        return convertFrom(Records.mapping(from));
+    }
+
+    /**
+     * Convenience mapping calling {@link SelectField#convertFrom(Class,
+     * Function)}.
+     */
+    public <U> SelectField<U> mapping(Class<U> toType, Function17<? super Integer, ? super String, ? super String, ? super LocalDateTime, ? super Boolean, ? super LocalDateTime, ? super Boolean, ? super Boolean, ? super Boolean, ? super Boolean, ? super Boolean, ? super Boolean, ? super Boolean, ? super String, ? super Integer, ? super Integer, ? super Boolean, ? extends U> from) {
+        return convertFrom(toType, Records.mapping(from));
     }
 }
