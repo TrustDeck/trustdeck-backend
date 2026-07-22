@@ -79,6 +79,7 @@ public class EntityInstanceDTO implements IObjectDTO<EntityInstance, EntityInsta
 	/** This entity instance's data (i.e. the attributes and values). */
 	private JsonNode data;
 	
+	// TODO: introduce different post & update dtos where the below attributes are properly placed
 	/** Flag that determines if this type is marked as deleted. */
 	private Boolean isDeleted;
 	

@@ -17,6 +17,7 @@
 
 package org.trustdeck.service;
 
+import java.sql.SQLException;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -106,7 +107,8 @@ public class EntityInstanceDBService {
 	    } catch (DataAccessException e) {
 	    	log.debug(e.getMessage());
 	    	
-	    	if (e.getMessage().contains(" already exists.")) {
+	    	SQLException sqlException = e.getCause(SQLException.class);
+	        if ((sqlException != null && "23505".equals(sqlException.getSQLState())) || e.getMessage().contains(" already exists.")) {
 	    		// Found duplicate, abort and tell the calling method why we aborted with an exception
 	    		throw new DuplicateEntityInstanceException("Found duplicate.");
 	    	} else {
@@ -143,19 +145,10 @@ public class EntityInstanceDBService {
     	}
     	
     	// Build and execute the query
-    	EntityInstance instance = null;
-    	try {
-    		instance = dsl.selectFrom(ENTITY_INSTANCE)
+    	EntityInstance instance = dsl.selectFrom(ENTITY_INSTANCE)
                 .where(ENTITY_INSTANCE.TRUSTDECK_ID.equal(trustDeckID))
                 .and(ENTITY_INSTANCE.IS_DELETED.equal(false))
                 .fetchOneInto(EntityInstance.class);
-        } catch (MappingException e) {
-        	log.debug("Could not map the entity instance search result into the EntityInstance-POJO.", e);
-        	return null;
-        } catch (DataAccessException f) {
-        	log.debug("Searching for the entity instance in the database failed.", f);
-        	return null;
-        }
     	
     	// Check if the search was successful
     	if (instance == null) {
@@ -393,9 +386,7 @@ public class EntityInstanceDBService {
 	                .set(ENTITY_INSTANCE.PROJECT_ID, newEntityInstanceDTO.getProjectID())
 	                .set(ENTITY_INSTANCE.ENTITY_TYPE_ID, newEntityInstanceDTO.getEntityTypeID())
 	                .set(ENTITY_INSTANCE.DATA, toJSONB(newEntityInstanceDTO.getData()))
-	                .set(ENTITY_INSTANCE.IS_DELETED, newEntityInstanceDTO.getIsDeleted())
-	                .set(ENTITY_INSTANCE.CREATED_AT, newEntityInstanceDTO.getCreatedAt())
-	                .set(ENTITY_INSTANCE.UPDATED_AT, newEntityInstanceDTO.getUpdatedAt())
+	                .set(ENTITY_INSTANCE.UPDATED_AT, OffsetDateTime.now())
                 .where(ENTITY_INSTANCE.ID.eq(oldInstanceID))
 	                .and(ENTITY_INSTANCE.PROJECT_ID.eq(projectID))
                 .and(ENTITY_INSTANCE.IS_DELETED.ne(true))
@@ -414,7 +405,7 @@ public class EntityInstanceDBService {
 		}
 	    
 	    // Return the updated entity instance
-        log.debug("Updating the entity instance \"" + updatedRecord.getTrustdeckId() + "\" was successful.");
+        log.debug("Updating the entity instance \"" + newEntityInstanceDTO.getTrustdeckID() + "\" was successful.");
 	    return dto;
     }
     

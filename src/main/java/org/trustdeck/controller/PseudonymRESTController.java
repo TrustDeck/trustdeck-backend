@@ -194,7 +194,7 @@ public class PseudonymRESTController {
             } else {
                 // Generate a new pseudonym
                 String prefix = (omitPrefix != null && omitPrefix) ? "" : domain.getPrefix(); // Omitting the prefix here shouldn't be the norm
-                Pseudonymizer pseudonymizer = new PseudonymizationFactory().getPseudonymizer(domain);
+                Pseudonymizer pseudonymizer = PseudonymizationFactory.getPseudonymizer(domain);
                 pseudonym = pseudonymizer.pseudonymize(pseudonymDTO.getIdentifierItem().getIdentifier() + pseudonymDTO.getIdentifierItem().getIdType() + domain.getSalt(), prefix);
                 pseudonym = domain.getAddcheckdigit() ? pseudonymizer.addCheckDigit(pseudonym, domain.getLengthincludescheckdigit(), domain.getName(), prefix) : pseudonym;
 
@@ -943,7 +943,7 @@ public class PseudonymRESTController {
         // Generate a new pseudonym
         String prefix = (omitPrefix != null && omitPrefix) ? "" : domain.getPrefix();
         
-        Pseudonymizer pseudonymizer = new PseudonymizationFactory().getPseudonymizer(domain);
+        Pseudonymizer pseudonymizer = PseudonymizationFactory.getPseudonymizer(domain);
         String pseudonym = pseudonymizer.pseudonymize(identifier + idType + domain.getSalt(), prefix);
         return domain.getAddcheckdigit() ? pseudonymizer.addCheckDigit(pseudonym, domain.getLengthincludescheckdigit(), domain.getName(), prefix) : pseudonym;
     }

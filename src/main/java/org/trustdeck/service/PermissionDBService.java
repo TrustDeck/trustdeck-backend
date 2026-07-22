@@ -139,169 +139,163 @@ public class PermissionDBService {
     	// Prefill duplicate-check list
     	List<Boolean> existsFlags = new ArrayList<>(Collections.nCopies(n, Boolean.FALSE));
 
-    	try {
-	    	// Reused variables
-	    	String requester = subjectIdFromRequest();
-	    	OffsetDateTime now = OffsetDateTime.now();
-	    	
-			// Check for duplicates in DB (skip duplicates before inserting)
-	    	// Create a list of permissions that we can use to query the database
-			List<Row4<String, String, Integer, String>> idRows = new ArrayList<>(n);
-			for (PermissionDTO dto : permissions) {
-				// Skip nulls
-				if (dto == null) {
-					continue;
-				}
-				
-				idRows.add(DSL.row(dto.getSubjectId(), dto.getResourceType(), dto.getResourceId(), dto.getAction()));
-			}
-			// Query the database and see if we find any of the user-provided permissions already in there
-            Map<Row4<String, String, Integer, String>, PermissionDTO> existingMap = 
-            		dsl.selectFrom(PERMISSION_GRANT)
-					.where(DSL.row(PERMISSION_GRANT.SUBJECT_ID, PERMISSION_GRANT.RESOURCE_TYPE, PERMISSION_GRANT.RESOURCE_ID, PERMISSION_GRANT.ACTION).in(idRows))
-					.fetchMap(r -> DSL.row(r.get(PERMISSION_GRANT.SUBJECT_ID), r.get(PERMISSION_GRANT.RESOURCE_TYPE), r.get(PERMISSION_GRANT.RESOURCE_ID), r.get(PERMISSION_GRANT.ACTION)),
-							r -> {
-								PermissionDTO p = new PermissionDTO().assignPojoValues(r.into(PermissionGrant.class));
-								
-								if ("DOMAIN".equalsIgnoreCase(r.getResourceType())) {
-									Domain d = ddba.getDomainByID(r.getResourceId());
-									p.setDomainName(d == null ? null : d.getName());
-								} else if ("PROJECT".equalsIgnoreCase(r.getResourceType())) {
-									ProjectDTO proj = pdba.getProjectByID(r.getResourceId());
-									p.setProjectAbbreviation(proj == null ? null : proj.getAbbreviation());
-								}
-
-								return p;
-							});
-            
-            // Mark duplicates in original order; marking null-permissions as "exists" will lead to them getting skipped later
-            int rowIndex = 0;
-            for (int i = 0; i < n; i++) {
-            	PermissionDTO dto = permissions.get(i);
-            	
-            	if (dto == null) {
-					existsFlags.set(i, Boolean.TRUE);
-					continue;
-				}
-
-				PermissionDTO duplicate = existingMap.get(idRows.get(rowIndex));
-				boolean isDuplicate = duplicate != null;
-				existsFlags.set(i, isDuplicate);
-				
-				if (isDuplicate) {
-					results.set(i, new Pair<PermissionDTO, String>(duplicate, INSERTION_DUPLICATE_PERMISSION));
-				}
-				
-				// This index will only increased when the checked DTO was not null, so we can always assume that there is an accompanying idRow available
-				rowIndex++;
-			}
-
-			// Prepare batch inserts for non-duplicates
-			List<Insert<PermissionGrantRecord>> inserts = new ArrayList<>(n);
-			List<Integer> insertIndices = new ArrayList<>(n); // For mapping batch result index -> permission index
-			int skippedDuplicates = 0;
-
-			for (int i = 0; i < n; i++) {
-				PermissionDTO dto = permissions.get(i);
-				
-				if (dto == null || existsFlags.get(i)) {
-					skippedDuplicates++;
-					continue;
-				}
-				
-				String decision = Assertion.isNotNullOrEmpty(dto.getDecision()) ? dto.getDecision() : "ALLOW";
-				OffsetDateTime validFrom = dto.getValidFrom() != null ? dto.getValidFrom() : now;
-				OffsetDateTime validTo = dto.getValidTo() != null ? dto.getValidTo() : validFrom.plus(DEFAULT_VALIDITY_DURATION);
-				OffsetDateTime createdAt = dto.getCreatedAt() != null ? dto.getCreatedAt() : now;
-				String createdBy = Assertion.isNotNullOrEmpty(dto.getCreatedBy()) ? dto.getCreatedBy() : requester;
-				String updatedBy = Assertion.isNotNullOrEmpty(dto.getUpdatedBy()) ? dto.getUpdatedBy() : createdBy;
-
-				inserts.add(dsl.insertInto(PERMISSION_GRANT)
-						.set(PERMISSION_GRANT.SUBJECT_ID, dto.getSubjectId())
-						.set(PERMISSION_GRANT.RESOURCE_TYPE, dto.getResourceType())
-						.set(PERMISSION_GRANT.RESOURCE_ID, dto.getResourceId())
-						.set(PERMISSION_GRANT.ACTION, dto.getAction())
-						.set(PERMISSION_GRANT.DECISION, decision)
-						.set(PERMISSION_GRANT.VALID_FROM, validFrom)
-						.set(PERMISSION_GRANT.VALID_TO, validTo)
-						.set(PERMISSION_GRANT.CREATED_AT, createdAt)
-						.set(PERMISSION_GRANT.CREATED_BY, createdBy)
-						.set(PERMISSION_GRANT.UPDATED_AT, now)
-						.set(PERMISSION_GRANT.UPDATED_BY, updatedBy));
-
-				// Track prepared indices
-				insertIndices.add(i);
-			}
-
-			// If there is nothing to insert, we're done
-			if (inserts.isEmpty()) {
-				log.trace("No permissions to insert (" + skippedDuplicates + " duplicates skipped).");
-				return results;
-			}
-
-			// Execute the batch
-			int[] batchResult = dsl.batch(inserts).execute();
-
-			// Evaluate results and fill output list (inserted DTOs; skipped stay null)
-			int inserted = 0;
-			int ignored = skippedDuplicates;
-
-			for (int j = 0; j < batchResult.length; j++) {
-				int individualResult = batchResult[j];
-				int originalIndex = insertIndices.get(j);
-
-				if (individualResult == 1) {
-					inserted++;
-					
-					// Add created permission to the result list
-					PermissionDTO p = permissions.get(originalIndex);
-					PermissionDTO created = getPermission(p.getSubjectId(), p.getResourceType(), p.getResourceId(), p.getAction());
-					results.set(originalIndex, new Pair<PermissionDTO, String>(created, INSERTION_SUCCESS));
-				} else if (individualResult == 0) {
-					ignored++;
-					
-					// Only mark error if it wasn't already marked duplicate
-					if (results.get(originalIndex) == null) {
-						results.set(originalIndex, new Pair<PermissionDTO, String>(null, INSERTION_ERROR));
-					}
-				} else {
-                    // Unexpected result size: abort
-					throw new UnexpectedResultSizeException(1, individualResult);
-				}
+    	// Reused variables
+    	String requester = subjectIdFromRequest();
+    	OffsetDateTime now = OffsetDateTime.now();
+    	
+		// Check for duplicates in DB (skip duplicates before inserting)
+    	// Create a list of permissions that we can use to query the database
+		List<Row4<String, String, Integer, String>> idRows = new ArrayList<>(n);
+		for (PermissionDTO dto : permissions) {
+			// Skip nulls
+			if (dto == null) {
+				continue;
 			}
 			
-			// Collect affected caches
-			Set<String> affectedSubjects = new HashSet<>();
-			Set<String> affectedContexts = new HashSet<>();
-
-			for (int i = 0; i < results.size(); i++) {
-			    PermissionDTO created = results.get(i).first();
-			    if (created == null) {
-			    	continue;
-			    }
-
-			    affectedSubjects.add(created.getSubjectId());
-			    affectedContexts.add(created.getSubjectId() + "|" + created.getResourceType() + "|" + created.getResourceId());
-			}
-
-			// Invalidate the cache
-			affectedSubjects.forEach(s -> cachingService.invalidateSubject(s));
-			for (String ctx : affectedContexts) {
-			    String[] parts = ctx.split("\\|", 3);
-			    cachingService.invalidateContext(parts[0], parts[1], Integer.valueOf(parts[2]));
-			}
-
-			log.trace("Inserted " + inserted + " permission(s).");
-			log.trace("Ignored " + ignored + " permission(s) (including " + skippedDuplicates + " duplicates).");
-			log.debug("Successfully inserted " + inserted + " out of " + n + " permission(s)" + " into the database.");
-
-			return results;
-		} catch (Exception e) {
-			TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
-			
-			log.error("Couldn't insert the batch of " + n + " permissions into the database: " + e.getMessage(), e);
-			return null;
+			idRows.add(DSL.row(dto.getSubjectId(), dto.getResourceType(), dto.getResourceId(), dto.getAction()));
 		}
+		// Query the database and see if we find any of the user-provided permissions already in there
+        Map<Row4<String, String, Integer, String>, PermissionDTO> existingMap = 
+        		dsl.selectFrom(PERMISSION_GRANT)
+				.where(DSL.row(PERMISSION_GRANT.SUBJECT_ID, PERMISSION_GRANT.RESOURCE_TYPE, PERMISSION_GRANT.RESOURCE_ID, PERMISSION_GRANT.ACTION).in(idRows))
+				.fetchMap(r -> DSL.row(r.get(PERMISSION_GRANT.SUBJECT_ID), r.get(PERMISSION_GRANT.RESOURCE_TYPE), r.get(PERMISSION_GRANT.RESOURCE_ID), r.get(PERMISSION_GRANT.ACTION)),
+						r -> {
+							PermissionDTO p = new PermissionDTO().assignPojoValues(r.into(PermissionGrant.class));
+							
+							if ("DOMAIN".equalsIgnoreCase(r.getResourceType())) {
+								Domain d = ddba.getDomainByID(r.getResourceId());
+								p.setDomainName(d == null ? null : d.getName());
+							} else if ("PROJECT".equalsIgnoreCase(r.getResourceType())) {
+								ProjectDTO proj = pdba.getProjectByID(r.getResourceId());
+								p.setProjectAbbreviation(proj == null ? null : proj.getAbbreviation());
+							}
+
+							return p;
+						});
+        
+        // Mark duplicates in original order; marking null-permissions as "exists" will lead to them getting skipped later
+        int rowIndex = 0;
+        for (int i = 0; i < n; i++) {
+        	PermissionDTO dto = permissions.get(i);
+        	
+        	if (dto == null) {
+				existsFlags.set(i, Boolean.TRUE);
+				continue;
+			}
+
+			PermissionDTO duplicate = existingMap.get(idRows.get(rowIndex));
+			boolean isDuplicate = duplicate != null;
+			existsFlags.set(i, isDuplicate);
+			
+			if (isDuplicate) {
+				results.set(i, new Pair<PermissionDTO, String>(duplicate, INSERTION_DUPLICATE_PERMISSION));
+			}
+			
+			// This index will only increased when the checked DTO was not null, so we can always assume that there is an accompanying idRow available
+			rowIndex++;
+		}
+
+		// Prepare batch inserts for non-duplicates
+		List<Insert<PermissionGrantRecord>> inserts = new ArrayList<>(n);
+		List<Integer> insertIndices = new ArrayList<>(n); // For mapping batch result index -> permission index
+		int skippedDuplicates = 0;
+
+		for (int i = 0; i < n; i++) {
+			PermissionDTO dto = permissions.get(i);
+			
+			if (dto == null || existsFlags.get(i)) {
+				skippedDuplicates++;
+				continue;
+			}
+			
+			String decision = Assertion.isNotNullOrEmpty(dto.getDecision()) ? dto.getDecision() : "ALLOW";
+			OffsetDateTime validFrom = dto.getValidFrom() != null ? dto.getValidFrom() : now;
+			OffsetDateTime validTo = dto.getValidTo() != null ? dto.getValidTo() : validFrom.plus(DEFAULT_VALIDITY_DURATION);
+			OffsetDateTime createdAt = dto.getCreatedAt() != null ? dto.getCreatedAt() : now;
+			String createdBy = Assertion.isNotNullOrEmpty(dto.getCreatedBy()) ? dto.getCreatedBy() : requester;
+			String updatedBy = Assertion.isNotNullOrEmpty(dto.getUpdatedBy()) ? dto.getUpdatedBy() : createdBy;
+
+			inserts.add(dsl.insertInto(PERMISSION_GRANT)
+					.set(PERMISSION_GRANT.SUBJECT_ID, dto.getSubjectId())
+					.set(PERMISSION_GRANT.RESOURCE_TYPE, dto.getResourceType())
+					.set(PERMISSION_GRANT.RESOURCE_ID, dto.getResourceId())
+					.set(PERMISSION_GRANT.ACTION, dto.getAction())
+					.set(PERMISSION_GRANT.DECISION, decision)
+					.set(PERMISSION_GRANT.VALID_FROM, validFrom)
+					.set(PERMISSION_GRANT.VALID_TO, validTo)
+					.set(PERMISSION_GRANT.CREATED_AT, createdAt)
+					.set(PERMISSION_GRANT.CREATED_BY, createdBy)
+					.set(PERMISSION_GRANT.UPDATED_AT, now)
+					.set(PERMISSION_GRANT.UPDATED_BY, updatedBy));
+
+			// Track prepared indices
+			insertIndices.add(i);
+		}
+
+		// If there is nothing to insert, we're done
+		if (inserts.isEmpty()) {
+			log.trace("No permissions to insert (" + skippedDuplicates + " duplicates skipped).");
+			return results;
+		}
+
+		// Execute the batch
+		int[] batchResult = dsl.batch(inserts).execute();
+
+		// Evaluate results and fill output list (inserted DTOs; skipped stay null)
+		int inserted = 0;
+		int ignored = skippedDuplicates;
+
+		for (int j = 0; j < batchResult.length; j++) {
+			int individualResult = batchResult[j];
+			int originalIndex = insertIndices.get(j);
+
+			if (individualResult == 1) {
+				inserted++;
+				
+				// Add created permission to the result list
+				PermissionDTO p = permissions.get(originalIndex);
+				PermissionDTO created = getPermission(p.getSubjectId(), p.getResourceType(), p.getResourceId(), p.getAction());
+				results.set(originalIndex, new Pair<PermissionDTO, String>(created, INSERTION_SUCCESS));
+			} else if (individualResult == 0) {
+				ignored++;
+				
+				// Only mark error if it wasn't already marked duplicate
+				if (results.get(originalIndex) == null) {
+					results.set(originalIndex, new Pair<PermissionDTO, String>(null, INSERTION_ERROR));
+				}
+			} else {
+                // Unexpected result size: abort
+				throw new UnexpectedResultSizeException(1, individualResult);
+			}
+		}
+		
+		// Collect affected caches
+		Set<String> affectedSubjects = new HashSet<>();
+		Set<String> affectedContexts = new HashSet<>();
+
+		for (int i = 0; i < results.size(); i++) {
+		    PermissionDTO created = results.get(i).first();
+		    if (created == null) {
+		    	continue;
+		    }
+
+		    affectedSubjects.add(created.getSubjectId());
+		    affectedContexts.add(created.getSubjectId() + "|" + created.getResourceType() + "|" + created.getResourceId());
+		}
+
+		// Invalidate the cache
+		affectedSubjects.forEach(s -> cachingService.invalidateSubject(s));
+		for (String ctx : affectedContexts) {
+		    String[] parts = ctx.split("\\|", 3);
+		    cachingService.invalidateContext(parts[0], parts[1], Integer.valueOf(parts[2]));
+		}
+
+		log.trace("Inserted " + inserted + " permission(s).");
+		log.trace("Ignored " + ignored + " permission(s) (including " + skippedDuplicates + " duplicates).");
+		log.debug("Successfully inserted " + inserted + " out of " + n + " permission(s)" + " into the database.");
+
+		return results;
+
 	}
 	
 	/**
@@ -600,89 +594,78 @@ public class PermissionDBService {
 		int n = permissions.size();
 		List<Boolean> deleteSuccess = new ArrayList<>(n);
 		
-		try {
-			// Create a list of delete statements
-			List<DeleteConditionStep<PermissionGrantRecord>> deletions = new ArrayList<>(n);
-			List<PermissionDTO> deletionKeysForCache = new ArrayList<>(n);
+		// Create a list of delete statements
+		List<DeleteConditionStep<PermissionGrantRecord>> deletions = new ArrayList<>(n);
+		List<PermissionDTO> deletionKeysForCache = new ArrayList<>(n);
 
-			for (PermissionDTO p : permissions) {
-				// If input contains null, add a no-op (keeps result alignment)
-				if (p == null) {
-					deletions.add(dsl.delete(PERMISSION_GRANT).where(PERMISSION_GRANT.ID.eq(-1)));
-					deletionKeysForCache.add(null);
+		for (PermissionDTO p : permissions) {
+			// If input contains null, add a no-op (keeps result alignment)
+			if (p == null) {
+				deletions.add(dsl.delete(PERMISSION_GRANT).where(PERMISSION_GRANT.ID.eq(-1)));
+				deletionKeysForCache.add(null);
+				continue;
+			}
+			
+			// Assert that we have the information we need
+			if (Assertion.isNullOrEmpty(p.getSubjectId(), p.getResourceType(), p.getAction()) || p.getResourceId() == null) {
+				// We are lacking information, see if an ID is given, so we can get the information first
+				if (p.getId() != null) {
+					// ID is given: overwrite the DTO with the data from the database 
+					p = new PermissionDTO().assignPojoValues(dsl.selectFrom(PERMISSION_GRANT)
+					        .where(PERMISSION_GRANT.ID.eq(p.getId()))
+					        .fetchOne());
+				} else {
+					log.debug("There is not enough information to delete the record.");
 					continue;
 				}
-				
-				// Assert that we have the information we need
-				if (Assertion.isNullOrEmpty(p.getSubjectId(), p.getResourceType(), p.getAction()) || p.getResourceId() == null) {
-					// We are lacking information, see if an ID is given, so we can get the information first
-					if (p.getId() != null) {
-						// ID is given: overwrite the DTO with the data from the database 
-						p = new PermissionDTO().assignPojoValues(dsl.selectFrom(PERMISSION_GRANT)
-						        .where(PERMISSION_GRANT.ID.eq(p.getId()))
-						        .fetchOne());
-					} else {
-						log.debug("There is not enough information to delete the record.");
-						continue;
-					}
-				}
-
-				// Create and add deletion statement
-				deletions.add(dsl.delete(PERMISSION_GRANT)
-						.where(PERMISSION_GRANT.SUBJECT_ID.equalIgnoreCase(p.getSubjectId()))
-						.and(PERMISSION_GRANT.RESOURCE_TYPE.equalIgnoreCase(p.getResourceType()))
-						.and(PERMISSION_GRANT.RESOURCE_ID.eq(p.getResourceId()))
-						.and(PERMISSION_GRANT.ACTION.equalIgnoreCase(p.getAction())));
-				
-				// Keep track of which cached objects need to be removed
-				deletionKeysForCache.add(p);
 			}
 
-			// Batch the delete statements and execute the batch
-			int[] result = dsl.batch(deletions).execute();
-
-			// Process the result
-			int deleted = 0;
-			int ignored = 0;
-
-			for (int i = 0; i < result.length; i++) {
-				if (result[i] == 1) {
-					deleted++;
-					deleteSuccess.add(true);
-					
-					// Invalidate cache-entries that are of deleted records
-					PermissionDTO p = deletionKeysForCache.get(i);
-					if (p != null) {
-						cachingService.invalidateSubject(p.getSubjectId());
-						cachingService.invalidateContext(p.getSubjectId(), p.getResourceType(), p.getResourceId());
-					}
-				} else if (result[i] == 0) {
-					ignored++;
-					deleteSuccess.add(false);
-				} else {
-					// Unexpected result, abort the complete transaction by throwing an exception
-					throw new UnexpectedResultSizeException(1, result[i]);
-				}
-			}
-
-			log.trace("Deleted " + deleted + " permission(s).");
-			log.trace("Ignored " + ignored + " permission(s).");
-			log.debug("Successfully deleted " + deleted + " out of " + deletions.size() + " permission(s) in the database.");
-
-			return deleteSuccess;
-		} catch (UnexpectedResultSizeException e) {
-			TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
-
-			log.error("The deletion would have affected an unexpected number of records (" + e.getActual() + ") "
-					+ "when it should have only affected " + e.getExpected() + " record(s). The deletion process "
-					+ "was therefore rolled back.");
-			return null;
-		} catch (Exception f) {
-			TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+			// Create and add deletion statement
+			deletions.add(dsl.delete(PERMISSION_GRANT)
+					.where(PERMISSION_GRANT.SUBJECT_ID.equalIgnoreCase(p.getSubjectId()))
+					.and(PERMISSION_GRANT.RESOURCE_TYPE.equalIgnoreCase(p.getResourceType()))
+					.and(PERMISSION_GRANT.RESOURCE_ID.eq(p.getResourceId()))
+					.and(PERMISSION_GRANT.ACTION.equalIgnoreCase(p.getAction())));
 			
-			log.error("Couldn't delete a batch of permissions from the database: " + f.getClass() + ": " + f.getMessage(), f);
-			return null;
+			// Keep track of which cached objects need to be removed
+			deletionKeysForCache.add(p);
 		}
+
+		// Batch the delete statements and execute the batch
+		int[] result = dsl.batch(deletions).execute();
+
+		// Process the result
+		int deleted = 0;
+		int ignored = 0;
+
+		for (int i = 0; i < result.length; i++) {
+			if (result[i] == 1) {
+				deleted++;
+				deleteSuccess.add(true);
+				
+				// Invalidate cache-entries that are of deleted records
+				PermissionDTO p = deletionKeysForCache.get(i);
+				if (p != null) {
+					cachingService.invalidateSubject(p.getSubjectId());
+					cachingService.invalidateContext(p.getSubjectId(), p.getResourceType(), p.getResourceId());
+				}
+			} else if (result[i] == 0) {
+				ignored++;
+				deleteSuccess.add(false);
+			} else {
+				// Unexpected result, abort the complete transaction by throwing an exception
+				log.error("The deletion would have affected an unexpected number of records (" + result[i] + ") "
+						+ "when it should have only affected one record. The deletion process "
+						+ "was therefore rolled back.");
+				throw new UnexpectedResultSizeException(1, result[i]);
+			}
+		}
+
+		log.trace("Deleted " + deleted + " permission(s).");
+		log.trace("Ignored " + ignored + " permission(s).");
+		log.debug("Successfully deleted " + deleted + " out of " + deletions.size() + " permission(s) in the database.");
+
+		return deleteSuccess;
 	}
 	
 	/**
@@ -754,130 +737,119 @@ public class PermissionDBService {
 			updateSuccess.add(null);
 		}
 
-		try {
-			String requester = subjectIdFromRequest();
-			OffsetDateTime now = OffsetDateTime.now();
+		String requester = subjectIdFromRequest();
+		OffsetDateTime now = OffsetDateTime.now();
 
-			List<UpdateConditionStep<PermissionGrantRecord>> updates = new ArrayList<>();
-			List<Integer> originalIndex = new ArrayList<>();
-			List<Pair<PermissionDTO, PermissionDTO>> invalidationPairs = new ArrayList<>();
-			int updated = 0;
-			int ignored = 0;
+		List<UpdateConditionStep<PermissionGrantRecord>> updates = new ArrayList<>();
+		List<Integer> originalIndex = new ArrayList<>();
+		List<Pair<PermissionDTO, PermissionDTO>> invalidationPairs = new ArrayList<>();
+		int updated = 0;
+		int ignored = 0;
 
-			// Create a list of update statements
-			for (int j = 0; j < n; j++) {
-				PermissionUpdateDTO u = permissionUpdates.get(j);
+		// Create a list of update statements
+		for (int j = 0; j < n; j++) {
+			PermissionUpdateDTO u = permissionUpdates.get(j);
 
-				// Check if the permission record that should be updated exists
-				if (u == null || !u.hasIdentifyingInformation() || !u.hasUpdateData()) {
-					log.debug("Permission update ignored: missing identifying information or no update data.");
-					ignored++;
-					updateSuccess.set(j, false);
-					continue;
-				}
-
-				// Check existence of the record to update
-				// Unique key: oldSubjectId + oldResourceType + oldResourceId + oldAction
-				PermissionGrantRecord old = dsl.selectFrom(PERMISSION_GRANT)
-						.where(PERMISSION_GRANT.SUBJECT_ID.eq(u.getOldSubjectId()))
-						.and(PERMISSION_GRANT.RESOURCE_TYPE.eq(u.getOldResourceType()))
-						.and(PERMISSION_GRANT.RESOURCE_ID.eq(u.getOldResourceId()))
-						.and(PERMISSION_GRANT.ACTION.eq(u.getOldAction()))
-						.fetchOne();
-
-				if (old == null) {
-					ignored++;
-					updateSuccess.set(j, false);
-					continue;
-				}
-
-				// Sanitize update values
-				String newSubjectId = (Assertion.isNotNullOrEmpty(u.getNewSubjectId())) ? u.getNewSubjectId() : old.getSubjectId();
-				String newResourceType = (Assertion.isNotNullOrEmpty(u.getNewResourceType())) ? u.getNewResourceType() : old.getResourceType();
-				Integer newResourceId = (u.getNewResourceId() != null) ? u.getNewResourceId() : old.getResourceId();
-				String newAction = (Assertion.isNotNullOrEmpty(u.getNewAction())) ? u.getNewAction() : old.getAction();
-				String newDecision = (Assertion.isNotNullOrEmpty(u.getDecision())) ? u.getDecision() : old.getDecision();
-				OffsetDateTime newValidFrom = (u.getValidFrom() != null) ? u.getValidFrom() : old.getValidFrom();
-				OffsetDateTime newValidTo = (u.getValidTo() != null) ? u.getValidTo() : old.getValidTo();
-				OffsetDateTime updatedAt = (u.getUpdatedAt() != null) ? u.getUpdatedAt() : now;
-				String updatedBy = Assertion.isNotNullOrEmpty(u.getUpdatedBy()) ? u.getUpdatedBy() : requester;
-
-				// Add to batch update
-				updates.add(dsl.update(PERMISSION_GRANT)
-						.set(PERMISSION_GRANT.SUBJECT_ID, newSubjectId)
-						.set(PERMISSION_GRANT.RESOURCE_TYPE, newResourceType)
-						.set(PERMISSION_GRANT.RESOURCE_ID, newResourceId)
-						.set(PERMISSION_GRANT.ACTION, newAction)
-						.set(PERMISSION_GRANT.DECISION, newDecision)
-						.set(PERMISSION_GRANT.VALID_FROM, newValidFrom)
-						.set(PERMISSION_GRANT.VALID_TO, newValidTo)
-						.set(PERMISSION_GRANT.UPDATED_AT, updatedAt)
-						.set(PERMISSION_GRANT.UPDATED_BY, updatedBy)
-						.where(PERMISSION_GRANT.SUBJECT_ID.equalIgnoreCase(u.getOldSubjectId()))
-						.and(PERMISSION_GRANT.RESOURCE_TYPE.equalIgnoreCase(u.getOldResourceType()))
-						.and(PERMISSION_GRANT.RESOURCE_ID.eq(u.getOldResourceId()))
-						.and(PERMISSION_GRANT.ACTION.equalIgnoreCase(u.getOldAction())));
-
-				// Store the index of the original list
-				originalIndex.add(j);
-				
-				// Keep track of the pairs of permission-grants that should be invalidated in the cache
-				PermissionDTO oldPerm = PermissionDTO.builder().subjectId(old.getSubjectId()).resourceType(old.getResourceType()).resourceId(old.getResourceId()).build();
-				PermissionDTO newPerm = PermissionDTO.builder().subjectId(newSubjectId).resourceType(newResourceType).resourceId(newResourceId).build();
-				invalidationPairs.add(new Pair<PermissionDTO, PermissionDTO>(oldPerm, newPerm));
+			// Check if the permission record that should be updated exists
+			if (u == null || !u.hasIdentifyingInformation() || !u.hasUpdateData()) {
+				log.debug("Permission update ignored: missing identifying information or no update data.");
+				ignored++;
+				updateSuccess.set(j, false);
+				continue;
 			}
 
-			// If there is nothing to update, we’re done
-			if (updates.isEmpty()) {
-				log.trace("No permissions to update.");
-				return updateSuccess;
+			// Check existence of the record to update
+			// Unique key: oldSubjectId + oldResourceType + oldResourceId + oldAction
+			PermissionGrantRecord old = dsl.selectFrom(PERMISSION_GRANT)
+					.where(PERMISSION_GRANT.SUBJECT_ID.eq(u.getOldSubjectId()))
+					.and(PERMISSION_GRANT.RESOURCE_TYPE.eq(u.getOldResourceType()))
+					.and(PERMISSION_GRANT.RESOURCE_ID.eq(u.getOldResourceId()))
+					.and(PERMISSION_GRANT.ACTION.eq(u.getOldAction()))
+					.fetchOne();
+
+			if (old == null) {
+				ignored++;
+				updateSuccess.set(j, false);
+				continue;
 			}
 
-			// Batch the update statements and execute the batch
-			int[] result = dsl.batch(updates).execute();
+			// Sanitize update values
+			String newSubjectId = (Assertion.isNotNullOrEmpty(u.getNewSubjectId())) ? u.getNewSubjectId() : old.getSubjectId();
+			String newResourceType = (Assertion.isNotNullOrEmpty(u.getNewResourceType())) ? u.getNewResourceType() : old.getResourceType();
+			Integer newResourceId = (u.getNewResourceId() != null) ? u.getNewResourceId() : old.getResourceId();
+			String newAction = (Assertion.isNotNullOrEmpty(u.getNewAction())) ? u.getNewAction() : old.getAction();
+			String newDecision = (Assertion.isNotNullOrEmpty(u.getDecision())) ? u.getDecision() : old.getDecision();
+			OffsetDateTime newValidFrom = (u.getValidFrom() != null) ? u.getValidFrom() : old.getValidFrom();
+			OffsetDateTime newValidTo = (u.getValidTo() != null) ? u.getValidTo() : old.getValidTo();
+			OffsetDateTime updatedAt = (u.getUpdatedAt() != null) ? u.getUpdatedAt() : now;
+			String updatedBy = Assertion.isNotNullOrEmpty(u.getUpdatedBy()) ? u.getUpdatedBy() : requester;
 
-			// Process the result
-			for (int i = 0; i < result.length; i++) {
-				if (result[i] == 1) {
-					// Successful
-					updated++;
-					updateSuccess.set(originalIndex.get(i), true);
-					
-					// Invalidate cache-entries that are of deleted records
-					Pair<PermissionDTO, PermissionDTO> p = invalidationPairs.get(i);
-					if (p != null && p.first() != null && p.second() != null) {
-						cachingService.invalidateSubject(p.first().getSubjectId());
-						cachingService.invalidateSubject(p.second().getSubjectId());
-						cachingService.invalidateContext(p.first().getSubjectId(), p.first().getResourceType(), p.first().getResourceId());
-						cachingService.invalidateContext(p.second().getSubjectId(), p.second().getResourceType(), p.second().getResourceId());
-					}
-				} else if (result[i] == 0) {
-					// Failed, due to for example not finding the record
-					ignored++;
-					updateSuccess.set(originalIndex.get(i), false);
-				} else {
-					// Affected an unexpected number of records, so abort the update
-					throw new UnexpectedResultSizeException(1, result[i]);
-				}
-			}
+			// Add to batch update
+			updates.add(dsl.update(PERMISSION_GRANT)
+					.set(PERMISSION_GRANT.SUBJECT_ID, newSubjectId)
+					.set(PERMISSION_GRANT.RESOURCE_TYPE, newResourceType)
+					.set(PERMISSION_GRANT.RESOURCE_ID, newResourceId)
+					.set(PERMISSION_GRANT.ACTION, newAction)
+					.set(PERMISSION_GRANT.DECISION, newDecision)
+					.set(PERMISSION_GRANT.VALID_FROM, newValidFrom)
+					.set(PERMISSION_GRANT.VALID_TO, newValidTo)
+					.set(PERMISSION_GRANT.UPDATED_AT, updatedAt)
+					.set(PERMISSION_GRANT.UPDATED_BY, updatedBy)
+					.where(PERMISSION_GRANT.SUBJECT_ID.equalIgnoreCase(u.getOldSubjectId()))
+					.and(PERMISSION_GRANT.RESOURCE_TYPE.equalIgnoreCase(u.getOldResourceType()))
+					.and(PERMISSION_GRANT.RESOURCE_ID.eq(u.getOldResourceId()))
+					.and(PERMISSION_GRANT.ACTION.equalIgnoreCase(u.getOldAction())));
 
-			log.trace("Updated " + updated + " permission(s).");
-			log.trace("Ignored " + ignored + " permission(s).");
-			log.debug("Successfully updated " + updated + " out of " + permissionUpdates.size() + " permission(s) in the database.");
-
-			return updateSuccess;
-		} catch (UnexpectedResultSizeException e) {
-			TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
-
-			log.error("The update would have affected an unexpected number of records (" + e.getActual() + ") when it should "
-					+ "have only affected " + e.getExpected() + " record(s). The batch update was therefore rolled back.");
-			return null;
-		} catch (Exception f) {
-			TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
-
-			log.error( "Couldn't update the batch of permissions in the database: " + f.getClass() + ": " + f.getMessage(), f);
-			return null;
+			// Store the index of the original list
+			originalIndex.add(j);
+			
+			// Keep track of the pairs of permission-grants that should be invalidated in the cache
+			PermissionDTO oldPerm = PermissionDTO.builder().subjectId(old.getSubjectId()).resourceType(old.getResourceType()).resourceId(old.getResourceId()).build();
+			PermissionDTO newPerm = PermissionDTO.builder().subjectId(newSubjectId).resourceType(newResourceType).resourceId(newResourceId).build();
+			invalidationPairs.add(new Pair<PermissionDTO, PermissionDTO>(oldPerm, newPerm));
 		}
+
+		// If there is nothing to update, we’re done
+		if (updates.isEmpty()) {
+			log.trace("No permissions to update.");
+			return updateSuccess;
+		}
+
+		// Batch the update statements and execute the batch
+		int[] result = dsl.batch(updates).execute();
+
+		// Process the result
+		for (int i = 0; i < result.length; i++) {
+			if (result[i] == 1) {
+				// Successful
+				updated++;
+				updateSuccess.set(originalIndex.get(i), true);
+				
+				// Invalidate cache-entries that are of deleted records
+				Pair<PermissionDTO, PermissionDTO> p = invalidationPairs.get(i);
+				if (p != null && p.first() != null && p.second() != null) {
+					cachingService.invalidateSubject(p.first().getSubjectId());
+					cachingService.invalidateSubject(p.second().getSubjectId());
+					cachingService.invalidateContext(p.first().getSubjectId(), p.first().getResourceType(), p.first().getResourceId());
+					cachingService.invalidateContext(p.second().getSubjectId(), p.second().getResourceType(), p.second().getResourceId());
+				}
+			} else if (result[i] == 0) {
+				// Failed, due to for example not finding the record
+				ignored++;
+				updateSuccess.set(originalIndex.get(i), false);
+			} else {
+				// Affected an unexpected number of records, so abort the update
+				log.error("The update would have affected an unexpected number of records (" + result[i] + ") when it should "
+				+ "have only affected one record(s). The batch update was therefore rolled back.");
+				throw new UnexpectedResultSizeException(1, result[i]);
+			}
+		}
+
+		log.trace("Updated " + updated + " permission(s).");
+		log.trace("Ignored " + ignored + " permission(s).");
+		log.debug("Successfully updated " + updated + " out of " + permissionUpdates.size() + " permission(s) in the database.");
+
+		return updateSuccess;
 	}
 	
 	/**
@@ -1314,86 +1286,74 @@ public class PermissionDBService {
 			return false;
         }
 
-        try {
-            // Normalize desired actions: drop nulls, trim, drop blanks, ensure uniqueness
-            Set<String> desired = actions.stream().filter(Objects::nonNull).map(String::trim).filter(s -> !s.isEmpty()).collect(Collectors.toCollection(HashSet::new));
+        // Normalize desired actions: drop nulls, trim, drop blanks, ensure uniqueness
+        Set<String> desired = actions.stream().filter(Objects::nonNull).map(String::trim).filter(s -> !s.isEmpty()).collect(Collectors.toCollection(HashSet::new));
 
-            // Retrieve current ALLOWed actions for this subject and resource
-            Set<String> current = new HashSet<>(dsl.select(PERMISSION_GRANT.ACTION)
-                          .from(PERMISSION_GRANT)
-                          .where(PERMISSION_GRANT.SUBJECT_ID.eq(subjectId))
-                          .and(PERMISSION_GRANT.RESOURCE_TYPE.eq(resourceType))
-                          .and(PERMISSION_GRANT.RESOURCE_ID.eq(resourceId))
-                          .and(PERMISSION_GRANT.DECISION.eq("ALLOW"))
-                          .fetch(PERMISSION_GRANT.ACTION)
-            );
+        // Retrieve current ALLOWed actions for this subject and resource
+        Set<String> current = new HashSet<>(dsl.select(PERMISSION_GRANT.ACTION)
+                      .from(PERMISSION_GRANT)
+                      .where(PERMISSION_GRANT.SUBJECT_ID.eq(subjectId))
+                      .and(PERMISSION_GRANT.RESOURCE_TYPE.eq(resourceType))
+                      .and(PERMISSION_GRANT.RESOURCE_ID.eq(resourceId))
+                      .and(PERMISSION_GRANT.DECISION.eq("ALLOW"))
+                      .fetch(PERMISSION_GRANT.ACTION)
+        );
 
-            // Compute differences between current and desired
-            Set<String> actionsToInsert = new HashSet<>(desired);
-            actionsToInsert.removeAll(current);
+        // Compute differences between current and desired
+        Set<String> actionsToInsert = new HashSet<>(desired);
+        actionsToInsert.removeAll(current);
 
-            Set<String> actionsToDelete = new HashSet<>(current);
-            actionsToDelete.removeAll(desired);
+        Set<String> actionsToDelete = new HashSet<>(current);
+        actionsToDelete.removeAll(desired);
 
-            // Check if there is anything to do
-            if (actionsToInsert.isEmpty() && actionsToDelete.isEmpty()) {
-            	log.debug("There are no actions to add or delete. Done.");
-                return true;
-            }
-
-            // Delete those actions that are not needed anymore
-            if (!actionsToDelete.isEmpty()) {
-            	List<PermissionDTO> deletes = new ArrayList<>(actionsToDelete.size());
-            	
-            	// Build a list of PermissionDTOs
-            	for (String action : actionsToDelete) {
-            		deletes.add(PermissionDTO.builder().subjectId(subjectId).resourceType(resourceType)
-            				.resourceId(resourceId).action(action).build());
-            	}
-            	
-            	// Call the delete method
-            	List<Boolean> result = deletePermissions(deletes);
-            	if (result == null || result.contains(false)) {
-            		log.debug("Could not properly remove the actions that are not needed anymore. Aborting.");
-            		throw new PermissionManagementException(resourceType + ":" + resourceId.toString());
-            	}
-            }
-            
-            // Insert missing actions
-            if (!actionsToInsert.isEmpty()) {
-            	List<PermissionDTO> inserts = new ArrayList<>(actionsToInsert.size());
-            	
-            	// Build a list of PermissionDTOs
-            	for (String action : actionsToInsert) {
-            		inserts.add(PermissionDTO.builder().subjectId(subjectId).resourceType(resourceType)
-            				.resourceId(resourceId).decision("ALLOW").action(action).build());
-            	}
-            	
-            	// Call the create method
-            	List<Pair<PermissionDTO, String>> result = createPermissions(inserts);
-            	if (result == null || result.contains(new Pair<PermissionDTO, String>(null, INSERTION_ERROR))) {
-            		log.debug("Could not properly add the actions that were required. Aborting.");
-            		throw new PermissionManagementException(resourceType + ":" + resourceId.toString());
-            	}
-            }
-            
-            // Invalidate cache for entries of the replaced permissions
-            cachingService.invalidateContext(subjectId, resourceType, resourceId);
-            cachingService.invalidateSubject(subjectId);
-
-            log.debug("Successfully replaced the permissions as required.");
+        // Check if there is anything to do
+        if (actionsToInsert.isEmpty() && actionsToDelete.isEmpty()) {
+        	log.debug("There are no actions to add or delete. Done.");
             return true;
-        } catch (DataAccessException e) {
-            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
-            
-            log.debug("Replacing the permissions in the database lead to an exception: ", e.getMessage(), e);
-            return false;
-        } catch (Exception f) {
-        	TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
-            
-            log.debug("Replacing permissions failed: ", f.getMessage(), f);
-            return false;
-		}
+        }
+
+        // Delete those actions that are not needed anymore
+        if (!actionsToDelete.isEmpty()) {
+        	List<PermissionDTO> deletes = new ArrayList<>(actionsToDelete.size());
+        	
+        	// Build a list of PermissionDTOs
+        	for (String action : actionsToDelete) {
+        		deletes.add(PermissionDTO.builder().subjectId(subjectId).resourceType(resourceType)
+        				.resourceId(resourceId).action(action).build());
+        	}
+        	
+        	// Call the delete method
+        	List<Boolean> result = deletePermissions(deletes);
+        	if (result == null || result.contains(false)) {
+        		log.debug("Could not properly remove the actions that are not needed anymore. Aborting.");
+        		throw new PermissionManagementException(resourceType + ":" + resourceId.toString());
+        	}
+        }
+        
+        // Insert missing actions
+        if (!actionsToInsert.isEmpty()) {
+        	List<PermissionDTO> inserts = new ArrayList<>(actionsToInsert.size());
+        	
+        	// Build a list of PermissionDTOs
+        	for (String action : actionsToInsert) {
+        		inserts.add(PermissionDTO.builder().subjectId(subjectId).resourceType(resourceType)
+        				.resourceId(resourceId).decision("ALLOW").action(action).build());
+        	}
+        	
+        	// Call the create method
+        	List<Pair<PermissionDTO, String>> result = createPermissions(inserts);
+        	if (result == null || result.contains(new Pair<PermissionDTO, String>(null, INSERTION_ERROR))) {
+        		log.debug("Could not properly add the actions that were required. Aborting.");
+        		throw new PermissionManagementException(resourceType + ":" + resourceId.toString());
+        	}
+        }
+        
+        // Invalidate cache for entries of the replaced permissions
+        cachingService.invalidateContext(subjectId, resourceType, resourceId);
+        cachingService.invalidateSubject(subjectId);
+
+        log.debug("Successfully replaced the permissions as required.");
+        return true;
 	}
 	
 	/**

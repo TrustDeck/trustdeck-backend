@@ -38,7 +38,7 @@ public class PseudonymizationFactory {
 	 * @param algorithm the algorithm with which the inputs should be pseudonymized
 	 * @return the pre-configured pseudonymizer so that the pseudonymization step itself is easier to accomplish 
 	 */
-	public Pseudonymizer getPseudonymizer(Algorithm algorithm) {
+	public static Pseudonymizer getPseudonymizer(Algorithm algorithm) {
 		// Select the desired pseudonymization algorithm and create a pseudonymizer
         switch (algorithm.getName().toUpperCase()) {
             case "MD5": {
@@ -89,7 +89,7 @@ public class PseudonymizationFactory {
 	 * @param domain the domain under which the pseudonyms should be stored in
 	 * @return the pre-configured pseudonymizer so that the pseudonymization step itself is easier to accomplish 
 	 */
-	public Pseudonymizer getPseudonymizer(Domain domain) {
+	public static Pseudonymizer getPseudonymizer(Domain domain) {
 		// Check if any algorithm was provided
 		if (!Assertion.isNotNullOrEmpty(domain.getAlgorithm())) {
 			log.error("There was no valid pseudonymization algorithm provided.");

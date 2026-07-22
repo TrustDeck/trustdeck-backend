@@ -81,12 +81,11 @@ public class RecordLinkageService {
      * @param projectId the project containing the entity instances
      * @param entityType the entity type for which candidates should be found
      * @param payload the entity payload to compare
-     * @param limit the maximum number of candidates to return
      * @param includeDeleted whether deleted entity instances should be included
      * @return the matching candidates ordered by score, an empty list if no
      *         candidates exist, or {@code null} if linkage cannot be performed
      */
-    public List<RecordLinkageCandidateDTO> findCandidates(int projectId, EntityTypeDTO entityType, JsonNode payload, int limit, boolean includeDeleted) {
+    public List<RecordLinkageCandidateDTO> findCandidates(int projectId, EntityTypeDTO entityType, JsonNode payload, boolean includeDeleted) {
     	// Get the corresponding base type, if available
     	EntityTypeDTO baseType = entityType.getBaseTypeName() == null ? null : entityTypeService.getEntityTypeByName(entityType.getBaseTypeName(), null);
     	JsonNode baseDefinition = baseType == null ? null : baseType.getTypeDefinition();
@@ -156,7 +155,6 @@ public class RecordLinkageService {
     			.sorted(Comparator.comparingDouble(RecordLinkageCandidateDTO::getNormalizedScore)
     					.reversed()
     					.thenComparing(Comparator.comparingDouble(RecordLinkageCandidateDTO::getScore).reversed()))
-    			.limit(limit)
     			.toList();
     }
 
@@ -167,11 +165,10 @@ public class RecordLinkageService {
      * @param projectId the project containing the entity instances
      * @param entityType the entity type for which candidates should be found
      * @param payload the entity payload to compare
-     * @param limit the maximum number of candidates to return
      * @return the matching active candidates ordered by score
      */
-    public List<RecordLinkageCandidateDTO> findCandidates(int projectId, EntityTypeDTO entityType, JsonNode payload, int limit) {
-    	return findCandidates(projectId, entityType, payload, limit, false);
+    public List<RecordLinkageCandidateDTO> findCandidates(int projectId, EntityTypeDTO entityType, JsonNode payload) {
+    	return findCandidates(projectId, entityType, payload, false);
     }
 
     /**

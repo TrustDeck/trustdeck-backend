@@ -47,7 +47,6 @@ import org.trustdeck.dto.RecordLinkageCandidateDTO;
 import org.trustdeck.exception.DuplicateEntityInstanceException;
 import org.trustdeck.exception.UnexpectedResultSizeException;
 import org.trustdeck.jooq.generated.tables.pojos.Domain;
-import org.trustdeck.linkage.LinkageIndexService;
 import org.trustdeck.linkage.model.CandidateStatus;
 import org.trustdeck.linkage.model.EntityLinkageConfig;
 import org.trustdeck.model.IdentifierItem;
@@ -117,9 +116,6 @@ public class EntityInstanceRESTController {
 	
 	/** The maximum number of search results that will be returned to the caller. */
 	private final static int MAX_NUMBER_OF_SEARCH_RESULTS = 20;
-	
-	/** The maximum number of results that will be returned during record linkage. */
-	private final static int MAX_NUMBER_OF_RECORD_LINKAGE_RESULTS = 20;
 	
 	/**
 	 * Endpoint to create a new instance of an entity type.
@@ -197,7 +193,7 @@ public class EntityInstanceRESTController {
         // Check if linkage is enabled and automatic linkage should be done
         if (linkageConfig.isEnabled() && linkageConfig.isAutoLinkOnCreate()) {
             // Generate candidates
-        	List<RecordLinkageCandidateDTO> candidates = recordLinkageService.findCandidates(project.getId(), entityType, entityInstanceDTO.getData(), MAX_NUMBER_OF_RECORD_LINKAGE_RESULTS, true);
+        	List<RecordLinkageCandidateDTO> candidates = recordLinkageService.findCandidates(project.getId(), entityType, entityInstanceDTO.getData(), true);
             if (candidates == null) {
                 log.debug("Automatic record linkage failed.");
                 return responseService.unprocessableEntity(responseContentType);
@@ -249,7 +245,7 @@ public class EntityInstanceRESTController {
 				String idType = "TrustDeckID";
 				
 				// Generate a new pseudonym-value
-	            Pseudonymizer pseudonymizer = new PseudonymizationFactory().getPseudonymizer(domain);
+	            Pseudonymizer pseudonymizer = PseudonymizationFactory.getPseudonymizer(domain);
 	            String rawPseudonym = pseudonymizer.pseudonymize(identifier + idType + domain.getSalt(), domain.getPrefix());
 	            String psn = domain.getAddcheckdigit() ? pseudonymizer.addCheckDigit(rawPseudonym, domain.getLengthincludescheckdigit(), domain.getName(), domain.getPrefix()) : rawPseudonym;
 				
@@ -265,13 +261,16 @@ public class EntityInstanceRESTController {
 	            p.setDomainName(domain.getName());
 				
 	            // Sent to database
-				String result = pdba.createPseudonyms(List.of(p), domain.getId(), false).getFirst();
+	            List<String> results = pdba.createPseudonyms(List.of(p), domain.getId(), false);
+				String result = results == null ? null : results.getFirst();
 				
 				// Evaluate creation result
 				if (!result.equals(PseudonymDBAccessService.INSERTION_SUCCESS)) {
 					log.debug("The automatic pseudonym generation failed: " + result);
 				} else {
 					log.debug("Successfully created a pseudonym for the entity instance.");
+					// TODO: is currently silently failing; maybe needs to rollback the entity creation
+					// Might be solved by extracting logic from controllers
 				}
 			} else {
 				log.debug("Could not find the associated domain. No pseudonym was created.");
@@ -432,9 +431,6 @@ public class EntityInstanceRESTController {
 	    newInstance.setProjectID(oldInstance.getProjectID());
 	    newInstance.setEntityTypeID(oldInstance.getEntityTypeID());
 	    newInstance.setData(entityInstanceDTO.getData() != null ? entityInstanceDTO.getData() : oldInstance.getData());
-	    newInstance.setIsDeleted(entityInstanceDTO.getIsDeleted() != null ? entityInstanceDTO.getIsDeleted() : oldInstance.getIsDeleted());
-	    newInstance.setCreatedAt(entityInstanceDTO.getCreatedAt() != null ? entityInstanceDTO.getCreatedAt() : oldInstance.getCreatedAt());
-	    newInstance.setUpdatedAt(entityInstanceDTO.getUpdatedAt() != null ? entityInstanceDTO.getUpdatedAt() : OffsetDateTime.now());
 	    
 		// Update the instance
 		EntityInstanceDTO updated = entityInstanceDBService.updateEntityInstance(oldInstance.getId(), project.getId(), newInstance);
@@ -780,7 +776,7 @@ public class EntityInstanceRESTController {
         // During registration-time linkage, include soft-deleted records so that tombstoned 
         // identities can still be detected as possible duplicates
         List<RecordLinkageCandidateDTO> candidates = recordLinkageService.findCandidates(project.getId(), entityType, 
-        		entityInstanceDTO.getData(), MAX_NUMBER_OF_RECORD_LINKAGE_RESULTS, true);
+        		entityInstanceDTO.getData(), true);
         
         // Evaluate the candidate search result
         if (candidates == null) {

@@ -28,7 +28,6 @@ import org.jooq.JSONB;
 import org.jooq.exception.DataAccessException;
 import org.jooq.exception.MappingException;
 import org.jooq.impl.DSL;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.trustdeck.dto.EntityTypeDTO;
@@ -44,6 +43,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import static org.trustdeck.jooq.generated.Tables.ENTITY_TYPE;
@@ -56,23 +56,20 @@ import static org.trustdeck.jooq.generated.Tables.ENTITY_INSTANCE;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class EntityTypeDBService {
     
 	/** References a jOOQ configuration object that configures jOOQ's behavior when executing queries. */
-    @Autowired
-	private DSLContext dsl;
+	private final DSLContext dsl;
     
     /** Enables access to the data base interaction methods for project objects. */
-    @Autowired
-    private ProjectDBService projectDBService;
+    private final ProjectDBService projectDBService;
 	
 	/** Enables access to domain database functions. */
-	@Autowired
-	private DomainDBAccessService ddba;
+	private final DomainDBAccessService ddba;
 	
 	/** Enables access to the mapper to transform JsonNode into JSONB and back. */
-	@Autowired
-	private ObjectMapper objectMapper;
+	private final ObjectMapper objectMapper;
 	
 	/**
      * Method to insert a new entity type into the database.

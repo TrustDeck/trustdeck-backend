@@ -130,32 +130,23 @@ public class LinkageIndexService {
         }
 
         // Insert the newly generated linkage tokens into the linkage index table
-        int inserted = 0, failed = 0;
+        int inserted = 0;
         for (LinkageToken token : uniqueTokens.values()) {
-            try {
-				dsl.insertInto(LINKAGE_TOKEN)
-				   .set(LINKAGE_TOKEN.ENTITY_TYPE_ID, instance.getEntityTypeID())
-				   .set(LINKAGE_TOKEN.ENTITY_INSTANCE_ID, instance.getId())
-				   .set(LINKAGE_TOKEN.PROJECT_ID, instance.getProjectID())
-				   .set(LINKAGE_TOKEN.FIELD_PATH, token.getFieldPath())
-				   .set(LINKAGE_TOKEN.TAG, token.getTag())
-				   .set(LINKAGE_TOKEN.TOKEN_TYPE, token.getTokenType().dbName())
-				   .set(LINKAGE_TOKEN.TOKEN_VALUE, token.getTokenValue())
-				   .set(LINKAGE_TOKEN.WEIGHT, token.getWeight())
-				   .execute();
-				
-				inserted++;
-			} catch (DataAccessException e) {
-				log.debug("Could not create new linkage token for the instance with TrustDeckID = " 
-						+ instance.getTrustdeckID() + " for token: " + token.toString(), e);
-				failed++;
-			}
+            dsl.insertInto(LINKAGE_TOKEN)
+			   .set(LINKAGE_TOKEN.ENTITY_TYPE_ID, instance.getEntityTypeID())
+			   .set(LINKAGE_TOKEN.ENTITY_INSTANCE_ID, instance.getId())
+			   .set(LINKAGE_TOKEN.PROJECT_ID, instance.getProjectID())
+			   .set(LINKAGE_TOKEN.FIELD_PATH, token.getFieldPath())
+			   .set(LINKAGE_TOKEN.TAG, token.getTag())
+			   .set(LINKAGE_TOKEN.TOKEN_TYPE, token.getTokenType().dbName())
+			   .set(LINKAGE_TOKEN.TOKEN_VALUE, token.getTokenValue())
+			   .set(LINKAGE_TOKEN.WEIGHT, token.getWeight())
+			   .execute();
+			
+			inserted++;
         }
         
-        log.debug("Inserted " + inserted + " linkage tokens successfully, failed to insert " + failed + " linkage tokens.");
-        if (failed > 0) {
-        	return false;
-        }
+        log.debug("Inserted " + inserted + " linkage tokens successfully.");
 
         if (noTokensGenerated) {
         	log.trace("No linkage tokens were generated for the instance with TrustDeckID = " + instance.getTrustdeckID() + ".");
