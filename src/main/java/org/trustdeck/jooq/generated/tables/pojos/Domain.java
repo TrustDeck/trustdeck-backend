@@ -30,12 +30,12 @@ public class Domain implements IDomain {
     private Boolean enforcestartdatevalidityinherited;
     private Boolean enforceenddatevalidity;
     private Boolean enforceenddatevalidityinherited;
+    private Integer algorithmId;
+    private Boolean algorithmInherited;
     private Boolean multiplepsnallowed;
     private Boolean multiplepsnallowedinherited;
     private String description;
     private Integer superdomainid;
-    private Integer algorithmId;
-    private Boolean algorithmInherited;
 
     public Domain() {}
 
@@ -51,12 +51,12 @@ public class Domain implements IDomain {
         this.enforcestartdatevalidityinherited = value.getEnforcestartdatevalidityinherited();
         this.enforceenddatevalidity = value.getEnforceenddatevalidity();
         this.enforceenddatevalidityinherited = value.getEnforceenddatevalidityinherited();
+        this.algorithmId = value.getAlgorithmId();
+        this.algorithmInherited = value.getAlgorithmInherited();
         this.multiplepsnallowed = value.getMultiplepsnallowed();
         this.multiplepsnallowedinherited = value.getMultiplepsnallowedinherited();
         this.description = value.getDescription();
         this.superdomainid = value.getSuperdomainid();
-        this.algorithmId = value.getAlgorithmId();
-        this.algorithmInherited = value.getAlgorithmInherited();
     }
 
     public Domain(
@@ -71,12 +71,12 @@ public class Domain implements IDomain {
         Boolean enforcestartdatevalidityinherited,
         Boolean enforceenddatevalidity,
         Boolean enforceenddatevalidityinherited,
+        Integer algorithmId,
+        Boolean algorithmInherited,
         Boolean multiplepsnallowed,
         Boolean multiplepsnallowedinherited,
         String description,
-        Integer superdomainid,
-        Integer algorithmId,
-        Boolean algorithmInherited
+        Integer superdomainid
     ) {
         this.id = id;
         this.name = name;
@@ -89,12 +89,12 @@ public class Domain implements IDomain {
         this.enforcestartdatevalidityinherited = enforcestartdatevalidityinherited;
         this.enforceenddatevalidity = enforceenddatevalidity;
         this.enforceenddatevalidityinherited = enforceenddatevalidityinherited;
+        this.algorithmId = algorithmId;
+        this.algorithmInherited = algorithmInherited;
         this.multiplepsnallowed = multiplepsnallowed;
         this.multiplepsnallowedinherited = multiplepsnallowedinherited;
         this.description = description;
         this.superdomainid = superdomainid;
-        this.algorithmId = algorithmId;
-        this.algorithmInherited = algorithmInherited;
     }
 
     /**
@@ -295,6 +295,42 @@ public class Domain implements IDomain {
     }
 
     /**
+     * Getter for <code>public.domain.algorithm_id</code>.
+     */
+    @NotNull
+    @Override
+    public Integer getAlgorithmId() {
+        return this.algorithmId;
+    }
+
+    /**
+     * Setter for <code>public.domain.algorithm_id</code>.
+     */
+    @Override
+    public Domain setAlgorithmId(Integer algorithmId) {
+        this.algorithmId = algorithmId;
+        return this;
+    }
+
+    /**
+     * Getter for <code>public.domain.algorithm_inherited</code>.
+     */
+    @NotNull
+    @Override
+    public Boolean getAlgorithmInherited() {
+        return this.algorithmInherited;
+    }
+
+    /**
+     * Setter for <code>public.domain.algorithm_inherited</code>.
+     */
+    @Override
+    public Domain setAlgorithmInherited(Boolean algorithmInherited) {
+        this.algorithmInherited = algorithmInherited;
+        return this;
+    }
+
+    /**
      * Getter for <code>public.domain.multiplepsnallowed</code>.
      */
     @NotNull
@@ -361,42 +397,6 @@ public class Domain implements IDomain {
     @Override
     public Domain setSuperdomainid(Integer superdomainid) {
         this.superdomainid = superdomainid;
-        return this;
-    }
-
-    /**
-     * Getter for <code>public.domain.algorithm_id</code>.
-     */
-    @NotNull
-    @Override
-    public Integer getAlgorithmId() {
-        return this.algorithmId;
-    }
-
-    /**
-     * Setter for <code>public.domain.algorithm_id</code>.
-     */
-    @Override
-    public Domain setAlgorithmId(Integer algorithmId) {
-        this.algorithmId = algorithmId;
-        return this;
-    }
-
-    /**
-     * Getter for <code>public.domain.algorithm_inherited</code>.
-     */
-    @NotNull
-    @Override
-    public Boolean getAlgorithmInherited() {
-        return this.algorithmInherited;
-    }
-
-    /**
-     * Setter for <code>public.domain.algorithm_inherited</code>.
-     */
-    @Override
-    public Domain setAlgorithmInherited(Boolean algorithmInherited) {
-        this.algorithmInherited = algorithmInherited;
         return this;
     }
 
@@ -475,6 +475,18 @@ public class Domain implements IDomain {
         }
         else if (!this.enforceenddatevalidityinherited.equals(other.enforceenddatevalidityinherited))
             return false;
+        if (this.algorithmId == null) {
+            if (other.algorithmId != null)
+                return false;
+        }
+        else if (!this.algorithmId.equals(other.algorithmId))
+            return false;
+        if (this.algorithmInherited == null) {
+            if (other.algorithmInherited != null)
+                return false;
+        }
+        else if (!this.algorithmInherited.equals(other.algorithmInherited))
+            return false;
         if (this.multiplepsnallowed == null) {
             if (other.multiplepsnallowed != null)
                 return false;
@@ -499,18 +511,6 @@ public class Domain implements IDomain {
         }
         else if (!this.superdomainid.equals(other.superdomainid))
             return false;
-        if (this.algorithmId == null) {
-            if (other.algorithmId != null)
-                return false;
-        }
-        else if (!this.algorithmId.equals(other.algorithmId))
-            return false;
-        if (this.algorithmInherited == null) {
-            if (other.algorithmInherited != null)
-                return false;
-        }
-        else if (!this.algorithmInherited.equals(other.algorithmInherited))
-            return false;
         return true;
     }
 
@@ -529,12 +529,12 @@ public class Domain implements IDomain {
         result = prime * result + ((this.enforcestartdatevalidityinherited == null) ? 0 : this.enforcestartdatevalidityinherited.hashCode());
         result = prime * result + ((this.enforceenddatevalidity == null) ? 0 : this.enforceenddatevalidity.hashCode());
         result = prime * result + ((this.enforceenddatevalidityinherited == null) ? 0 : this.enforceenddatevalidityinherited.hashCode());
+        result = prime * result + ((this.algorithmId == null) ? 0 : this.algorithmId.hashCode());
+        result = prime * result + ((this.algorithmInherited == null) ? 0 : this.algorithmInherited.hashCode());
         result = prime * result + ((this.multiplepsnallowed == null) ? 0 : this.multiplepsnallowed.hashCode());
         result = prime * result + ((this.multiplepsnallowedinherited == null) ? 0 : this.multiplepsnallowedinherited.hashCode());
         result = prime * result + ((this.description == null) ? 0 : this.description.hashCode());
         result = prime * result + ((this.superdomainid == null) ? 0 : this.superdomainid.hashCode());
-        result = prime * result + ((this.algorithmId == null) ? 0 : this.algorithmId.hashCode());
-        result = prime * result + ((this.algorithmInherited == null) ? 0 : this.algorithmInherited.hashCode());
         return result;
     }
 
@@ -553,12 +553,12 @@ public class Domain implements IDomain {
         sb.append(", ").append(enforcestartdatevalidityinherited);
         sb.append(", ").append(enforceenddatevalidity);
         sb.append(", ").append(enforceenddatevalidityinherited);
+        sb.append(", ").append(algorithmId);
+        sb.append(", ").append(algorithmInherited);
         sb.append(", ").append(multiplepsnallowed);
         sb.append(", ").append(multiplepsnallowedinherited);
         sb.append(", ").append(description);
         sb.append(", ").append(superdomainid);
-        sb.append(", ").append(algorithmId);
-        sb.append(", ").append(algorithmInherited);
 
         sb.append(")");
         return sb.toString();
@@ -581,12 +581,12 @@ public class Domain implements IDomain {
         setEnforcestartdatevalidityinherited(from.getEnforcestartdatevalidityinherited());
         setEnforceenddatevalidity(from.getEnforceenddatevalidity());
         setEnforceenddatevalidityinherited(from.getEnforceenddatevalidityinherited());
+        setAlgorithmId(from.getAlgorithmId());
+        setAlgorithmInherited(from.getAlgorithmInherited());
         setMultiplepsnallowed(from.getMultiplepsnallowed());
         setMultiplepsnallowedinherited(from.getMultiplepsnallowedinherited());
         setDescription(from.getDescription());
         setSuperdomainid(from.getSuperdomainid());
-        setAlgorithmId(from.getAlgorithmId());
-        setAlgorithmInherited(from.getAlgorithmInherited());
     }
 
     @Override

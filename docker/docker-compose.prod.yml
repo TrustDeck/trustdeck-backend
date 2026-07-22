@@ -60,11 +60,9 @@ services:
       # This configuration assumes a reverse proxy that handles SSL
       KC_HTTP_ENABLED: true
       KC_HTTP_PORT: 8081
-      KC_PROXY: edge
       KC_PROXY_HEADERS: xforwarded
       KC_HTTP_RELATIVE_PATH: ${KEYCLOAK_RELATIVE_PATH}
       KC_HOSTNAME: ${KEYCLOAK_HOSTNAME}
-      KC_HOSTNAME_STRICT_HTTPS: false
       KC_LOG_LEVEL: ${KEYCLOAK_LOG_LEVEL:-INFO}
       TZ: Europe/Berlin
       KC_DB: postgres
@@ -76,7 +74,8 @@ services:
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
       KC_HEALTH_ENABLED: true
       KC_METRICS_ENABLED: true
-      KC_FEATURES: docker,token-exchange,preview
+      KC_FEATURES: docker,token-exchange
+      KC_FEATURE_STATELESS: disabled
     command: start
     ports:
       - "8081:8081" # remapping of keycloak to port 8081, since TRUSTDECK will be running on 8080

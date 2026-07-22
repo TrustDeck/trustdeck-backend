@@ -19,6 +19,7 @@ import org.trustdeck.jooq.generated.routines.Digest1;
 import org.trustdeck.jooq.generated.routines.Digest2;
 import org.trustdeck.jooq.generated.routines.Encrypt;
 import org.trustdeck.jooq.generated.routines.EncryptIv;
+import org.trustdeck.jooq.generated.routines.FipsMode;
 import org.trustdeck.jooq.generated.routines.GenRandomBytes;
 import org.trustdeck.jooq.generated.routines.GenRandomUuid;
 import org.trustdeck.jooq.generated.routines.GenSalt1;
@@ -551,6 +552,27 @@ public class Routines {
         f.set__2(__2);
         f.set__3(__3);
         f.set__4(__4);
+
+        return f.asField();
+    }
+
+    /**
+     * Call <code>public.fips_mode</code>
+     */
+    public static Boolean fipsMode(
+          Configuration configuration
+    ) {
+        FipsMode f = new FipsMode();
+
+        f.execute(configuration);
+        return f.getReturnValue();
+    }
+
+    /**
+     * Get <code>public.fips_mode</code> as a field.
+     */
+    public static Field<Boolean> fipsMode() {
+        FipsMode f = new FipsMode();
 
         return f.asField();
     }
