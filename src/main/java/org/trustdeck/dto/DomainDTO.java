@@ -181,7 +181,9 @@ public class DomainDTO implements IObjectDTO<IDomain, DomainDTO> {
         this.setEnforceStartDateValidityInherited(null);
         this.setEnforceEndDateValidity(null);
         this.setEnforceEndDateValidityInherited(null);
-        this.setAlgorithm(null);
+        if (this.getAlgorithm() != null) {
+            this.setAlgorithm(this.getAlgorithm().toReducedStandardView());
+        }
         this.setAlgorithmInherited(null);
         this.setMultiplePsnAllowed(null);
         this.setMultiplePsnAllowedInherited(null);
