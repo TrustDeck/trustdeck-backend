@@ -64,7 +64,8 @@ for theme_dir in "${THEME_DIRS[@]}"; do
     validate_resource_list "$theme_name" "$type_name" "$type_dir" "$properties_file" favicons ""
 
     # The modern Account and Admin console templates use these singular properties.
-    for singular_property in logo favIcon; do
+    # favIcon is retained for compatibility with existing themes.
+    for singular_property in logo favicon favIcon; do
       singular_value="$(sed -n "s/^[[:space:]]*${singular_property}[[:space:]]*=[[:space:]]*//p" "$properties_file" | tail -n 1)"
       if [[ -n "$singular_value" && ! -f "$type_dir/resources/${singular_value#/}" ]]; then
         echo "Theme '$theme_name' type '$type_name' references missing $singular_property: resources/${singular_value#/}" >&2

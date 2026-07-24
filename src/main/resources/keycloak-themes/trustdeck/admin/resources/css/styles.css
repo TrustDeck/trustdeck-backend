@@ -243,6 +243,92 @@ a:focus,
   background: #C83D3B;
 }
 
+/* Keycloak 26+ uses PatternFly 6. Keep direct rules here so console defaults
+ * cannot take precedence when the application stylesheet is injected later. */
+.pf-v6-c-page,
+.pf-v6-c-page__main,
+.pf-v6-c-page__main-section {
+  background: transparent;
+}
+
+.pf-v6-c-masthead,
+.pf-v6-c-page__header {
+  background: rgba(255, 255, 255, 0.97) !important;
+  border-bottom: 1px solid rgba(203, 207, 210, 0.82) !important;
+  box-shadow: 0 4px 18px rgba(0, 37, 82, 0.08);
+  color: var(--trustdeck-dark-blue);
+}
+
+.pf-v6-c-masthead__brand img,
+.pf-v6-c-brand {
+  width: auto;
+  max-width: 230px;
+  max-height: 42px;
+}
+
+.pf-v6-c-page__sidebar {
+  background: rgba(224, 236, 241, 0.97) !important;
+  border-right: 1px solid rgba(203, 207, 210, 0.8);
+  box-shadow: 4px 0 18px rgba(0, 37, 82, 0.06);
+}
+
+.pf-v6-c-button {
+  border-radius: 8px;
+  font-weight: 700;
+}
+
+.pf-v6-c-button.pf-m-primary {
+  border-color: var(--trustdeck-blue) !important;
+  background: var(--trustdeck-blue) !important;
+  color: var(--trustdeck-white) !important;
+}
+
+.pf-v6-c-button.pf-m-primary:hover,
+.pf-v6-c-button.pf-m-primary:focus-visible {
+  border-color: var(--trustdeck-light-blue) !important;
+  background: var(--trustdeck-light-blue) !important;
+  box-shadow: 0 0 0 3px rgba(0, 123, 195, 0.24) !important;
+}
+
+.pf-v6-c-button.pf-m-secondary {
+  border-color: var(--trustdeck-blue) !important;
+  color: var(--trustdeck-blue) !important;
+}
+
+.pf-v6-c-button.pf-m-secondary:hover,
+.pf-v6-c-button.pf-m-secondary:focus-visible {
+  border-color: var(--trustdeck-light-blue) !important;
+  color: var(--trustdeck-light-blue) !important;
+}
+
+.pf-v6-c-button.pf-m-danger {
+  border-color: var(--trustdeck-coral) !important;
+  background: var(--trustdeck-coral) !important;
+  color: var(--trustdeck-white) !important;
+}
+
+.pf-v6-c-form-control,
+.pf-v6-c-menu-toggle,
+.pf-v6-c-text-input-group {
+  border-radius: 8px;
+  border-color: var(--trustdeck-border) !important;
+  background: var(--trustdeck-white) !important;
+}
+
+.pf-v6-c-nav__link {
+  margin: 2px 10px;
+  border-radius: 8px;
+  color: var(--trustdeck-dark-blue);
+  font-weight: 600;
+}
+
+.pf-v6-c-nav__link:hover,
+.pf-v6-c-nav__link:focus-visible,
+.pf-v6-c-nav__link[aria-current='page'] {
+  background: var(--trustdeck-white);
+  color: var(--trustdeck-blue);
+}
+
 /* Tabs */
 .pf-v5-c-tabs__link {
   color: var(--trustdeck-text-gray);
