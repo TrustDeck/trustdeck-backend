@@ -34,16 +34,14 @@ spring:
       resourceserver:
         jwt:
           # Custom section starts
-          # Server-uri without /auth since keycloak 17
           principal-attribute: preferred_username
           server-uri: ${KEYCLOAK_SERVER_URI}
           realm: ${KEYCLOAK_REALM_NAME}
           client-id: ${KEYCLOAK_CLIENT_ID}
           client-secret: ${KEYCLOAK_CLIENT_SECRET}
           # Custom section ends
-          jws-algorithm: RSA256
           issuer-uri: ${KEYCLOAK_HOSTNAME}/realms/${spring.security.oauth2.resourceserver.jwt.realm}
-          jwk-set-uri: ${spring.security.oauth2.resourceserver.jwt.issuer-uri}/protocol/openid-connect/certs
+          jwk-set-uri: ${spring.security.oauth2.resourceserver.jwt.server-uri}/realms/${spring.security.oauth2.resourceserver.jwt.realm}/protocol/openid-connect/certs
 
 audittrail:
   oidc-group-mapper:
