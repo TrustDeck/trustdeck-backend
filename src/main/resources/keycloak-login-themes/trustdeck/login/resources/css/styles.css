@@ -1,0 +1,248 @@
+/*
+ * TrustDeck Keycloak login theme.
+ *
+ * The palette and typography mirror the TrustDeck frontend:
+ *   dark blue  #002552
+ *   blue       #004D9B
+ *   light blue #007BC3
+ *   coral      #EA5451
+ *   sidebar    #E0ECF1
+ *   surface    #E9E9E9
+ *   text gray  #5E676C
+ */
+
+:root {
+  --trustdeck-dark-blue: #002552;
+  --trustdeck-blue: #004D9B;
+  --trustdeck-light-blue: #007BC3;
+  --trustdeck-coral: #EA5451;
+  --trustdeck-sidebar: #E0ECF1;
+  --trustdeck-surface: #E9E9E9;
+  --trustdeck-text-gray: #5E676C;
+  --trustdeck-white: #FFFFFF;
+  --trustdeck-border: #CBCFD2;
+  --trustdeck-shadow: 0 18px 45px rgba(0, 37, 82, 0.16);
+}
+
+html,
+body {
+  min-height: 100%;
+  font-family: 'Arimo', Arial, Helvetica, sans-serif;
+  color: var(--trustdeck-dark-blue);
+}
+
+.login-pf,
+.login-pf body {
+  background: none;
+}
+
+.login-pf body,
+body.login-pf {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 12% 18%, rgba(0, 123, 195, 0.20) 0, rgba(0, 123, 195, 0) 28%),
+    radial-gradient(circle at 88% 82%, rgba(0, 77, 155, 0.16) 0, rgba(0, 77, 155, 0) 30%),
+    linear-gradient(135deg, var(--trustdeck-sidebar) 0%, #F7FAFC 48%, var(--trustdeck-surface) 100%);
+  background-attachment: fixed;
+}
+
+.login-pf-page {
+  min-height: 100vh;
+  padding-top: 0;
+}
+
+.login-pf-page::before {
+  content: '';
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: min(34vw, 520px);
+  background:
+    linear-gradient(160deg, rgba(0, 37, 82, 0.98), rgba(0, 77, 155, 0.94)),
+    linear-gradient(45deg, transparent 45%, rgba(255, 255, 255, 0.08) 45% 55%, transparent 55%);
+  clip-path: polygon(0 0, 100% 0, 78% 100%, 0 100%);
+  pointer-events: none;
+}
+
+#kc-header {
+  color: var(--trustdeck-white);
+  overflow: visible;
+  white-space: normal;
+}
+
+#kc-header-wrapper {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 42px 24px 18px;
+  color: var(--trustdeck-dark-blue);
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: 0;
+  text-align: center;
+  text-transform: none;
+  text-shadow: none;
+}
+
+#kc-content-wrapper {
+  margin-top: 12px;
+}
+
+.card-pf,
+.pf-v5-c-login__main,
+.pf-c-login__main {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 32px 38px;
+  border: 1px solid rgba(203, 207, 210, 0.75);
+  border-top: 5px solid var(--trustdeck-blue);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: var(--trustdeck-shadow);
+  backdrop-filter: blur(7px);
+}
+
+h1#kc-page-title,
+#kc-page-title {
+  margin: 0 0 24px;
+  color: var(--trustdeck-dark-blue);
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+label,
+.pf-c-form__label-text,
+.pf-v5-c-form__label-text {
+  color: var(--trustdeck-text-gray);
+  font-weight: 700;
+}
+
+.pf-c-form-control,
+.pf-v5-c-form-control,
+input[type='text'],
+input[type='password'],
+input[type='email'] {
+  min-height: 44px;
+  border-color: var(--trustdeck-border);
+  border-radius: 8px;
+  background: var(--trustdeck-white);
+  color: var(--trustdeck-dark-blue);
+}
+
+.pf-c-form-control:focus,
+.pf-v5-c-form-control:focus,
+input[type='text']:focus,
+input[type='password']:focus,
+input[type='email']:focus {
+  border-color: var(--trustdeck-light-blue);
+  box-shadow: 0 0 0 3px rgba(0, 123, 195, 0.16);
+  outline: none;
+}
+
+.pf-c-button.pf-m-primary,
+.pf-v5-c-button.pf-m-primary,
+.btn-primary,
+#kc-login {
+  min-height: 44px;
+  border: 2px solid var(--trustdeck-blue);
+  border-radius: 8px;
+  background: var(--trustdeck-blue);
+  color: var(--trustdeck-white);
+  font-weight: 700;
+  transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.pf-c-button.pf-m-primary:hover,
+.pf-v5-c-button.pf-m-primary:hover,
+.btn-primary:hover,
+#kc-login:hover {
+  border-color: var(--trustdeck-light-blue);
+  background: var(--trustdeck-light-blue);
+  transform: translateY(-1px);
+}
+
+.pf-c-button.pf-m-primary:focus,
+.pf-v5-c-button.pf-m-primary:focus,
+.btn-primary:focus,
+#kc-login:focus {
+  box-shadow: 0 0 0 3px rgba(0, 123, 195, 0.24);
+}
+
+a {
+  color: var(--trustdeck-blue);
+  font-weight: 600;
+}
+
+a:hover,
+a:focus {
+  color: var(--trustdeck-light-blue);
+}
+
+#kc-info {
+  margin: 24px -38px -32px;
+}
+
+#kc-info-wrapper {
+  padding: 18px 38px;
+  border-radius: 0 0 11px 11px;
+  background: var(--trustdeck-sidebar);
+  color: var(--trustdeck-text-gray);
+}
+
+.pf-c-alert.pf-m-danger,
+.pf-v5-c-alert.pf-m-danger {
+  border-left-color: var(--trustdeck-coral);
+}
+
+#kc-locale-dropdown a,
+#kc-locale-dropdown button {
+  color: var(--trustdeck-text-gray);
+}
+
+#kc-locale-dropdown a:hover,
+#kc-locale-dropdown button:hover {
+  color: var(--trustdeck-light-blue);
+}
+
+@media (max-width: 900px) {
+  .login-pf-page::before {
+    width: 23vw;
+    opacity: 0.55;
+  }
+}
+
+@media (max-width: 767px) {
+  .login-pf-page::before {
+    display: none;
+  }
+
+  .login-pf body,
+  body.login-pf {
+    background: linear-gradient(180deg, var(--trustdeck-sidebar), #F8FAFC 46%, var(--trustdeck-surface));
+  }
+
+  #kc-header-wrapper {
+    padding: 24px 18px 10px;
+    color: var(--trustdeck-dark-blue);
+    font-size: 27px;
+    text-align: center;
+  }
+
+  .login-pf-page .card-pf,
+  .pf-v5-c-login__main,
+  .pf-c-login__main {
+    margin: 12px 16px 24px;
+    padding: 26px 22px;
+    border-top: 5px solid var(--trustdeck-blue);
+    border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(0, 37, 82, 0.13);
+  }
+
+  #kc-info {
+    margin: 22px -22px -26px;
+  }
+
+  #kc-info-wrapper {
+    padding: 16px 22px;
+  }
+}
