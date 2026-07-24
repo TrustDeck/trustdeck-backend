@@ -53,3 +53,11 @@ RUN keytool -import -alias OrgChain -file /etc/pki/ca-trust/source/anchors/chain
 RUN keytool -import -alias RsaCert -file /etc/pki/ca-trust/source/anchors/rsa.crt -keystore /etc/pki/java/cacerts -storepass changeit -noprompt -trustcacerts
 RUN keytool -import -alias EccCert -file /etc/pki/ca-trust/source/anchors/ecc.crt -keystore /etc/pki/java/cacerts -storepass changeit -noprompt -trustcacerts
 RUN keytool -import -alias OrgRootCA -file /etc/pki/ca-trust/source/anchors/org_CA.pem -keystore /etc/pki/java/cacerts -storepass changeit -noprompt -trustcacerts
+
+# Copy every repository-provided Keycloak theme into the standard theme directory.
+# The first-level directory name below keycloak-login-themes becomes the Keycloak theme name.
+COPY src/main/resources/keycloak-login-themes/ /opt/keycloak/themes/
+RUN chmod -R a+rX /opt/keycloak/themes
+
+# Run Keycloak as the non-root user from the base image.
+USER 1000
