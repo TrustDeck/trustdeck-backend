@@ -51,18 +51,6 @@ body.login-pf {
   padding-top: 0;
 }
 
-.login-pf-page::before {
-  content: '';
-  position: fixed;
-  inset: 0 auto 0 0;
-  width: min(34vw, 520px);
-  background:
-    linear-gradient(160deg, rgba(0, 37, 82, 0.98), rgba(0, 77, 155, 0.94)),
-    linear-gradient(45deg, transparent 45%, rgba(255, 255, 255, 0.08) 45% 55%, transparent 55%);
-  clip-path: polygon(0 0, 100% 0, 78% 100%, 0 100%);
-  pointer-events: none;
-}
-
 #kc-header {
   color: var(--trustdeck-white);
   overflow: visible;
@@ -94,7 +82,6 @@ body.login-pf {
   margin: 0 auto;
   padding: 32px 38px;
   border: 1px solid rgba(203, 207, 210, 0.75);
-  border-top: 5px solid var(--trustdeck-blue);
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.97);
   box-shadow: var(--trustdeck-shadow);
@@ -204,18 +191,7 @@ a:focus {
   color: var(--trustdeck-light-blue);
 }
 
-@media (max-width: 900px) {
-  .login-pf-page::before {
-    width: 23vw;
-    opacity: 0.55;
-  }
-}
-
 @media (max-width: 767px) {
-  .login-pf-page::before {
-    display: none;
-  }
-
   .login-pf body,
   body.login-pf {
     background: linear-gradient(180deg, var(--trustdeck-sidebar), #F8FAFC 46%, var(--trustdeck-surface));
@@ -233,7 +209,6 @@ a:focus {
   .pf-c-login__main {
     margin: 12px 16px 24px;
     padding: 26px 22px;
-    border-top: 5px solid var(--trustdeck-blue);
     border-radius: 10px;
     box-shadow: 0 10px 30px rgba(0, 37, 82, 0.13);
   }

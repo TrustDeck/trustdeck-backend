@@ -1,0 +1,339 @@
+/*
+ * TrustDeck Keycloak Account/Admin Console theme.
+ *
+ * This stylesheet is loaded after the Keycloak console application styles and
+ * restyles the PatternFly 5 components without replacing Keycloak's React UI.
+ * The palette mirrors the TrustDeck login theme and frontend.
+ */
+
+:root {
+  color-scheme: light;
+
+  --trustdeck-dark-blue: #002552;
+  --trustdeck-blue: #004D9B;
+  --trustdeck-light-blue: #007BC3;
+  --trustdeck-coral: #EA5451;
+  --trustdeck-sidebar: #E0ECF1;
+  --trustdeck-surface: #E9E9E9;
+  --trustdeck-text-gray: #5E676C;
+  --trustdeck-white: #FFFFFF;
+  --trustdeck-border: #CBCFD2;
+  --trustdeck-shadow: 0 14px 34px rgba(0, 37, 82, 0.12);
+  --trustdeck-shadow-small: 0 5px 18px rgba(0, 37, 82, 0.10);
+
+  /* PatternFly 5 design tokens used by both Keycloak consoles. */
+  --pf-v5-global--FontFamily--sans-serif: 'Arimo', Arial, Helvetica, sans-serif;
+  --pf-v5-global--primary-color--100: var(--trustdeck-blue);
+  --pf-v5-global--primary-color--200: var(--trustdeck-light-blue);
+  --pf-v5-global--active-color--100: var(--trustdeck-light-blue);
+  --pf-v5-global--link--Color: var(--trustdeck-blue);
+  --pf-v5-global--link--Color--hover: var(--trustdeck-light-blue);
+  --pf-v5-global--Color--100: var(--trustdeck-dark-blue);
+  --pf-v5-global--Color--200: var(--trustdeck-text-gray);
+  --pf-v5-global--BackgroundColor--100: var(--trustdeck-white);
+  --pf-v5-global--BackgroundColor--150: #F7FAFC;
+  --pf-v5-global--BackgroundColor--200: var(--trustdeck-sidebar);
+  --pf-v5-global--BorderColor--100: var(--trustdeck-border);
+  --pf-v5-global--danger-color--100: var(--trustdeck-coral);
+  --pf-v5-global--danger-color--200: #C83D3B;
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+  font-family: 'Arimo', Arial, Helvetica, sans-serif;
+  color: var(--trustdeck-dark-blue);
+}
+
+body[data-page-id='account'],
+body[data-page-id='admin'] {
+  background:
+    radial-gradient(circle at 12% 18%, rgba(0, 123, 195, 0.16) 0, rgba(0, 123, 195, 0) 28%),
+    radial-gradient(circle at 88% 82%, rgba(0, 77, 155, 0.12) 0, rgba(0, 77, 155, 0) 30%),
+    linear-gradient(135deg, var(--trustdeck-sidebar) 0%, #F7FAFC 48%, var(--trustdeck-surface) 100%);
+  background-attachment: fixed;
+}
+
+.keycloak__loading-container {
+  color: var(--trustdeck-dark-blue);
+  background: transparent;
+}
+
+.keycloak__loading-container .pf-v5-c-spinner {
+  --pf-v5-c-spinner--Color: var(--trustdeck-light-blue);
+}
+
+/* Main application shell */
+.pf-v5-c-page {
+  background: transparent;
+}
+
+.pf-v5-c-masthead,
+.pf-v5-c-page__header {
+  background: rgba(255, 255, 255, 0.97);
+  border-bottom: 1px solid rgba(203, 207, 210, 0.82);
+  box-shadow: 0 4px 18px rgba(0, 37, 82, 0.08);
+}
+
+.pf-v5-c-masthead__brand img,
+.pf-v5-c-brand {
+  width: auto;
+  max-width: 230px;
+  max-height: 42px;
+}
+
+.pf-v5-c-page__sidebar {
+  background: rgba(224, 236, 241, 0.97);
+  border-right: 1px solid rgba(203, 207, 210, 0.8);
+  box-shadow: 4px 0 18px rgba(0, 37, 82, 0.06);
+}
+
+.pf-v5-c-page__main,
+.pf-v5-c-page__main-section {
+  background: transparent;
+}
+
+.pf-v5-c-page__main-section.pf-m-light,
+.pf-v5-c-page__main-breadcrumb {
+  background: rgba(255, 255, 255, 0.72);
+}
+
+/* Navigation */
+.pf-v5-c-nav__section-title {
+  color: var(--trustdeck-text-gray);
+  font-weight: 700;
+  letter-spacing: 0.015em;
+}
+
+.pf-v5-c-nav__link {
+  margin: 2px 10px;
+  border-radius: 8px;
+  color: var(--trustdeck-dark-blue);
+  font-weight: 600;
+}
+
+.pf-v5-c-nav__link:hover,
+.pf-v5-c-nav__link:focus {
+  background: rgba(255, 255, 255, 0.70);
+  color: var(--trustdeck-blue);
+}
+
+.pf-v5-c-nav__link.pf-m-current,
+.pf-v5-c-nav__link[aria-current='page'] {
+  background: var(--trustdeck-white);
+  color: var(--trustdeck-blue);
+  box-shadow: inset 4px 0 0 var(--trustdeck-light-blue), var(--trustdeck-shadow-small);
+}
+
+/* Titles and links */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.pf-v5-c-title {
+  color: var(--trustdeck-dark-blue);
+}
+
+a,
+.pf-v5-c-button.pf-m-link {
+  color: var(--trustdeck-blue);
+}
+
+a:hover,
+a:focus,
+.pf-v5-c-button.pf-m-link:hover,
+.pf-v5-c-button.pf-m-link:focus {
+  color: var(--trustdeck-light-blue);
+}
+
+/* Cards, panels and overlays */
+.pf-v5-c-card,
+.pf-v5-c-modal-box,
+.pf-v5-c-drawer__panel,
+.pf-v5-c-popover__content,
+.pf-v5-c-wizard,
+.pf-v5-c-menu {
+  border: 1px solid rgba(203, 207, 210, 0.78);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: var(--trustdeck-shadow);
+}
+
+.pf-v5-c-card__header,
+.pf-v5-c-card__title,
+.pf-v5-c-modal-box__header {
+  color: var(--trustdeck-dark-blue);
+}
+
+.pf-v5-c-divider {
+  --pf-v5-c-divider--BackgroundColor: rgba(203, 207, 210, 0.85);
+}
+
+/* Forms */
+.pf-v5-c-form__label-text,
+.pf-v5-c-check__label,
+.pf-v5-c-radio__label {
+  color: var(--trustdeck-text-gray);
+  font-weight: 700;
+}
+
+.pf-v5-c-form-control,
+.pf-v5-c-menu-toggle,
+.pf-v5-c-select__toggle,
+.pf-v5-c-text-input-group,
+.pf-v5-c-number-input,
+.pf-v5-c-date-picker__input {
+  border-radius: 8px;
+  background: var(--trustdeck-white);
+}
+
+.pf-v5-c-form-control,
+.pf-v5-c-menu-toggle,
+.pf-v5-c-select__toggle,
+.pf-v5-c-text-input-group {
+  --pf-v5-c-form-control--BorderBottomColor: var(--trustdeck-border);
+  --pf-v5-c-form-control--after--BorderBottomColor: var(--trustdeck-border);
+  --pf-v5-c-menu-toggle--after--BorderColor: var(--trustdeck-border);
+}
+
+.pf-v5-c-form-control:focus-within,
+.pf-v5-c-menu-toggle:focus,
+.pf-v5-c-menu-toggle.pf-m-expanded,
+.pf-v5-c-select__toggle:focus,
+.pf-v5-c-text-input-group:focus-within {
+  box-shadow: 0 0 0 3px rgba(0, 123, 195, 0.16);
+}
+
+/* Buttons */
+.pf-v5-c-button {
+  border-radius: 8px;
+  font-weight: 700;
+}
+
+.pf-v5-c-button.pf-m-primary {
+  background: var(--trustdeck-blue);
+  color: var(--trustdeck-white);
+}
+
+.pf-v5-c-button.pf-m-primary:hover,
+.pf-v5-c-button.pf-m-primary:focus {
+  background: var(--trustdeck-light-blue);
+}
+
+.pf-v5-c-button.pf-m-secondary {
+  color: var(--trustdeck-blue);
+  box-shadow: inset 0 0 0 2px var(--trustdeck-blue);
+}
+
+.pf-v5-c-button.pf-m-secondary:hover,
+.pf-v5-c-button.pf-m-secondary:focus {
+  color: var(--trustdeck-light-blue);
+  box-shadow: inset 0 0 0 2px var(--trustdeck-light-blue);
+}
+
+.pf-v5-c-button.pf-m-danger {
+  background: var(--trustdeck-coral);
+}
+
+.pf-v5-c-button.pf-m-danger:hover,
+.pf-v5-c-button.pf-m-danger:focus {
+  background: #C83D3B;
+}
+
+/* Tabs */
+.pf-v5-c-tabs__link {
+  color: var(--trustdeck-text-gray);
+  font-weight: 600;
+}
+
+.pf-v5-c-tabs__item.pf-m-current .pf-v5-c-tabs__link,
+.pf-v5-c-tabs__link[aria-selected='true'] {
+  color: var(--trustdeck-blue);
+}
+
+.pf-v5-c-tabs__item.pf-m-current::after {
+  border-color: var(--trustdeck-light-blue);
+}
+
+/* Tables and data lists */
+.pf-v5-c-table,
+.pf-v5-c-data-list {
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.pf-v5-c-table thead,
+.pf-v5-c-table tr.pf-m-expandable.pf-m-expanded,
+.pf-v5-c-data-list__item-row:hover {
+  background: #F7FAFC;
+}
+
+.pf-v5-c-table th {
+  color: var(--trustdeck-dark-blue);
+  font-weight: 700;
+}
+
+.pf-v5-c-table tbody tr:hover {
+  background: rgba(224, 236, 241, 0.42);
+}
+
+/* Labels, alerts and progress indicators */
+.pf-v5-c-label.pf-m-blue,
+.pf-v5-c-label.pf-m-cyan {
+  --pf-v5-c-label--BackgroundColor: rgba(0, 123, 195, 0.13);
+  --pf-v5-c-label--Color: var(--trustdeck-blue);
+}
+
+.pf-v5-c-alert.pf-m-info {
+  --pf-v5-c-alert--BorderTopColor: var(--trustdeck-light-blue);
+}
+
+.pf-v5-c-alert.pf-m-danger {
+  --pf-v5-c-alert--BorderTopColor: var(--trustdeck-coral);
+}
+
+.pf-v5-c-progress__indicator {
+  background: var(--trustdeck-light-blue);
+}
+
+.pf-v5-c-switch__input:checked ~ .pf-v5-c-switch__toggle {
+  background: var(--trustdeck-blue);
+}
+
+/* Menus, pagination and toolbars */
+.pf-v5-c-menu__item:hover,
+.pf-v5-c-menu__item:focus,
+.pf-v5-c-dropdown__menu-item:hover,
+.pf-v5-c-dropdown__menu-item:focus {
+  background: var(--trustdeck-sidebar);
+  color: var(--trustdeck-blue);
+}
+
+.pf-v5-c-toolbar,
+.pf-v5-c-pagination {
+  color: var(--trustdeck-text-gray);
+}
+
+/* Mobile layout */
+@media (max-width: 767px) {
+  body[data-page-id='account'],
+  body[data-page-id='admin'] {
+    background: linear-gradient(180deg, var(--trustdeck-sidebar), #F8FAFC 46%, var(--trustdeck-surface));
+  }
+
+  .pf-v5-c-masthead__brand img,
+  .pf-v5-c-brand {
+    max-width: 180px;
+    max-height: 36px;
+  }
+
+  .pf-v5-c-card,
+  .pf-v5-c-modal-box,
+  .pf-v5-c-drawer__panel,
+  .pf-v5-c-popover__content {
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0, 37, 82, 0.11);
+  }
+}

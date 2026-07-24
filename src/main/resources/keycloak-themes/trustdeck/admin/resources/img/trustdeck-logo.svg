@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 286 52" role="img" aria-labelledby="title desc">
+  <title id="title">TrustDeck</title>
+  <desc id="desc">TrustDeck wordmark with a layered security mark</desc>
+  <rect x="2" y="7" width="38" height="38" rx="9" fill="#004D9B"/>
+  <path d="M12 17.5h18v5H12z" fill="#FFFFFF" opacity="0.96"/>
+  <path d="M12 25h18v5H12z" fill="#FFFFFF" opacity="0.82"/>
+  <path d="M12 32.5h12v5H12z" fill="#FFFFFF" opacity="0.68"/>
+  <circle cx="32" cy="35" r="5" fill="#EA5451"/>
+  <text x="51" y="35" fill="#002552" font-family="Arimo, Arial, Helvetica, sans-serif" font-size="28" font-weight="700" letter-spacing="0.2">TrustDeck</text>
+</svg>

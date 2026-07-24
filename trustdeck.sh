@@ -213,16 +213,16 @@ start_postgres_for_codegen() {
 }
 
 # Method for building the backend jar that Dockerfile_TrustDeck copies into the image
-validate_keycloak_login_themes() {
-  local validator="$ROOT_DIR/src/main/resources/scripts/validateKeycloakLoginThemes.sh"
-  local themes_root="$ROOT_DIR/src/main/resources/keycloak-login-themes"
+validate_keycloak_themes() {
+  local validator="$ROOT_DIR/src/main/resources/scripts/validateKeycloakThemes.sh"
+  local themes_root="$ROOT_DIR/src/main/resources/keycloak-themes"
 
   if [[ ! -x "$validator" ]]; then
     echo "Keycloak theme validator is missing or not executable: $validator" >&2
     exit 1
   fi
 
-  echo "Validating repository-provided Keycloak login themes ..."
+  echo "Validating repository-provided Keycloak themes ..."
   "$validator" "$themes_root"
 }
 
@@ -261,7 +261,7 @@ start_dev() {
   # Falls back to /opt/kafka-ssl if missing or unusable.
   ensure_kafka_ssl_dir
 
-  validate_keycloak_login_themes
+  validate_keycloak_themes
 
   $SUDO_DOCKER docker compose --project-name "trustdeck-dev" --env-file "$ENV_FILE" -f "$DEV_COMPOSE" up -d --build
 
@@ -293,7 +293,7 @@ start_prod() {
   # Falls back to /opt/kafka-ssl if missing or unusable.
   ensure_kafka_ssl_dir
 
-  validate_keycloak_login_themes
+  validate_keycloak_themes
 
   # jOOQ code generation in pom.xml connects to localhost:5432/trustdeck,
   # so PostgreSQL must be running and initialized before Maven builds the JAR.
