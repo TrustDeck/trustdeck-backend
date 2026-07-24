@@ -56,7 +56,7 @@ RUN keytool -import -alias OrgRootCA -file /etc/pki/ca-trust/source/anchors/org_
 
 # Copy every repository-provided Keycloak theme into the standard theme directory.
 # The first-level directory name below keycloak-login-themes becomes the Keycloak theme name.
-COPY src/main/resources/keycloak-login-themes/ /opt/keycloak/themes/
+COPY src/main/resources/keycloak-themes/ /opt/keycloak/themes/
 RUN chmod -R a+rX /opt/keycloak/themes
 
 # Run Keycloak as the non-root user from the base image.

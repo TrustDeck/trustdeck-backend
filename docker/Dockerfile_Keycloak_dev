@@ -17,7 +17,7 @@ COPY --from=ubi-micro-build /mnt/rootfs /
 
 # Copy every repository-provided Keycloak theme into the standard theme directory.
 # The first-level directory name below keycloak-login-themes becomes the Keycloak theme name.
-COPY src/main/resources/keycloak-login-themes/ /opt/keycloak/themes/
+COPY src/main/resources/keycloak-themes/ /opt/keycloak/themes/
 USER root
 RUN chmod -R a+rX /opt/keycloak/themes
 USER 1000
