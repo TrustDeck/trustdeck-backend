@@ -137,6 +137,28 @@ public interface IDomain extends Serializable {
     public Boolean getEnforceenddatevalidityinherited();
 
     /**
+     * Setter for <code>public.domain.algorithm_id</code>.
+     */
+    public IDomain setAlgorithmId(Integer value);
+
+    /**
+     * Getter for <code>public.domain.algorithm_id</code>.
+     */
+    @NotNull
+    public Integer getAlgorithmId();
+
+    /**
+     * Setter for <code>public.domain.algorithm_inherited</code>.
+     */
+    public IDomain setAlgorithmInherited(Boolean value);
+
+    /**
+     * Getter for <code>public.domain.algorithm_inherited</code>.
+     */
+    @NotNull
+    public Boolean getAlgorithmInherited();
+
+    /**
      * Setter for <code>public.domain.multiplepsnallowed</code>.
      */
     public IDomain setMultiplepsnallowed(Boolean value);
@@ -177,28 +199,6 @@ public interface IDomain extends Serializable {
      * Getter for <code>public.domain.superdomainid</code>.
      */
     public Integer getSuperdomainid();
-
-    /**
-     * Setter for <code>public.domain.algorithm_id</code>.
-     */
-    public IDomain setAlgorithmId(Integer value);
-
-    /**
-     * Getter for <code>public.domain.algorithm_id</code>.
-     */
-    @NotNull
-    public Integer getAlgorithmId();
-
-    /**
-     * Setter for <code>public.domain.algorithm_inherited</code>.
-     */
-    public IDomain setAlgorithmInherited(Boolean value);
-
-    /**
-     * Getter for <code>public.domain.algorithm_inherited</code>.
-     */
-    @NotNull
-    public Boolean getAlgorithmInherited();
 
     // -------------------------------------------------------------------------
     // FROM and INTO

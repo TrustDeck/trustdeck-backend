@@ -235,6 +235,36 @@ public class DomainDao extends DAOImpl<DomainRecord, org.trustdeck.jooq.generate
     }
 
     /**
+     * Fetch records that have <code>algorithm_id BETWEEN lowerInclusive AND
+     * upperInclusive</code>
+     */
+    public List<org.trustdeck.jooq.generated.tables.pojos.Domain> fetchRangeOfAlgorithmId(Integer lowerInclusive, Integer upperInclusive) {
+        return fetchRange(Domain.DOMAIN.ALGORITHM_ID, lowerInclusive, upperInclusive);
+    }
+
+    /**
+     * Fetch records that have <code>algorithm_id IN (values)</code>
+     */
+    public List<org.trustdeck.jooq.generated.tables.pojos.Domain> fetchByAlgorithmId(Integer... values) {
+        return fetch(Domain.DOMAIN.ALGORITHM_ID, values);
+    }
+
+    /**
+     * Fetch records that have <code>algorithm_inherited BETWEEN lowerInclusive
+     * AND upperInclusive</code>
+     */
+    public List<org.trustdeck.jooq.generated.tables.pojos.Domain> fetchRangeOfAlgorithmInherited(Boolean lowerInclusive, Boolean upperInclusive) {
+        return fetchRange(Domain.DOMAIN.ALGORITHM_INHERITED, lowerInclusive, upperInclusive);
+    }
+
+    /**
+     * Fetch records that have <code>algorithm_inherited IN (values)</code>
+     */
+    public List<org.trustdeck.jooq.generated.tables.pojos.Domain> fetchByAlgorithmInherited(Boolean... values) {
+        return fetch(Domain.DOMAIN.ALGORITHM_INHERITED, values);
+    }
+
+    /**
      * Fetch records that have <code>multiplepsnallowed BETWEEN lowerInclusive
      * AND upperInclusive</code>
      */
@@ -293,35 +323,5 @@ public class DomainDao extends DAOImpl<DomainRecord, org.trustdeck.jooq.generate
      */
     public List<org.trustdeck.jooq.generated.tables.pojos.Domain> fetchBySuperdomainid(Integer... values) {
         return fetch(Domain.DOMAIN.SUPERDOMAINID, values);
-    }
-
-    /**
-     * Fetch records that have <code>algorithm_id BETWEEN lowerInclusive AND
-     * upperInclusive</code>
-     */
-    public List<org.trustdeck.jooq.generated.tables.pojos.Domain> fetchRangeOfAlgorithmId(Integer lowerInclusive, Integer upperInclusive) {
-        return fetchRange(Domain.DOMAIN.ALGORITHM_ID, lowerInclusive, upperInclusive);
-    }
-
-    /**
-     * Fetch records that have <code>algorithm_id IN (values)</code>
-     */
-    public List<org.trustdeck.jooq.generated.tables.pojos.Domain> fetchByAlgorithmId(Integer... values) {
-        return fetch(Domain.DOMAIN.ALGORITHM_ID, values);
-    }
-
-    /**
-     * Fetch records that have <code>algorithm_inherited BETWEEN lowerInclusive
-     * AND upperInclusive</code>
-     */
-    public List<org.trustdeck.jooq.generated.tables.pojos.Domain> fetchRangeOfAlgorithmInherited(Boolean lowerInclusive, Boolean upperInclusive) {
-        return fetchRange(Domain.DOMAIN.ALGORITHM_INHERITED, lowerInclusive, upperInclusive);
-    }
-
-    /**
-     * Fetch records that have <code>algorithm_inherited IN (values)</code>
-     */
-    public List<org.trustdeck.jooq.generated.tables.pojos.Domain> fetchByAlgorithmInherited(Boolean... values) {
-        return fetch(Domain.DOMAIN.ALGORITHM_INHERITED, values);
     }
 }
