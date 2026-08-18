@@ -12,7 +12,7 @@
         <disruptor.version>3.4.4</disruptor.version>
         <lombok.version>1.18.42</lombok.version>
         <blake3.version>0.2.2</blake3.version>
-        <lz4.version>1.11.0</lz4.version>
+        <lz4.version>1.11.1</lz4.version>
         <jooq.version>3.18.9</jooq.version> <!-- This has to be the same version that the spring-boot-starter-jooq uses. -->
         <springdoc.version>2.6.0</springdoc.version>
         <jar.finalName>trustdeck</jar.finalName>
