@@ -71,8 +71,8 @@ body[data-page-id='admin'] {
 
 .pf-v5-c-masthead,
 .pf-v5-c-page__header {
-  background: rgba(255, 255, 255, 0.97);
-  border-bottom: 1px solid rgba(203, 207, 210, 0.82);
+  background: rgba(255, 255, 255, 0.97) !important;
+  border-bottom: 1px solid rgba(203, 207, 210, 0.82) !important;
   box-shadow: 0 4px 18px rgba(0, 37, 82, 0.08);
 }
 
@@ -84,7 +84,7 @@ body[data-page-id='admin'] {
 }
 
 .pf-v5-c-page__sidebar {
-  background: rgba(224, 236, 241, 0.97);
+  background: rgba(224, 236, 241, 0.97) !important;
   border-right: 1px solid rgba(203, 207, 210, 0.8);
   box-shadow: 4px 0 18px rgba(0, 37, 82, 0.06);
 }
@@ -214,33 +214,40 @@ a:focus,
 }
 
 .pf-v5-c-button.pf-m-primary {
-  background: var(--trustdeck-blue);
-  color: var(--trustdeck-white);
+  border-color: var(--trustdeck-blue) !important;
+  background: var(--trustdeck-blue) !important;
+  color: var(--trustdeck-white) !important;
 }
 
 .pf-v5-c-button.pf-m-primary:hover,
 .pf-v5-c-button.pf-m-primary:focus {
-  background: var(--trustdeck-light-blue);
+  border-color: var(--trustdeck-light-blue) !important;
+  background: var(--trustdeck-light-blue) !important;
 }
 
 .pf-v5-c-button.pf-m-secondary {
-  color: var(--trustdeck-blue);
-  box-shadow: inset 0 0 0 2px var(--trustdeck-blue);
+  border-color: var(--trustdeck-blue) !important;
+  color: var(--trustdeck-blue) !important;
+  box-shadow: inset 0 0 0 2px var(--trustdeck-blue) !important;
 }
 
 .pf-v5-c-button.pf-m-secondary:hover,
 .pf-v5-c-button.pf-m-secondary:focus {
-  color: var(--trustdeck-light-blue);
-  box-shadow: inset 0 0 0 2px var(--trustdeck-light-blue);
+  border-color: var(--trustdeck-light-blue) !important;
+  color: var(--trustdeck-light-blue) !important;
+  box-shadow: inset 0 0 0 2px var(--trustdeck-light-blue) !important;
 }
 
 .pf-v5-c-button.pf-m-danger {
-  background: var(--trustdeck-coral);
+  border-color: var(--trustdeck-coral) !important;
+  background: var(--trustdeck-coral) !important;
+  color: var(--trustdeck-white) !important;
 }
 
 .pf-v5-c-button.pf-m-danger:hover,
 .pf-v5-c-button.pf-m-danger:focus {
-  background: #C83D3B;
+  border-color: #C83D3B !important;
+  background: #C83D3B !important;
 }
 
 /* Keycloak 26+ uses PatternFly 6. Keep direct rules here so console defaults
