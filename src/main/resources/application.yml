@@ -59,6 +59,43 @@ audittrail:
     retention-days: 3650
 
 app:
+  defaults:
+    domain:
+      allow-multiple-psn: false
+      enforce-end-date-validity: true
+      enforce-start-date-validity: true
+      perform-recursive-changes: true
+      validity-time: 30 years
+      search-result-limit: 20
+    algorithm:
+      name: RANDOM
+      random-desired-size: 1000000000
+      random-desired-success-probability: 0.999999998
+      random-alphabet: ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789
+      consecutive-value-counter: 1
+      pseudonym-length: 16
+      random-pseudonym-length: 10
+      number-of-retries: 3
+      padding-character: "0"
+      add-check-digit: true
+      length-includes-check-digit: true
+      salt-length: 32
+    pseudonym:
+      batch-length: 50000
+      regenerate-on-update: true
+      search-result-limit: 30
+    project:
+      validity-years: 10
+      store-entities: true
+      store-pseudonyms: true
+    permission:
+      user-search-result-limit: 20
+      validity-days: 3650
+    cache:
+      instance-name: trustdeck-hazelcast
+      ttl-minutes: 15
+    linkage:
+      phonetic-match-weight-factor: 0.75
   response:
     # Possible entries are application/json or text/plain
     preferred-accept-mime-type: application/json

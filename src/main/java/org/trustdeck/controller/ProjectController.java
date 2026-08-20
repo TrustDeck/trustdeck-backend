@@ -19,7 +19,6 @@ package org.trustdeck.controller;
 
 import java.net.URI;
 import java.time.OffsetDateTime;
-import java.time.Period;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -45,6 +44,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.trustdeck.dto.PermissionDTO;
 import org.trustdeck.dto.ProjectDTO;
+import org.trustdeck.configuration.DefaultProperties;
 import org.trustdeck.exception.DuplicateProjectException;
 import org.trustdeck.exception.UnexpectedResultSizeException;
 import org.trustdeck.security.audittrail.annotation.Audit;
@@ -79,14 +79,8 @@ public class ProjectController {
     @Autowired
     private PermissionDBService permissionDBService;
     
-    /** Default value for the project's validity time. */
-    private static final Period DEFAULT_PROJECT_VALIDITY_TIME = Period.ofYears(10);
-    
-    /** Default value for the flag whether or not this project stores entities. */
-    private static final boolean DEFAULT_STORE_ENTITIES = true;
-    
-    /** Default value for the flag whether or not this project stores pseudonyms. */
-    private static final boolean DEFAULT_STORE_PSEUDONYMS = true;
+    @Autowired
+    private DefaultProperties defaults;
     
     /** Pattern/Regex of allowed characters for the abbreviation attribute of projects. */
     private static final Pattern VALID_ABBREVIATION_CHAR_PATTERN = Pattern.compile("^[a-zA-Z0-9_-]+$");
@@ -137,7 +131,7 @@ public class ProjectController {
 		
 		// Handle start and end of project
 		start = start != null ? start : OffsetDateTime.now();
-		end = end != null ? end : start.plus(DEFAULT_PROJECT_VALIDITY_TIME);
+        end = end != null ? end : start.plusYears(defaults.getProject().getValidityYears());
 		
 		if (end.isBefore(start)) {
 			log.debug("Creating a new project failed due to an invalid start and/or end date of the project.");
@@ -149,8 +143,8 @@ public class ProjectController {
 		p.setEndDate(end);
 		
 		// Handle store entities / pseudonyms flags
-		storeEntities = storeEntities != null ? storeEntities : DEFAULT_STORE_ENTITIES;
-		storePseudonyms = storePseudonyms != null ? storePseudonyms : DEFAULT_STORE_PSEUDONYMS;
+        storeEntities = storeEntities != null ? storeEntities : defaults.getProject().isStoreEntities();
+        storePseudonyms = storePseudonyms != null ? storePseudonyms : defaults.getProject().isStorePseudonyms();
 		
 		p.setStoreEntities(storeEntities);
 		p.setStorePseudonyms(storePseudonyms);

@@ -33,6 +33,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.interceptor.TransactionAspectSupport;
 import org.trustdeck.configuration.RoleConfig;
+import org.trustdeck.configuration.DefaultProperties;
 import org.trustdeck.dto.EffectivePermissionDTO;
 import org.trustdeck.dto.PermissionDTO;
 import org.trustdeck.dto.PermissionUpdateDTO;
@@ -53,7 +54,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 
 import java.security.Principal;
-import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -95,12 +95,13 @@ public class PermissionDBService {
 	@Autowired
 	private KeycloakService keycloakService;
 	
-	/**  */
+	/** Cache for speeding up permission look-ups. */
 	@Autowired
 	private CachingService cachingService;
 	
-	/** The default duration for which newly created permissions are valid. */
-	public static final Duration DEFAULT_VALIDITY_DURATION = Duration.ofDays(10 * 365);
+	/** Enables access to default values. */
+    @Autowired
+    private DefaultProperties defaults;
     
     /** Represents the duplication status of a requested insertion of a permission into the database. */
     public static final String INSERTION_DUPLICATE_PERMISSION = "duplicate permission";
@@ -154,6 +155,7 @@ public class PermissionDBService {
 			
 			idRows.add(DSL.row(dto.getSubjectId(), dto.getResourceType(), dto.getResourceId(), dto.getAction()));
 		}
+
 		// Query the database and see if we find any of the user-provided permissions already in there
         Map<Row4<String, String, Integer, String>, PermissionDTO> existingMap = 
         		dsl.selectFrom(PERMISSION_GRANT)
@@ -210,7 +212,7 @@ public class PermissionDBService {
 			
 			String decision = Assertion.isNotNullOrEmpty(dto.getDecision()) ? dto.getDecision() : "ALLOW";
 			OffsetDateTime validFrom = dto.getValidFrom() != null ? dto.getValidFrom() : now;
-			OffsetDateTime validTo = dto.getValidTo() != null ? dto.getValidTo() : validFrom.plus(DEFAULT_VALIDITY_DURATION);
+            OffsetDateTime validTo = dto.getValidTo() != null ? dto.getValidTo() : validFrom.plusDays(defaults.getPermission().getValidityDays());
 			OffsetDateTime createdAt = dto.getCreatedAt() != null ? dto.getCreatedAt() : now;
 			String createdBy = Assertion.isNotNullOrEmpty(dto.getCreatedBy()) ? dto.getCreatedBy() : requester;
 			String updatedBy = Assertion.isNotNullOrEmpty(dto.getUpdatedBy()) ? dto.getUpdatedBy() : createdBy;

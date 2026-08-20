@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.trustdeck.configuration.DefaultProperties;
 import org.trustdeck.dto.EntityInstanceDTO;
 import org.trustdeck.dto.EntityTypeDTO;
 import org.trustdeck.dto.RecordLinkageCandidateDTO;
@@ -71,8 +72,9 @@ public class RecordLinkageService {
     @Autowired
     private EntityInstanceDBService entityInstanceService;
     
-    /** A factor to adjust the weight of a phonetic match. As it is less accurate than an exact match on a normalized string, the factor is usually < 1.0. */
-    private static final double PHONETIC_MATCH_WEIGHT_FACTOR = 0.75;
+    /** Enables access to default values. */
+    @Autowired
+    private DefaultProperties defaults;
 
     /**
      * Finds record-linkage candidates using the effective entity-level linkage
@@ -254,7 +256,7 @@ public class RecordLinkageService {
     	// Apply the score factor associated with the token type
     	double contribution = switch (payloadToken.getTokenType()) {
     		case NORM, PPRL_EXACT -> payloadToken.getWeight();
-    		case PHONETIC -> payloadToken.getWeight() * PHONETIC_MATCH_WEIGHT_FACTOR;
+            case PHONETIC -> payloadToken.getWeight() * defaults.getLinkage().getPhoneticMatchWeightFactor();
     		case BLOCK, PPRL_BLOCK, PPRL_BLOOM -> 0.0;
     	};
 

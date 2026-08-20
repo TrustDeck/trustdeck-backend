@@ -38,6 +38,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.trustdeck.configuration.RoleConfig;
+import org.trustdeck.configuration.DefaultProperties;
 import org.trustdeck.dto.UserDTO;
 import org.trustdeck.jooq.generated.tables.pojos.Domain;
 import org.trustdeck.dto.EffectivePermissionDTO;
@@ -89,8 +90,8 @@ public class PermissionController {
     @Autowired
     private ProjectDBService projectDBService;
 
-	/** The default number of maximum allowed query results. If a query would result in more records, the surplus is omitted. */
-	private static final int DEFAULT_MAX_NUMBER_OF_QUERY_RESULTS = 20;
+    @Autowired
+    private DefaultProperties defaults;
 
 	/**
 	 * Searches for users based on a search term (e.g. username, email, userId).
@@ -116,14 +117,15 @@ public class PermissionController {
         }
 
         // Search the users in keycloak
-        List<UserDTO> users = keycloakService.searchUsers(query, DEFAULT_MAX_NUMBER_OF_QUERY_RESULTS + 1);
+        int resultLimit = defaults.getPermission().getUserSearchResultLimit();
+        List<UserDTO> users = keycloakService.searchUsers(query, resultLimit + 1);
 
         // Add the list of allowed actions for this user
         users.forEach(u -> u.setEffectivePermissions(permissionDBService.getCurrentlyAllowedActionsForSubject(u.getUserId())));
         
-        if (users.size() == DEFAULT_MAX_NUMBER_OF_QUERY_RESULTS + 1) {
-        	log.debug("The list of found users was longer than the maximum (" + DEFAULT_MAX_NUMBER_OF_QUERY_RESULTS + " and was therefore truncated.");
-        	return responseService.partialContent(responseContentType, users.subList(0, DEFAULT_MAX_NUMBER_OF_QUERY_RESULTS));
+        if (users.size() == resultLimit + 1) {
+            log.debug("The list of found users was longer than the maximum (" + resultLimit + " and was therefore truncated.");
+            return responseService.partialContent(responseContentType, users.subList(0, resultLimit));
         } else {
         	log.debug("Successfully found " + users.size() + " user(s) for query: " + query);
         	return responseService.ok(responseContentType, users);

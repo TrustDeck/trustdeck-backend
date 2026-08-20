@@ -27,6 +27,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.trustdeck.exception.UnexpectedResultSizeException;
+import org.trustdeck.configuration.DefaultProperties;
 import org.trustdeck.jooq.generated.tables.pojos.Algorithm;
 import org.trustdeck.jooq.generated.tables.records.AlgorithmRecord;
 import org.trustdeck.utils.Assertion;
@@ -51,41 +52,9 @@ public class AlgorithmDBService {
     @Autowired
 	private DSLContext dsl;
 
-    /** The name of the default algorithm. */
-    public static final String DEFAULT_ALGORITHM_NAME = "RANDOM";
-
-    /** The default number of pseudonyms that a randomness-based algorithm should be able to produce. */
-    public static final long DEFAULT_RANDOM_ALGORITHM_DESIRED_SIZE = 1_000_000_000;
-
-    /** The default success probability for creating a new pseudonym when using a randomness-based algorithm. */
-    public static final double DEFAULT_RANDOM_ALGORITHM_DESIRED_SUCCESS_PROBABILITY = 0.999999998;
-
-    /** The default success probability for creating a new pseudonym when using a randomness-based algorithm. */
-    public static final String DEFAULT_RANDOM_ALGORITHM_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-
-    /** The default starting point for consecutive numbers as pseudonyms. */
-    public static final long DEFAULT_CONSECUTIVE_VALUE_COUNTER = 1;
-
-    /** The default length for the pseudonyms. */
-    public static final int DEFAULT_PSEUDONYM_LENGTH = 16;
-
-    /** The default length for the pseudonyms when using a random algorithm. */
-    public static final int DEFAULT_PSEUDONYM_LENGTH_RND = 10;
-    
-	/** Determines the default number of retries when a generated random pseudonym is already in use. */
-	private static final int DEFAULT_NUMBER_OF_RETRIES = 3;
-
-    /** The default character used for padding the pseudonyms to the desired length. */
-    public static final String DEFAULT_PADDING_CHARACTER = "0";
-
-    /** The default value for whether or not to add a check digit to the pseudonym. */
-    public static final boolean DEFAULT_ADD_CHECK_DIGIT = true;
-
-    /** The default value for whether or not the check digit should be included in the pseudonym length. */
-    public static final boolean DEFAULT_LENGTH_INCLUDES_CHECK_DIGIT = true;
-
-    /** The default length of a newly generated salt value. */
-    public static final int DEFAULT_SALT_LENGTH = 32;
+    /** Enables access to default values. */
+    @Autowired
+    private DefaultProperties defaults;
 
     /** The minimum length a salt value given by the user is allowed to be. */
 	private static final int MINIMUM_SALT_LENGTH = 4;
@@ -103,7 +72,7 @@ public class AlgorithmDBService {
 	 */
 	private int calculatePseudonymLength(Long desiredSize, Double desiredSuccessProbability, String alphabet) {
 		// Collect variables
-		int m = DEFAULT_NUMBER_OF_RETRIES;
+		int m = defaults.getAlgorithm().getNumberOfRetries();
 		double T = desiredSuccessProbability;
 		long n = desiredSize;
 		
@@ -127,29 +96,29 @@ public class AlgorithmDBService {
     @Transactional
     public Integer createAlgorithm(Algorithm algorithm) {
 		// Insert new algorithm object into the database
-		int saltLength = (algorithm.getSaltLength() >= MINIMUM_SALT_LENGTH && algorithm.getSaltLength() <= MAXIMUM_SALT_LENGTH) ? algorithm.getSaltLength() : DEFAULT_SALT_LENGTH;
+		int saltLength = (algorithm.getSaltLength() >= MINIMUM_SALT_LENGTH && algorithm.getSaltLength() <= MAXIMUM_SALT_LENGTH) ? algorithm.getSaltLength() : defaults.getAlgorithm().getSaltLength();
 		
 		AlgorithmRecord algoRecord = dsl.newRecord(ALGORITHM);
-        algoRecord.setName(algorithm.getName() != null ? algorithm.getName() : DEFAULT_ALGORITHM_NAME);
+        algoRecord.setName(algorithm.getName() != null ? algorithm.getName() : defaults.getAlgorithm().getName());
         algoRecord.setAlphabet(Utility.generateAlphabet(algoRecord.getName(), algorithm.getAlphabet()));
-		algoRecord.setRandomAlgorithmDesiredSize(algorithm.getRandomAlgorithmDesiredSize() != null && algorithm.getRandomAlgorithmDesiredSize() > 1 ? algorithm.getRandomAlgorithmDesiredSize() : DEFAULT_RANDOM_ALGORITHM_DESIRED_SIZE);
-        algoRecord.setRandomAlgorithmDesiredSuccessProbability(algorithm.getRandomAlgorithmDesiredSuccessProbability() != null && algorithm.getRandomAlgorithmDesiredSuccessProbability() > 0 ? algorithm.getRandomAlgorithmDesiredSuccessProbability() : DEFAULT_RANDOM_ALGORITHM_DESIRED_SUCCESS_PROBABILITY);
-        algoRecord.setConsecutiveValueCounter(algorithm.getConsecutiveValueCounter() != null && algorithm.getConsecutiveValueCounter() > 0 ? algorithm.getConsecutiveValueCounter() : DEFAULT_CONSECUTIVE_VALUE_COUNTER);
-		algoRecord.setPseudonymLength(algorithm.getPseudonymLength() != null && algorithm.getPseudonymLength() >= 4  ? algorithm.getPseudonymLength() : DEFAULT_PSEUDONYM_LENGTH);
-		algoRecord.setPaddingCharacter(algorithm.getPaddingCharacter() != null ? algorithm.getPaddingCharacter() : DEFAULT_PADDING_CHARACTER);
-		algoRecord.setAddCheckDigit(algorithm.getAddCheckDigit() != null ? algorithm.getAddCheckDigit() : DEFAULT_ADD_CHECK_DIGIT);
-		algoRecord.setLengthIncludesCheckDigit(algorithm.getLengthIncludesCheckDigit() != null ? algorithm.getLengthIncludesCheckDigit() : DEFAULT_LENGTH_INCLUDES_CHECK_DIGIT);
+		algoRecord.setRandomAlgorithmDesiredSize(algorithm.getRandomAlgorithmDesiredSize() != null && algorithm.getRandomAlgorithmDesiredSize() > 1 ? algorithm.getRandomAlgorithmDesiredSize() : defaults.getAlgorithm().getRandomDesiredSize());
+        algoRecord.setRandomAlgorithmDesiredSuccessProbability(algorithm.getRandomAlgorithmDesiredSuccessProbability() != null && algorithm.getRandomAlgorithmDesiredSuccessProbability() > 0 ? algorithm.getRandomAlgorithmDesiredSuccessProbability() : defaults.getAlgorithm().getRandomDesiredSuccessProbability());
+        algoRecord.setConsecutiveValueCounter(algorithm.getConsecutiveValueCounter() != null && algorithm.getConsecutiveValueCounter() > 0 ? algorithm.getConsecutiveValueCounter() : defaults.getAlgorithm().getConsecutiveValueCounter());
+		algoRecord.setPseudonymLength(algorithm.getPseudonymLength() != null && algorithm.getPseudonymLength() >= 4  ? algorithm.getPseudonymLength() : defaults.getAlgorithm().getPseudonymLength());
+		algoRecord.setPaddingCharacter(algorithm.getPaddingCharacter() != null ? algorithm.getPaddingCharacter() : defaults.getAlgorithm().getPaddingCharacter());
+		algoRecord.setAddCheckDigit(algorithm.getAddCheckDigit() != null ? algorithm.getAddCheckDigit() : defaults.getAlgorithm().isAddCheckDigit());
+		algoRecord.setLengthIncludesCheckDigit(algorithm.getLengthIncludesCheckDigit() != null ? algorithm.getLengthIncludesCheckDigit() : defaults.getAlgorithm().isLengthIncludesCheckDigit());
 		algoRecord.setSalt(sanitizeOrGenerateSalt(algorithm.getSalt(), saltLength));
 		algoRecord.setSaltLength(saltLength);
 		
 		// Calculate pseudonym length, if a randomness algorithm is used
 		if (algorithm.getName().trim().toUpperCase().startsWith("RANDOM")) {
 			// Check if the parameters for the algorithm are the default ones 
-			if (algorithm.getRandomAlgorithmDesiredSize() == DEFAULT_RANDOM_ALGORITHM_DESIRED_SIZE
-					&& algorithm.getRandomAlgorithmDesiredSuccessProbability() == DEFAULT_RANDOM_ALGORITHM_DESIRED_SUCCESS_PROBABILITY
-					&& algorithm.getAlphabet() == DEFAULT_RANDOM_ALGORITHM_ALPHABET) {
+			if (algorithm.getRandomAlgorithmDesiredSize() == defaults.getAlgorithm().getRandomDesiredSize()
+					&& algorithm.getRandomAlgorithmDesiredSuccessProbability() == defaults.getAlgorithm().getRandomDesiredSuccessProbability()
+					&& defaults.getAlgorithm().getRandomAlphabet().equals(algorithm.getAlphabet())) {
 				// Defaults are used --> use default length
-				algoRecord.setPseudonymLength(DEFAULT_PSEUDONYM_LENGTH_RND);
+				algoRecord.setPseudonymLength(defaults.getAlgorithm().getRandomPseudonymLength());
 			} else {
 				// Not all parameters are defaults --> calculate the length
 				int calculatedLength = calculatePseudonymLength(algoRecord.getRandomAlgorithmDesiredSize(), algoRecord.getRandomAlgorithmDesiredSuccessProbability(), algoRecord.getAlphabet());

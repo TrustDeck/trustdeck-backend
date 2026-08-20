@@ -35,6 +35,8 @@ import org.springframework.web.bind.annotation.RestController;
 import org.trustdeck.dto.DomainDTO;
 import org.trustdeck.dto.DomainTreeDTO;
 import org.trustdeck.dto.AlgorithmDTO;
+import org.trustdeck.configuration.DefaultProperties;
+import org.trustdeck.jooq.generated.tables.pojos.Algorithm;
 import org.trustdeck.jooq.generated.tables.pojos.Domain;
 import org.trustdeck.security.audittrail.annotation.Audit;
 import org.trustdeck.service.AuthorizationService;
@@ -69,56 +71,14 @@ import java.util.Set;
 @RequestMapping(value = "/api")
 public class DomainController {
 
-	/** The default value for adding a check digit to the pseudonym. */
-	public static final boolean DEFAULT_ADD_CHECK_DIGIT = true;
-	
-	/** The default value for allowing multiple pseudonyms per id&idType pair. */
-	public static final boolean DEFAULT_ALLOW_MULTIPLE_PSN = false;
-	
-    /** The default value for enforcing the validTo date correctness. */
-	public static final boolean DEFAULT_ENFORCE_END_DATE_VALIDITY = true;
-
-    /** The default value for enforcing the validFrom date correctness. */
-	public static final boolean DEFAULT_ENFORCE_START_DATE_VALIDITY = true;
-    
-    /** The default value for determining if the check digit should be included in the defined pseudonym length. */
-	public static final boolean DEFAULT_LENGTH_INCLUDES_CHECK_DIGIT = false;
-    
-	/** The default character used for padding pseudonyms if necessary. */
-	public static final char DEFAULT_PADDING_CHARACTER = '0';
-
-    /** The default value for performing a recursive update of possible child domains. */
-    private static final boolean DEFAULT_PERFORM_RECURSIVE_CHANGES = true;
-
-    /** The default pseudonymization algorithm. */
-    public static final String DEFAULT_PSEUDONYMIZATION_ALGO = "RANDOM_LET";
-    
-    /** The default alphabet (A-Z0-9) used for the pseudonymization process. */
-    public static final String DEFAULT_PSEUDONYMIZATION_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-
-    /** The default pseudonym length. */
-    public static final int DEFAULT_PSEUDONYM_LENGTH = 16;
-    
-    /** The default number of pseudonyms a user wants to be able to create. */
-    public static final long DEFAULT_RANDOM_ALGORITHM_DESIRED_SIZE = 100000000L;
-    
-    /** The default success probability with which a user wants to create a new pseudonym. */
-    public static final double DEFAULT_RANDOM_ALGORITHM_DESIRED_SUCCESS_PROBABILITY = 0.99999998d;
-
-    /** The default length of a salt. */
-    public static final int DEFAULT_SALT_LENGTH = 32;
-
-    /** The default validity time in seconds. */
-    public static final String DEFAULT_VALIDITY_TIME = "30 years";
-    
     /** The maximum length for the salt. */
     private static final int MAXIMUM_SALT_LENGTH = 256;
 
     /** The minimum length for the salt. */
     private static final int MINIMUM_SALT_LENGTH = 8;
     
-    /** The maximum number of domains that are returned in a search. */
-    private static final int MAX_NUMBER_OF_SEARCH_RESULTS = 20;
+    @Autowired
+    private DefaultProperties defaults;
 
     /** Enables the access to the domain specific database access methods. */
     @Autowired
@@ -202,8 +162,7 @@ public class DomainController {
      * default algorithm configuration is created.
      *
      * @param dto the domain data to persist; must contain at least a name and prefix
-     * @param responseContentType the requested response content type; may be
-     *                            {@code null}
+     * @param responseContentType the requested response content type; may be {@code null}
      * @param complete {@code true} when the complete domain creation endpoint was
      *                 used; {@code false} when the reduced endpoint was used
      * @return <li>a <b>200-OK</b> status when the domain already exists</li>
@@ -218,10 +177,12 @@ public class DomainController {
      *             domain cannot be persisted</li>
      */
     private ResponseEntity<?> createDomain(DomainDTO dto, String responseContentType, boolean complete) {
+        // A domain cannot be created without a name and a pseudonym prefix
         if (dto.getName() == null || dto.getPrefix() == null) {
             return responseService.unprocessableEntity(responseContentType);
         }
         
+        // Build the location before persisting so invalid names are rejected early
         URI location;
         try {
             location = new URI("/api/pseudonymization/domain?name=" + dto.getName());
@@ -229,11 +190,13 @@ public class DomainController {
             return responseService.notAcceptable(responseContentType);
         }
         
+        // Resolve the requested parent; child domains inherit omitted settings from it
         Domain parent = dto.getSuperDomainName() == null ? null : domainDBAccessService.getDomainByName(dto.getSuperDomainName());
         if (dto.getSuperDomainName() != null && parent == null) {
             return responseService.notFound(responseContentType);
         }
 
+        // Apply explicit values first, then inherited values, then configured defaults
         Domain domain = new Domain();
         domain.setName(dto.getName());
         domain.setPrefix(dto.getPrefix());
@@ -242,19 +205,20 @@ public class DomainController {
         domain.setValidfrominherited(dto.getValidFrom() == null && parent != null);
         domain.setValidto(dto.getValidTo() != null ? dto.getValidTo() : dto.getValidityTime() != null
                 ? Utility.plusValidityTime(domain.getValidfrom(), dto.getValidityTime())
-                : parent == null ? Utility.plusValidityTime(domain.getValidfrom(), DEFAULT_VALIDITY_TIME) : parent.getValidto());
+                : parent == null ? Utility.plusValidityTime(domain.getValidfrom(), defaults.getDomain().getValidityTime()) : parent.getValidto());
         domain.setValidtoinherited(dto.getValidTo() == null && dto.getValidityTime() == null && parent != null);
         domain.setEnforcestartdatevalidity(dto.getEnforceStartDateValidity() != null ? dto.getEnforceStartDateValidity()
-                : parent == null ? DEFAULT_ENFORCE_START_DATE_VALIDITY : parent.getEnforcestartdatevalidity());
+                : parent == null ? defaults.getDomain().isEnforceStartDateValidity() : parent.getEnforcestartdatevalidity());
         domain.setEnforcestartdatevalidityinherited(dto.getEnforceStartDateValidity() == null && parent != null);
         domain.setEnforceenddatevalidity(dto.getEnforceEndDateValidity() != null ? dto.getEnforceEndDateValidity()
-                : parent == null ? DEFAULT_ENFORCE_END_DATE_VALIDITY : parent.getEnforceenddatevalidity());
+                : parent == null ? defaults.getDomain().isEnforceEndDateValidity() : parent.getEnforceenddatevalidity());
         domain.setEnforceenddatevalidityinherited(dto.getEnforceEndDateValidity() == null && parent != null);
         domain.setMultiplepsnallowed(dto.getMultiplePsnAllowed() != null ? dto.getMultiplePsnAllowed()
-                : parent == null ? DEFAULT_ALLOW_MULTIPLE_PSN : parent.getMultiplepsnallowed());
+                : parent == null ? defaults.getDomain().isAllowMultiplePsn() : parent.getMultiplepsnallowed());
         domain.setMultiplepsnallowedinherited(dto.getMultiplePsnAllowed() == null && parent != null);
         domain.setSuperdomainid(parent == null ? 0 : parent.getId());
 
+        // Reuse the parent's algorithm when possible; otherwise create one from the request or defaults
         if (dto.getAlgorithm() == null && parent != null) {
             domain.setAlgorithmId(parent.getAlgorithmId());
             domain.setAlgorithmInherited(true);
@@ -269,6 +233,7 @@ public class DomainController {
             domain.setAlgorithmInherited(false);
         }
 
+        // Persist the domain and return the stored view, reduced when necessary
         String result = domainDBAccessService.insertDomain(domain);
         Domain stored = domainDBAccessService.getDomainByName(domain.getName());
         DomainDTO resultDto = stored == null ? null : new DomainDTO().assignPojoValues(stored);
@@ -291,10 +256,8 @@ public class DomainController {
     /**
      * Creates an algorithm DTO initialized with the default pseudonymization
      * settings.
-     * <p>
      * A new random salt is generated for every invocation. The returned DTO is not
      * persisted by this method.
-     * </p>
      *
      * @return a newly created algorithm DTO containing the default algorithm,
      *         alphabet, pseudonym length, random-generation settings, check-digit
@@ -302,17 +265,17 @@ public class DomainController {
      */
     private AlgorithmDTO defaultAlgorithm() {
         AlgorithmDTO algorithm = new AlgorithmDTO();
-        algorithm.setName(DEFAULT_PSEUDONYMIZATION_ALGO);
-        algorithm.setAlphabet(DEFAULT_PSEUDONYMIZATION_ALPHABET);
-        algorithm.setRandomAlgorithmDesiredSize(DEFAULT_RANDOM_ALGORITHM_DESIRED_SIZE);
-        algorithm.setRandomAlgorithmDesiredSuccessProbability(DEFAULT_RANDOM_ALGORITHM_DESIRED_SUCCESS_PROBABILITY);
-        algorithm.setConsecutiveValueCounter(1L);
-        algorithm.setPseudonymLength(DEFAULT_PSEUDONYM_LENGTH);
-        algorithm.setPaddingCharacter(String.valueOf(DEFAULT_PADDING_CHARACTER));
-        algorithm.setAddCheckDigit(DEFAULT_ADD_CHECK_DIGIT);
-        algorithm.setLengthIncludesCheckDigit(DEFAULT_LENGTH_INCLUDES_CHECK_DIGIT);
-        algorithm.setSalt(generateSalt(DEFAULT_SALT_LENGTH));
-        algorithm.setSaltLength(DEFAULT_SALT_LENGTH);
+        algorithm.setName(defaults.getAlgorithm().getName());
+        algorithm.setAlphabet(defaults.getAlgorithm().getRandomAlphabet());
+        algorithm.setRandomAlgorithmDesiredSize(defaults.getAlgorithm().getRandomDesiredSize());
+        algorithm.setRandomAlgorithmDesiredSuccessProbability(defaults.getAlgorithm().getRandomDesiredSuccessProbability());
+        algorithm.setConsecutiveValueCounter(defaults.getAlgorithm().getConsecutiveValueCounter());
+        algorithm.setPseudonymLength(defaults.getAlgorithm().getPseudonymLength());
+        algorithm.setPaddingCharacter(defaults.getAlgorithm().getPaddingCharacter());
+        algorithm.setAddCheckDigit(defaults.getAlgorithm().isAddCheckDigit());
+        algorithm.setLengthIncludesCheckDigit(defaults.getAlgorithm().isLengthIncludesCheckDigit());
+        algorithm.setSalt(generateSalt(defaults.getAlgorithm().getSaltLength()));
+        algorithm.setSaltLength(defaults.getAlgorithm().getSaltLength());
         
         return algorithm;
     }
@@ -346,7 +309,7 @@ public class DomainController {
 
         // Check if all necessary values are given. If not, use defaults.
         if (performRecursiveChanges == null) {
-            performRecursiveChanges = DEFAULT_PERFORM_RECURSIVE_CHANGES;
+            performRecursiveChanges = defaults.getDomain().isPerformRecursiveChanges();
         }
 
         // Perform deletion
@@ -372,8 +335,7 @@ public class DomainController {
      * 			<li>a <b>403-FORBIDDEN</b> when the rights for accessing 
      * 				the attribute were not found in the token</li>
      * 			<li>a <b>404-NOT_FOUND</b> when no domain was found for
-     * 				the given name or the when given attribute name 
-     * 				wasn't found</li>
+     * 				the given name or the when given attribute name wasn't found</li>
      */
     @GetMapping("/domains/{domainName}/{attribute}")
     @PreAuthorize("isAuthenticated() and @auth.hasDomainPermission(#root, #domainName, 'domain:read')")
@@ -391,7 +353,7 @@ public class DomainController {
     	
     	String attribute;
     	Domain domain = domainDBAccessService.getDomainByName(domainName);
-		org.trustdeck.jooq.generated.tables.pojos.Algorithm algorithm = domain == null ? null : algorithmDBService.getAlgorithmByID(domain.getAlgorithmId());
+		Algorithm algorithm = domain == null ? null : algorithmDBService.getAlgorithmByID(domain.getAlgorithmId());
     	
     	// Check if the domain was found
     	if (domain == null) {
@@ -834,7 +796,7 @@ public class DomainController {
         // All other domain attributes are null and are therefore correctly left as they are
 
         // Execute update
-        Domain updatedDomain = domainDBAccessService.updateDomain(old, updated, DEFAULT_PERFORM_RECURSIVE_CHANGES);
+        Domain updatedDomain = domainDBAccessService.updateDomain(old, updated, defaults.getDomain().isPerformRecursiveChanges());
         if (updatedDomain != null) {
             // Success. Return a 200-OK status.
         	DomainDTO updatedDomDTO = new DomainDTO().assignPojoValues(updatedDomain);
@@ -891,8 +853,8 @@ public class DomainController {
         }
 
         // Create update-domain
-        org.trustdeck.jooq.generated.tables.pojos.Algorithm oldAlgorithm = algorithmDBService.getAlgorithmByID(old.getAlgorithmId());
-        org.trustdeck.jooq.generated.tables.pojos.Algorithm updatedAlgorithm = new org.trustdeck.jooq.generated.tables.pojos.Algorithm(oldAlgorithm);
+        Algorithm oldAlgorithm = algorithmDBService.getAlgorithmByID(old.getAlgorithmId());
+        Algorithm updatedAlgorithm = new Algorithm(oldAlgorithm);
         updatedAlgorithm.setSalt(newSalt);
         updatedAlgorithm.setSaltLength((allowEmpty && newSalt.isBlank()) ? 0 : newSalt.length());
         Domain updatedDomain = algorithmDBService.updateAlgorithm(oldAlgorithm, updatedAlgorithm) != null ? old : null;
@@ -961,7 +923,7 @@ public class DomainController {
             visibleDomains.add(domainDTO);
 
             // Early break if the list of search results should become too long
-            if (visibleDomains.size() >= MAX_NUMBER_OF_SEARCH_RESULTS) {
+            if (visibleDomains.size() >= defaults.getDomain().getSearchResultLimit()) {
                 break;
             }
         }
