@@ -34,6 +34,7 @@ import org.trustdeck.algorithms.LuhnMod36CheckDigit;
 import org.trustdeck.algorithms.PseudonymizationFactory;
 import org.trustdeck.algorithms.Pseudonymizer;
 import org.trustdeck.algorithms.RandomNumberPseudonymizer;
+import org.trustdeck.configuration.DefaultProperties;
 import org.trustdeck.dto.PseudonymDTO;
 import org.trustdeck.dto.PseudonymUpdateDTO;
 import org.trustdeck.jooq.generated.tables.pojos.Algorithm;
@@ -46,7 +47,6 @@ import org.trustdeck.service.DomainDBAccessService;
 import org.trustdeck.service.PseudonymDBAccessService;
 import org.trustdeck.service.ResponseService;
 import org.trustdeck.utils.Assertion;
-import org.trustdeck.utils.SpringBeanLocator;
 import org.trustdeck.utils.Utility;
 import org.trustdeck.utils.Utility.Pair;
 
@@ -88,18 +88,23 @@ public class PseudonymController {
     @Autowired
     private AlgorithmDBService algorithmDBService;
 
+    /** Enables access to the various pseudonymization algorithms. */
+    @Autowired
+    private PseudonymizationFactory pseudonymizationFactory;
+
+    /** Enables access to default values. */
+    @Autowired
+    private DefaultProperties defaults;
+
+    /**
+     * Returns the algorithm used in a domain.
+     *
+     * @param domain the domain for which the algorithm should be returned
+     * @return the algorithm object defined in the given domain
+     */
     private Algorithm algorithm(Domain domain) {
         return algorithmDBService.getAlgorithmByID(domain.getAlgorithmId());
     }
-
-    /** The default maximum allowed batch size. */
-    private static final int DEFAULT_PSEUDONYM_BATCH_LENGTH = 50000;
-
-    /** The default for regenerating the pseudonym on updates that affect the identifierItem or the domain. */
-    private static final boolean DEFAULT_REGENERATE_PSEUDONYM = true;
-    
-    /** The default maximum number of pseudonyms found by searching the DB that are returned to the user. */
-    private static final int MAX_NUMBER_OF_SEARCH_RESULTS = 30;
 	
     /**
      * Method to check if the current domain's filling rate exceeds a point where the generation of unseen
@@ -122,7 +127,7 @@ public class PseudonymController {
 		*/
 		Double T = algo.getRandomAlgorithmDesiredSuccessProbability();
 		Double k = Math.pow(10.0d, (double) algo.getPseudonymLength());
-		Double n = k * Math.pow((1.0d - T), (1.0d / (double) Pseudonymizer.DEFAULT_NUMBER_OF_RETRIES));
+		Double n = k * Math.pow((1.0d - T), (1.0d / (double) defaults.getAlgorithm().getNumberOfRetries()));
 		
 		Integer existingPseudonyms = domainDBAccessService.getAmountOfPseudonymsInDomain(domain.getName());
 		existingPseudonyms = existingPseudonyms == null ? 0 : existingPseudonyms; // Ignore unsuccessful database retrieval
@@ -164,9 +169,9 @@ public class PseudonymController {
                                                	  @RequestBody List<PseudonymDTO> pseudonymDtoList,
                                                	  @RequestHeader(name = "accept", required = false) String responseContentType) {
         // Check that the batch size isn't too big.
-        if (pseudonymDtoList.size() > DEFAULT_PSEUDONYM_BATCH_LENGTH) {
+        if (pseudonymDtoList.size() > defaults.getPseudonym().getBatchLength()) {
             // The batch size exceeded the limit. Return an error 422-UNPROCESSABLE_ENTITY.
-            log.error("The given list of objects is too big. The maximum allowed batch size is: " + DEFAULT_PSEUDONYM_BATCH_LENGTH);
+            log.error("The given list of objects is too big. The maximum allowed batch size is: " + defaults.getPseudonym().getBatchLength());
             return responseService.unprocessableEntity(responseContentType);
         }
 
@@ -208,7 +213,7 @@ public class PseudonymController {
                 // Generate a new pseudonym
                 String prefix = (omitPrefix != null && omitPrefix) ? "" : domain.getPrefix(); // Omitting the prefix here shouldn't be the norm
                 Algorithm algorithm = algorithm(domain);
-                Pseudonymizer pseudonymizer = PseudonymizationFactory.getPseudonymizer(algorithm);
+                Pseudonymizer pseudonymizer = pseudonymizationFactory.getPseudonymizer(algorithm);
                 pseudonym = pseudonymizer.pseudonymize(pseudonymDTO.getIdentifierItem().getIdentifier() + pseudonymDTO.getIdentifierItem().getIdType() + algorithm.getSalt(), prefix);
                 pseudonym = algorithm.getAddCheckDigit() ? pseudonymizer.addCheckDigit(pseudonym, algorithm.getLengthIncludesCheckDigit(), domain.getName(), prefix) : pseudonym;
 
@@ -500,7 +505,7 @@ public class PseudonymController {
         // If a random algorithm is used, check if we generated a duplicate. If so, retry.
         if (algorithm(domain).getName().toUpperCase().startsWith("RANDOM")) {
 	        // Retry DEFAULT_NUMBER_OF_RETRIES - 1 times
-        	for (int i = 1; i < Pseudonymizer.DEFAULT_NUMBER_OF_RETRIES; i++) {
+            for (int i = 1; i < defaults.getAlgorithm().getNumberOfRetries(); i++) {
 	        	// Check if its actually a duplicate
         		if (result.equals(PseudonymDBAccessService.INSERTION_DUPLICATE_PSEUDONYM)) {
 					// Check the domain's filling rate
@@ -792,9 +797,9 @@ public class PseudonymController {
             // The domain wasn't found. Return an error 404-NOT_FOUND
             log.error("Couldn't find the domain \"" + domainName + "\".");
             return responseService.notFound(responseContentType);
-        } else if (count > DEFAULT_PSEUDONYM_BATCH_LENGTH) {
+        } else if (count > defaults.getPseudonym().getBatchLength()) {
             // The batch size exceeded the limit. Return an error 422-UNPROCESSABLE_ENTITY.
-            log.error("The domain contains too many entries. The maximum allowed batch size is: " + DEFAULT_PSEUDONYM_BATCH_LENGTH);
+            log.error("The domain contains too many entries. The maximum allowed batch size is: " + defaults.getPseudonym().getBatchLength());
             return responseService.unprocessableEntity(responseContentType);
         }
 
@@ -953,12 +958,12 @@ public class PseudonymController {
      * @param omitPrefix determines whether or not the prefix should be added to the pseudonym
      * @return the generated pseudonym
      */
-    public static String pseudonymize(String identifier, String idType, Domain domain, Boolean omitPrefix) {
+    public String pseudonymize(String identifier, String idType, Domain domain, Boolean omitPrefix) {
         // Generate a new pseudonym
         String prefix = (omitPrefix != null && omitPrefix) ? "" : domain.getPrefix();
         
-        Algorithm algorithm = SpringBeanLocator.getBean(AlgorithmDBService.class).getAlgorithmByID(domain.getAlgorithmId());
-        Pseudonymizer pseudonymizer = PseudonymizationFactory.getPseudonymizer(algorithm);
+        Algorithm algorithm = algorithmDBService.getAlgorithmByID(domain.getAlgorithmId());
+        Pseudonymizer pseudonymizer = pseudonymizationFactory.getPseudonymizer(algorithm);
         String pseudonym = pseudonymizer.pseudonymize(identifier + idType + algorithm.getSalt(), prefix);
         
         return algorithm.getAddCheckDigit() ? pseudonymizer.addCheckDigit(pseudonym, algorithm.getLengthIncludesCheckDigit(), domain.getName(), prefix) : pseudonym;
@@ -1074,7 +1079,7 @@ public class PseudonymController {
         Timestamp validTo = pseudonymUpdateDTO.getValidTo() != null ? Timestamp.valueOf(pseudonymUpdateDTO.getValidTo()) : null;
         String validityTime = pseudonymUpdateDTO.getValidityTime();
         String newDomainName = pseudonymUpdateDTO.getNewDomainName();
-        regeneratePseudonym = regeneratePseudonym == null ? DEFAULT_REGENERATE_PSEUDONYM : regeneratePseudonym;
+        regeneratePseudonym = regeneratePseudonym == null ? defaults.getPseudonym().isRegenerateOnUpdate() : regeneratePseudonym;
         
         if (Assertion.assertNullAll(newIdentifier, newIdType, newPsn, validFrom, validTo, validityTime, newDomainName)) {
             // An empty object was passed, so there is nothing to create.
@@ -1480,9 +1485,9 @@ public class PseudonymController {
 		if (pseudonyms == null || pseudonyms.size() == 0) {
 			log.debug("No pseudonyms for the given query string were found.");
 			return responseService.ok(responseContentType, List.of());
-		} else if (pseudonyms.size() > MAX_NUMBER_OF_SEARCH_RESULTS) {
-			log.debug("Successfully queried the database and found more than " + MAX_NUMBER_OF_SEARCH_RESULTS + " pseudonyms, so the result list was truncated.");
-			return responseService.partialContent(responseContentType, pseudonyms.subList(0, MAX_NUMBER_OF_SEARCH_RESULTS));
+		} else if (pseudonyms.size() > defaults.getPseudonym().getSearchResultLimit()) {
+			log.debug("Successfully queried the database and found more than " + defaults.getPseudonym().getSearchResultLimit() + " pseudonyms, so the result list was truncated.");
+			return responseService.partialContent(responseContentType, pseudonyms.subList(0, defaults.getPseudonym().getSearchResultLimit()));
 		} else {
 			log.debug("Successfully found " + pseudonyms.size() + " pseudonyms.");
 			return responseService.ok(responseContentType, pseudonyms);

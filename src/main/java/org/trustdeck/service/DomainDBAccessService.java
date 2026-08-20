@@ -708,10 +708,10 @@ public class DomainDBAccessService {
                         .values(domain.getName(), domain.getPrefix(), domain.getValidfrom(), domain.getValidfrominherited(),
                                 domain.getValidto(), domain.getValidtoinherited(), domain.getEnforcestartdatevalidity(),
                                 domain.getEnforcestartdatevalidityinherited(), domain.getEnforceenddatevalidity(),
-                                 domain.getEnforceenddatevalidityinherited(), domain.getMultiplepsnallowed(),
-                                 domain.getMultiplepsnallowedinherited(), domain.getDescription(),
-                                 (domain.getSuperdomainid() == null || domain.getSuperdomainid() == 0) ? null : domain.getSuperdomainid(),
-                                 domain.getAlgorithmId(), domain.getAlgorithmInherited())
+                                domain.getEnforceenddatevalidityinherited(), domain.getMultiplepsnallowed(),
+                                domain.getMultiplepsnallowedinherited(), domain.getDescription(),
+                                (domain.getSuperdomainid() == null || domain.getSuperdomainid() == 0) ? null : domain.getSuperdomainid(),
+                                domain.getAlgorithmId(), domain.getAlgorithmInherited())
                         .returning(DOMAIN.ID)
                         .fetchOne(DOMAIN.ID);
 

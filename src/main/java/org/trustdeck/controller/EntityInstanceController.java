@@ -105,6 +105,10 @@ public class EntityInstanceController {
 	@Autowired
 	private AlgorithmDBService algorithmDBService;
 
+	/** Creates pseudonymizers with the configured dependencies. */
+	@Autowired
+	private PseudonymizationFactory pseudonymizationFactory;
+
 	/** Enables access to the pseudonym data base interaction methods. */
 	@Autowired
 	private PseudonymDBAccessService pdba;
@@ -260,7 +264,7 @@ public class EntityInstanceController {
 				
 				// Generate a new pseudonym-value
 	            Algorithm algorithm = algorithmDBService.getAlgorithmByID(domain.getAlgorithmId());
-	            Pseudonymizer pseudonymizer = PseudonymizationFactory.getPseudonymizer(algorithm);
+	            Pseudonymizer pseudonymizer = pseudonymizationFactory.getPseudonymizer(algorithm);
 	            String rawPseudonym = pseudonymizer.pseudonymize(identifier + idType + algorithm.getSalt(), domain.getPrefix());
 	            String psn = algorithm.getAddCheckDigit() ? pseudonymizer.addCheckDigit(rawPseudonym, algorithm.getLengthIncludesCheckDigit(), domain.getName(), domain.getPrefix()) : rawPseudonym;
 				

@@ -32,7 +32,10 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.trustdeck.algorithms.PseudonymizationFactory;
+import org.trustdeck.algorithms.Pseudonymizer;
 import org.trustdeck.algorithms.XxHashPseudonymizer;
 import org.trustdeck.dto.DomainDTO;
 import org.trustdeck.dto.PseudonymDTO;
@@ -46,6 +49,9 @@ import org.trustdeck.service.AssertWebRequestService;
  * @author Armin Müller and Eric Wündisch
  */
 public class TestsRecordServiceIT extends AssertWebRequestService {
+
+    @Autowired
+    private PseudonymizationFactory pseudonymizationFactory;
 	
 	/** Enables access to the permission grants database methods. */
 //    @Autowired
@@ -594,7 +600,8 @@ public class TestsRecordServiceIT extends AssertWebRequestService {
 
         this.assertOkRequest("commonUpdateDomainComplete", put("/api/domains/complete"), updateParameter, d, this.getAccessToken());
 
-        XxHashPseudonymizer xx = new XxHashPseudonymizer(domainName);
+        Pseudonymizer pseudonymizer = pseudonymizationFactory.getPseudonymizer(d.getAlgorithm().convertToPOJO());
+        XxHashPseudonymizer xx = (XxHashPseudonymizer) pseudonymizer;
         assertNotNull(xx);
 
         assertEquals("0ff9ec2d200c293e", xx.pseudonymize("fad0fcfe01f8e15592af59626aebadd17a0f3340ad1f9339fd586cde9ef43dbdea750336056381cbe68a21bedb9c312fc7a39e872beacde0cae8f7162a73d0dd", ""));

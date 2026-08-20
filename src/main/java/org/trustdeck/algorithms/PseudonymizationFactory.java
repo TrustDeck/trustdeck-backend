@@ -18,6 +18,10 @@
 package org.trustdeck.algorithms;
 
 import org.trustdeck.jooq.generated.tables.pojos.Algorithm;
+import org.springframework.stereotype.Component;
+import org.trustdeck.configuration.DefaultProperties;
+import org.trustdeck.service.AlgorithmDBService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -26,8 +30,16 @@ import lombok.extern.slf4j.Slf4j;
  * @author Armin Müller
  */
 @Slf4j
+@Component
+@RequiredArgsConstructor
 public class PseudonymizationFactory {
-	
+
+	/** Configurable defaults for pseudonym generation. */
+	private final DefaultProperties defaults;
+
+	/** Service for reading and updating algorithm data. */
+	private final AlgorithmDBService algorithmDBService;
+
 	/**
 	 * Method for automatically creating the correct pseudonymizer 
 	 * depending on the desired algorithm.
@@ -35,46 +47,46 @@ public class PseudonymizationFactory {
 	 * @param algorithm the algorithm with which the inputs should be pseudonymized
 	 * @return the pre-configured pseudonymizer so that the pseudonymization step itself is easier to accomplish 
 	 */
-	public static Pseudonymizer getPseudonymizer(Algorithm algorithm) {
+	public Pseudonymizer getPseudonymizer(Algorithm algorithm) {
 		// Select the desired pseudonymization algorithm and create a pseudonymizer
         switch (algorithm.getName().toUpperCase()) {
             case "MD5": {
-                return new MD5Pseudonymizer(true, algorithm);
+                return new MD5Pseudonymizer(true, algorithm, defaults, algorithmDBService);
             }
             case "SHA1": {
-                return new SHA1Pseudonymizer(true, algorithm);
+                return new SHA1Pseudonymizer(true, algorithm, defaults, algorithmDBService);
             }
             case "SHA2": {
-            	return new SHA2Pseudonymizer(true, algorithm);
+                return new SHA2Pseudonymizer(true, algorithm, defaults, algorithmDBService);
             }
             case "SHA3": {
-            	return new SHA3Pseudonymizer(true, algorithm);
+                return new SHA3Pseudonymizer(true, algorithm, defaults, algorithmDBService);
             }
             case "BLAKE3": {
-            	return new BLAKE3Pseudonymizer(true, algorithm);
+                return new BLAKE3Pseudonymizer(true, algorithm, defaults, algorithmDBService);
             }
             case "CONSECUTIVE": {
-            	return new ConsecutivePseudonymizer(true, algorithm);
+                return new ConsecutivePseudonymizer(true, algorithm, defaults, algorithmDBService);
             }
             case "RANDOM_NUM": {
-            	return new RandomNumberPseudonymizer(true, algorithm);
+                return new RandomNumberPseudonymizer(true, algorithm, defaults, algorithmDBService);
             }
             case "RANDOM": 
             case "RANDOM_HEX": 
             case "RANDOM_LET": 
             case "RANDOM_SYM": 
             case "RANDOM_SYM_BIOS": {
-            	return new RandomAlphabetPseudonymizer(true, algorithm);
+                return new RandomAlphabetPseudonymizer(true, algorithm, defaults, algorithmDBService);
             }
             case "XXHASH": {
-            	return new XxHashPseudonymizer(true, algorithm);
+                return new XxHashPseudonymizer(true, algorithm, defaults, algorithmDBService);
             }
             default: {
                 // Unrecognized algorithm. Use default.
                 log.warn("The pseudonymization algorithm that was requested (" + algorithm.getName() + ") wasn't recognized. Using random letters (A-Z) instead.");
                 algorithm.setName("RANDOM_LET");
                 algorithm.setAlphabet("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
-                return new RandomAlphabetPseudonymizer(true, algorithm);
+                return new RandomAlphabetPseudonymizer(true, algorithm, defaults, algorithmDBService);
             }
         }
 	}

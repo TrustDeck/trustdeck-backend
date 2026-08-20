@@ -19,7 +19,8 @@ package org.trustdeck.algorithms;
 
 import org.apache.commons.codec.binary.Hex;
 import org.trustdeck.jooq.generated.tables.pojos.Algorithm;
-import org.trustdeck.jooq.generated.tables.pojos.Domain;
+import org.trustdeck.configuration.DefaultProperties;
+import org.trustdeck.service.AlgorithmDBService;
 
 import io.lktk.NativeBLAKE3;
 import io.lktk.NativeBLAKE3Util.InvalidNativeOutput;
@@ -36,57 +37,13 @@ public class BLAKE3Pseudonymizer extends Pseudonymizer {
 	
 	/**
 	 * Basic constructor.
-	 * Padding is turned <b>off</b>.
-	 * (The pseudonym value length is automatically set to the default, as well as the padding character.)
-	 */
-	public BLAKE3Pseudonymizer() {
-		super(false, Pseudonymizer.DEFAULT_VALUE_LENGTH, Pseudonymizer.DEFAULT_PADDING_CHAR, null);
-	}
-	
-	/**
-	 * Basic constructor.
-	 * Padding is turned <b>off</b>.
-	 * (The pseudonym value length is automatically set to the default, as well as the padding character.)
-	 * 
-	 * @param domainName the name of the domain to which the record belongs to
-	 */
-	public BLAKE3Pseudonymizer(String domainName) {
-		super(false, Pseudonymizer.DEFAULT_VALUE_LENGTH, Pseudonymizer.DEFAULT_PADDING_CHAR, domainName);
-	}
-
-	/**
-	 * A constructor that allows to set whether or not the created pseudonyms should be padded 
-	 * as well as the desired pseudonym value length and the character used for padding.
-	 * 
-	 * @param paddingWanted whether or not the pseudonyms should be padded to a certain length
-	 * @param pseudonymValueLength the desired length of the pseudonym value
-	 * @param paddingChar the character that should be used
-	 * @param domainName the name of the domain to which the record belongs to
-	 */
-	public BLAKE3Pseudonymizer(boolean paddingWanted, int pseudonymValueLength, char paddingChar, String domainName) {
-		super(paddingWanted, pseudonymValueLength, paddingChar, domainName);
-	}
-	
-	/**
-	 * Basic constructor.
-	 * All necessary variables are directly retrieved from the domain object.
-	 * 
-	 * @param paddingWanted whether or not the pseudonyms should be padded to a certain length
-	 * @param domain the domain object
-	 */
-	public BLAKE3Pseudonymizer(boolean paddingWanted, Domain domain) {
-		super(paddingWanted, domain);
-	}
-	
-	/**
-	 * Basic constructor.
 	 * All necessary variables are directly retrieved from the algorithm object.
 	 * 
 	 * @param paddingWanted whether or not the pseudonyms should be padded to a certain length
 	 * @param algorithm the algorithm object
 	 */
-	public BLAKE3Pseudonymizer(boolean paddingWanted, Algorithm algorithm) {
-		super(paddingWanted, algorithm);
+	public BLAKE3Pseudonymizer(boolean paddingWanted, Algorithm algorithm, DefaultProperties defaults, AlgorithmDBService algorithmDBService) {
+		super(paddingWanted, algorithm, defaults, algorithmDBService);
 	}
 	
 	/**
@@ -101,7 +58,7 @@ public class BLAKE3Pseudonymizer extends Pseudonymizer {
 		// Retrieve counter if needed. Immediately update it and write it back
 		Long counter = null;
 		if (isMultiplePsnAllowed()) {
-			counter = isAlgorithmObjectBased() ? getAdbs().getAlgorithmByID(getAlgorithmID()).getConsecutiveValueCounter() : getAdbs().getAlgorithmByID(getDdba().getDomainByName(getDomainName()).getAlgorithmId()).getConsecutiveValueCounter();
+			counter = getAdbs().getAlgorithmByID(getAlgorithmID()).getConsecutiveValueCounter();
 			setCurrentValue(counter == null ? 1L : counter + 1L);
 			persist();
 		}
