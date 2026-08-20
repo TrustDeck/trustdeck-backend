@@ -145,7 +145,7 @@ public class DefaultProperties {
         /** Validity duration, in years, for a project without an end date. */
         private int validityYears = 10;
         
-        /** Whether projects store entity instances by default. */
+        /** Whether projects store entities by default. */
         private boolean storeEntities = true;
         
         /** Whether projects store pseudonyms by default. */

@@ -39,7 +39,7 @@ import lombok.NoArgsConstructor;
 @Builder
 public class LinkageFieldRule {
 
-	/** The path of the field inside the entity instance's JSON structure. */
+	/** The path of the field inside the entity's JSON structure. */
     private String path;
 
     /** The name of the field this rule belongs to. */

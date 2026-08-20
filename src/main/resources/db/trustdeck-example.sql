@@ -197,10 +197,10 @@ ALTER SEQUENCE public.domain_id_seq OWNED BY public.domain.id;
 
 
 --
--- Name: entity_instance; Type: TABLE; Schema: public; Owner: trustdeck-manager
+-- Name: entity; Type: TABLE; Schema: public; Owner: trustdeck-manager
 --
 
-CREATE TABLE public.entity_instance (
+CREATE TABLE public.entity (
     id bigint NOT NULL,
     trustdeck_id uuid DEFAULT gen_random_uuid() NOT NULL,
     project_id integer NOT NULL,
@@ -216,13 +216,13 @@ CREATE TABLE public.entity_instance (
 PARTITION BY LIST (entity_type_id);
 
 
-ALTER TABLE public.entity_instance OWNER TO "trustdeck-manager";
+ALTER TABLE public.entity OWNER TO "trustdeck-manager";
 
 --
--- Name: entity_instance_id_seq; Type: SEQUENCE; Schema: public; Owner: trustdeck-manager
+-- Name: entity_id_seq; Type: SEQUENCE; Schema: public; Owner: trustdeck-manager
 --
 
-CREATE SEQUENCE public.entity_instance_id_seq
+CREATE SEQUENCE public.entity_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -230,13 +230,13 @@ CREATE SEQUENCE public.entity_instance_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.entity_instance_id_seq OWNER TO "trustdeck-manager";
+ALTER SEQUENCE public.entity_id_seq OWNER TO "trustdeck-manager";
 
 --
--- Name: entity_instance_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: trustdeck-manager
+-- Name: entity_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: trustdeck-manager
 --
 
-ALTER SEQUENCE public.entity_instance_id_seq OWNED BY public.entity_instance.id;
+ALTER SEQUENCE public.entity_id_seq OWNED BY public.entity.id;
 
 
 --
@@ -288,7 +288,7 @@ ALTER SEQUENCE public.entity_type_id_seq OWNED BY public.entity_type.id;
 --
 
 CREATE TABLE public.linkage_token (
-    entity_instance_id bigint NOT NULL,
+    entity_id bigint NOT NULL,
     entity_type_id integer NOT NULL,
     project_id integer NOT NULL,
     field_path text NOT NULL,
@@ -489,10 +489,10 @@ ALTER TABLE ONLY public.domain ALTER COLUMN id SET DEFAULT nextval('public.domai
 
 
 --
--- Name: entity_instance id; Type: DEFAULT; Schema: public; Owner: trustdeck-manager
+-- Name: entity id; Type: DEFAULT; Schema: public; Owner: trustdeck-manager
 --
 
-ALTER TABLE ONLY public.entity_instance ALTER COLUMN id SET DEFAULT nextval('public.entity_instance_id_seq'::regclass);
+ALTER TABLE ONLY public.entity ALTER COLUMN id SET DEFAULT nextval('public.entity_id_seq'::regclass);
 
 
 --
@@ -571,19 +571,19 @@ ALTER TABLE ONLY public.domain
 
 
 --
--- Name: entity_instance entity_instance_entity_type_id_trustdeck_id_key; Type: CONSTRAINT; Schema: public; Owner: trustdeck-manager
+-- Name: entity entity_entity_type_id_trustdeck_id_key; Type: CONSTRAINT; Schema: public; Owner: trustdeck-manager
 --
 
-ALTER TABLE ONLY public.entity_instance
-    ADD CONSTRAINT entity_instance_entity_type_id_trustdeck_id_key UNIQUE (entity_type_id, trustdeck_id);
+ALTER TABLE ONLY public.entity
+    ADD CONSTRAINT entity_entity_type_id_trustdeck_id_key UNIQUE (entity_type_id, trustdeck_id);
 
 
 --
--- Name: entity_instance entity_instance_pkey; Type: CONSTRAINT; Schema: public; Owner: trustdeck-manager
+-- Name: entity entity_pkey; Type: CONSTRAINT; Schema: public; Owner: trustdeck-manager
 --
 
-ALTER TABLE ONLY public.entity_instance
-    ADD CONSTRAINT entity_instance_pkey PRIMARY KEY (entity_type_id, id);
+ALTER TABLE ONLY public.entity
+    ADD CONSTRAINT entity_pkey PRIMARY KEY (entity_type_id, id);
 
 
 --
@@ -599,7 +599,7 @@ ALTER TABLE ONLY public.entity_type
 --
 
 ALTER TABLE ONLY public.linkage_token
-    ADD CONSTRAINT linkage_token_pk PRIMARY KEY (entity_type_id, entity_instance_id, tag, token_type, token_value);
+    ADD CONSTRAINT linkage_token_pk PRIMARY KEY (entity_type_id, entity_id, tag, token_type, token_value);
 
 
 --
@@ -689,10 +689,10 @@ CREATE INDEX auditusernameidx ON public.audit_event USING btree (user_name);
 
 
 --
--- Name: entity_instance_uq_type_sha256; Type: INDEX; Schema: public; Owner: trustdeck-manager
+-- Name: entity_uq_type_sha256; Type: INDEX; Schema: public; Owner: trustdeck-manager
 --
 
-CREATE UNIQUE INDEX entity_instance_uq_type_sha256 ON ONLY public.entity_instance USING btree (project_id, entity_type_id, public.digest((data)::text, 'sha256'::text)) WHERE (is_deleted = false);
+CREATE UNIQUE INDEX entity_uq_type_sha256 ON ONLY public.entity USING btree (project_id, entity_type_id, public.digest((data)::text, 'sha256'::text)) WHERE (is_deleted = false);
 
 
 --
@@ -773,10 +773,10 @@ CREATE INDEX linkage_token_block_idx ON public.linkage_token USING btree (projec
 
 
 --
--- Name: linkage_token_entity_instance_idx; Type: INDEX; Schema: public; Owner: trustdeck-manager
+-- Name: linkage_token_entity_idx; Type: INDEX; Schema: public; Owner: trustdeck-manager
 --
 
-CREATE INDEX linkage_token_entity_instance_idx ON public.linkage_token USING btree (entity_type_id, entity_instance_id);
+CREATE INDEX linkage_token_entity_idx ON public.linkage_token USING btree (entity_type_id, entity_id);
 
 
 --
@@ -812,19 +812,19 @@ ALTER TABLE ONLY public.domain
 
 
 --
--- Name: entity_instance entity_instance_entity_type_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: trustdeck-manager
+-- Name: entity entity_entity_type_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: trustdeck-manager
 --
 
-ALTER TABLE public.entity_instance
-    ADD CONSTRAINT entity_instance_entity_type_id_fkey FOREIGN KEY (entity_type_id) REFERENCES public.entity_type(id) ON DELETE RESTRICT;
+ALTER TABLE public.entity
+    ADD CONSTRAINT entity_entity_type_id_fkey FOREIGN KEY (entity_type_id) REFERENCES public.entity_type(id) ON DELETE RESTRICT;
 
 
 --
--- Name: entity_instance entity_instance_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: trustdeck-manager
+-- Name: entity entity_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: trustdeck-manager
 --
 
-ALTER TABLE public.entity_instance
-    ADD CONSTRAINT entity_instance_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.project(id) ON DELETE RESTRICT;
+ALTER TABLE public.entity
+    ADD CONSTRAINT entity_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.project(id) ON DELETE RESTRICT;
 
 
 --

@@ -36,22 +36,22 @@ public class LinkageTokenDao extends DAOImpl<LinkageTokenRecord, org.trustdeck.j
 
     @Override
     public Record5<Integer, Long, String, String, String> getId(org.trustdeck.jooq.generated.tables.pojos.LinkageToken object) {
-        return compositeKeyRecord(object.getEntityTypeId(), object.getEntityInstanceId(), object.getTag(), object.getTokenType(), object.getTokenValue());
+        return compositeKeyRecord(object.getEntityTypeId(), object.getEntityId(), object.getTag(), object.getTokenType(), object.getTokenValue());
     }
 
     /**
-     * Fetch records that have <code>entity_instance_id BETWEEN lowerInclusive
-     * AND upperInclusive</code>
+     * Fetch records that have <code>entity_id BETWEEN lowerInclusive AND
+     * upperInclusive</code>
      */
-    public List<org.trustdeck.jooq.generated.tables.pojos.LinkageToken> fetchRangeOfEntityInstanceId(Long lowerInclusive, Long upperInclusive) {
-        return fetchRange(LinkageToken.LINKAGE_TOKEN.ENTITY_INSTANCE_ID, lowerInclusive, upperInclusive);
+    public List<org.trustdeck.jooq.generated.tables.pojos.LinkageToken> fetchRangeOfEntityId(Long lowerInclusive, Long upperInclusive) {
+        return fetchRange(LinkageToken.LINKAGE_TOKEN.ENTITY_ID, lowerInclusive, upperInclusive);
     }
 
     /**
-     * Fetch records that have <code>entity_instance_id IN (values)</code>
+     * Fetch records that have <code>entity_id IN (values)</code>
      */
-    public List<org.trustdeck.jooq.generated.tables.pojos.LinkageToken> fetchByEntityInstanceId(Long... values) {
-        return fetch(LinkageToken.LINKAGE_TOKEN.ENTITY_INSTANCE_ID, values);
+    public List<org.trustdeck.jooq.generated.tables.pojos.LinkageToken> fetchByEntityId(Long... values) {
+        return fetch(LinkageToken.LINKAGE_TOKEN.ENTITY_ID, values);
     }
 
     /**

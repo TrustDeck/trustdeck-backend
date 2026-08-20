@@ -47,7 +47,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import static org.trustdeck.jooq.generated.Tables.ENTITY_TYPE;
-import static org.trustdeck.jooq.generated.Tables.ENTITY_INSTANCE;
+import static org.trustdeck.jooq.generated.Tables.ENTITY;
 
 /**
  * This class encapsulates the database access for entity types.
@@ -106,8 +106,8 @@ public class EntityTypeDBService {
 	    	// Create a new partition in the database for this type
 	    	// jOOQ doesn't model "PARTITION OF" yet, so use plain SQL
 	        dsl.query("CREATE TABLE {0} PARTITION OF {1} FOR VALUES IN ({2})", 
-	        		DSL.name("entityinstance_t" + createdEntityType.getId()), 
-	        		DSL.name("entity_instance"), 
+	        		DSL.name("entity_t" + createdEntityType.getId()), 
+	        		DSL.name("entity"), 
 	        		DSL.inline(createdEntityType.getId()))
 	        .execute();
 	    } catch (DataAccessException e) {
@@ -299,8 +299,8 @@ public class EntityTypeDBService {
     	int usedBy = 0;
     	try {
     		usedBy = dsl.selectCount()
-    				.from(ENTITY_INSTANCE)
-    				.where(ENTITY_INSTANCE.ENTITY_TYPE_ID.equal(type.getId()))
+    				.from(ENTITY)
+    				.where(ENTITY.ENTITY_TYPE_ID.equal(type.getId()))
     				.fetchOne(0, int.class);
     	} catch (DataAccessException e) {
     		log.debug("Searching for entity type refrences in the database failed.", e);
@@ -364,8 +364,8 @@ public class EntityTypeDBService {
     	int usedBy = 0;
     	try {
     		usedBy = dsl.selectCount()
-    				.from(ENTITY_INSTANCE)
-    				.where(ENTITY_INSTANCE.ENTITY_TYPE_ID.equal(oldType.getId()))
+    				.from(ENTITY)
+    				.where(ENTITY.ENTITY_TYPE_ID.equal(oldType.getId()))
     				.fetchOne(0, int.class);
     	} catch (DataAccessException e) {
     		log.debug("Searching for entity type references in the database failed.", e);

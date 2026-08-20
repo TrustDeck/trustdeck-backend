@@ -28,7 +28,7 @@ import lombok.NoArgsConstructor;
 
 /**
  * This class represents a record linkage candidate together with its score.
- * It contains an entity instance that was identified as a potential match
+ * It contains an entity that was identified as a potential match
  * as well as additional information about the corresponding linkage result.
  *
  * @author Armin Müller
@@ -39,8 +39,8 @@ import lombok.NoArgsConstructor;
 @Builder
 public class RecordLinkageCandidateDTO {
 
-    /** The entity instance that was identified as a potential record linkage candidate. */
-    private EntityInstanceDTO entityInstance;
+    /** The entity that was identified as a potential record linkage candidate. */
+    private EntityDTO entity;
 
     /** The score that indicates how well the candidate matches the input record. */
     private double score;

@@ -31,7 +31,7 @@ import lombok.extern.slf4j.Slf4j;
 
 /**
  * This service provides normalization and encoding methods for record linkage values.
- * It can be used to transform raw entity instance field values into normalized 
+ * It can be used to transform raw entity field values into normalized 
  * representations and linkage tokens that are suitable for candidate generation and 
  * candidate scoring.
  * 

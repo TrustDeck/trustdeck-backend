@@ -22,7 +22,7 @@ import java.util.UUID;
 
 import org.jooq.JSONB;
 import org.springframework.context.annotation.Scope;
-import org.trustdeck.jooq.generated.tables.pojos.EntityInstance;
+import org.trustdeck.jooq.generated.tables.pojos.Entity;
 import org.trustdeck.service.EntityTypeDBService;
 import org.trustdeck.service.ProjectDBService;
 import org.trustdeck.utils.Assertion;
@@ -43,7 +43,7 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * This class represents a Data Transfer Object (DTO) for an entity instance.
+ * This class represents a Data Transfer Object (DTO) for an entity.
  *
  * @author Armin Müller
  */
@@ -53,40 +53,40 @@ import lombok.extern.slf4j.Slf4j;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({"trustdeckID", "projectName", "entityTypeName", "isDeleted", "createdAt", "updatedAt", "data"})
 @Slf4j
-public class EntityInstanceDTO implements IObjectDTO<EntityInstance, EntityInstanceDTO> {
+public class EntityDTO implements IObjectDTO<Entity, EntityDTO> {
 	
-	/** The (internal) ID of this entity instance. Do not expose it to users. */
+	/** The (internal) ID of this entity. Do not expose it to users. */
 	@JsonIgnore
 	private Long id;
 	
-	/** The unique UUID for this entity instance, used for publicly accessing this instance. */
+	/** The unique UUID for this entity, used for publicly accessing this entity. */
 	private UUID trustdeckID;
 	
-	/** The ID of the project where this entity instance is scoped in. */
+	/** The ID of the project where this entity is scoped in. */
 	@JsonIgnore
 	private Integer projectID;
 	
-	/** The name of the project where this entity instance is scoped in. */
+	/** The name of the project where this entity is scoped in. */
 	private String projectName;
 	
-	/** The ID of the type of this entity instance. */
+	/** The ID of the type of this entity. */
 	@JsonIgnore
 	private Integer entityTypeID;
 	
-	/** The name of the type of this entity instance. */
+	/** The name of the type of this entity. */
 	private String entityTypeName;
 	
-	/** This entity instance's data (i.e. the attributes and values). */
+	/** This entity's data (i.e. the attributes and values). */
 	private JsonNode data;
 	
 	// TODO: introduce different post & update dtos where the below attributes are properly placed
 	/** Flag that determines if this type is marked as deleted. */
 	private Boolean isDeleted;
 	
-	/** The date and time when this entity instance was created. */
+	/** The date and time when this entity was created. */
 	private OffsetDateTime createdAt;
 	
-	/** The date and time when this entity instance was last updated. */
+	/** The date and time when this entity was last updated. */
 	private OffsetDateTime updatedAt;
 	
 	/** Enables access to the project specific database functions. */
@@ -103,7 +103,7 @@ public class EntityInstanceDTO implements IObjectDTO<EntityInstance, EntityInsta
 
 	@JsonIgnore
 	@Override
-	public EntityInstanceDTO assignPojoValues(EntityInstance pojo) {
+	public EntityDTO assignPojoValues(Entity pojo) {
 		if (pojo == null) {
 	        return null;
 	    }
@@ -156,7 +156,7 @@ public class EntityInstanceDTO implements IObjectDTO<EntityInstance, EntityInsta
 
 	@JsonIgnore
 	@Override
-	public EntityInstanceDTO toReducedStandardView() {
+	public EntityDTO toReducedStandardView() {
 		// Currently not needed
 		return null;
 	}

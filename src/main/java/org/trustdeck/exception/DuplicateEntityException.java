@@ -18,12 +18,12 @@
 package org.trustdeck.exception;
 
 /**
- * This class represents an exception when a duplicate of an entity instance was found.
+ * This class represents an exception when a duplicate of an entity was found.
  * 
  * @author Armin Müller
  *
  */
-public class DuplicateEntityInstanceException extends RuntimeException {
+public class DuplicateEntityException extends RuntimeException {
 
 	/** Exception UID. */
 	private static final long serialVersionUID = 1468720116723555939L;
@@ -33,7 +33,7 @@ public class DuplicateEntityInstanceException extends RuntimeException {
 	 * 
 	 * @param msg the message that should accompany this exception
 	 */
-	public DuplicateEntityInstanceException(String msg) {
+	public DuplicateEntityException(String msg) {
 		super("A duplicate of the entity type was found: " + msg);
 	}
 }

@@ -151,13 +151,13 @@ app:
       - type:update
       - type:delete
       - type:search
-      - instance:create
-      - instance:read
-      - instance:update
-      - instance:delete
-      - instance:search
-      - instance:record-linkage
-      - instance:list-pseudonyms
+      - entity:create
+      - entity:read
+      - entity:update
+      - entity:delete
+      - entity:search
+      - entity:record-linkage
+      - entity:list-pseudonyms
     global:
       - domain:create
       - domain:create-complete

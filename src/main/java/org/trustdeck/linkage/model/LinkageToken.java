@@ -24,7 +24,7 @@ import lombok.NoArgsConstructor;
 
 /**
  * This class represents a derived token for the record linkage index.
- * A token is generated from a entity instance's field value according 
+ * A token is generated from a entity's field value according 
  * to a linkage field rule and can be used for candidate generation or 
  * candidate scoring.
  *

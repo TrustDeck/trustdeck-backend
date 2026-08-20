@@ -27,7 +27,7 @@ import org.jooq.exception.DataAccessException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.trustdeck.dto.EntityInstanceDTO;
+import org.trustdeck.dto.EntityDTO;
 import org.trustdeck.dto.EntityTypeDTO;
 import org.trustdeck.linkage.model.EntityLinkageConfig;
 import org.trustdeck.linkage.model.LinkageFieldRule;
@@ -39,13 +39,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 import lombok.extern.slf4j.Slf4j;
 
-import static org.trustdeck.jooq.generated.Tables.ENTITY_INSTANCE;
+import static org.trustdeck.jooq.generated.Tables.ENTITY;
 import static org.trustdeck.jooq.generated.Tables.LINKAGE_TOKEN;
 
 /**
- * This service manages the record linkage index for entity instances.
+ * This service manages the record linkage index for entities.
  * It resolves the effective linkage field rules for an entity type, generates
- * linkage tokens from an entity instance's payload, and persists those tokens
+ * linkage tokens from an entity's payload, and persists those tokens
  * in the database.
  * 
  * @author Armin Müller
@@ -71,27 +71,27 @@ public class LinkageIndexService {
     private LinkageTokenService linkageTokenService;
 
     /**
-     * Rebuilds the record linkage index entries for a given entity instance.
-     * Existing linkage tokens for the instance (if there are any) are 
+     * Rebuilds the record linkage index entries for a given entity.
+     * Existing linkage tokens for the entity (if there are any) are 
      * deleted first and then replaced by newly generated tokens based on the 
      * effective linkage field rules.
      * 
-     * @param instance the entity instance whose linkage index should be rebuilt
-     * @param entityType the entity type of the given instance
+     * @param entity the entity whose linkage index should be rebuilt
+     * @param entityType the entity type of the given entity
      * @return {@code true} when rebuilding was successful, {@code false} otherwise
      */
     @Transactional
-    public boolean rebuildIndex(EntityInstanceDTO instance) {
-    	// Retrieve the entity type corresponding to the given instance
-    	EntityTypeDTO entityType = entityTypeService.getEntityTypeById(instance.getEntityTypeID(), instance.getProjectID());
+    public boolean rebuildIndex(EntityDTO entity) {
+    	// Retrieve the entity type corresponding to the given entity
+    	EntityTypeDTO entityType = entityTypeService.getEntityTypeById(entity.getEntityTypeID(), entity.getProjectID());
         
     	// Check if we found anything
         if (entityType == null) {
-        	log.debug("Could not retrieve the type for the entity instance: " + instance.getTrustdeckID());
+        	log.debug("Could not retrieve the type for the entity: " + entity.getTrustdeckID());
         	return false;
         }
         
-        // Retrieve the base type for the instance's entity type, which might then be used for defaults for some linkage settings
+        // Retrieve the base type for the entity's entity type, which might then be used for defaults for some linkage settings
         EntityTypeDTO baseType = entityTypeService.getEntityTypeByName(entityType.getBaseTypeName(), null);
         if (baseType == null) {
         	log.trace("Could not retrieve base type for the type \"" + entityType.getName() + "\". Defaults will be used where necessary.");
@@ -102,23 +102,23 @@ public class LinkageIndexService {
         EntityLinkageConfig entityConfig = jsonSchemaService.resolveEntityLinkageConfig(entityType.getTypeDefinition(), baseDef);
         List<LinkageFieldRule> rules = jsonSchemaService.resolveLinkageFieldRules(entityType.getTypeDefinition(), baseDef);
 
-        // Generate all linkage tokens for the current entity instance payload
-        List<LinkageToken> tokens = linkageTokenService.buildTokens(entityConfig, rules, instance.getData(), instance.getProjectID(), instance.getEntityTypeID());
+        // Generate all linkage tokens for the current entity payload
+        List<LinkageToken> tokens = linkageTokenService.buildTokens(entityConfig, rules, entity.getData(), entity.getProjectID(), entity.getEntityTypeID());
         
 		// If no tokens were generated, the index is still valid after deleting old tokens
 		// (this can happen for entity types without linkage-enabled fields or empty linkage values).
 		boolean noTokensGenerated = tokens.isEmpty();
 
-        // Remove any previously stored tokens for this entity instance
+        // Remove any previously stored tokens for this entity
         try {
 			int deleted = dsl.deleteFrom(LINKAGE_TOKEN)
-			   .where(LINKAGE_TOKEN.ENTITY_TYPE_ID.eq(instance.getEntityTypeID()))
-			   .and(LINKAGE_TOKEN.ENTITY_INSTANCE_ID.eq(instance.getId()))
+			   .where(LINKAGE_TOKEN.ENTITY_TYPE_ID.eq(entity.getEntityTypeID()))
+			   .and(LINKAGE_TOKEN.ENTITY_ID.eq(entity.getId()))
 			   .execute();
 			
 			log.trace("Removed " + deleted + " old linkage token" + (deleted == 1 ? "." : "s."));
 		} catch (DataAccessException e) {
-			log.debug("Could not delete old linkage tokens for the instance with TrustDeckID = " + instance.getTrustdeckID(), e);
+			log.debug("Could not delete old linkage tokens for the entity with TrustDeckID = " + entity.getTrustdeckID(), e);
 			return false;
 		}
         
@@ -133,9 +133,9 @@ public class LinkageIndexService {
         int inserted = 0;
         for (LinkageToken token : uniqueTokens.values()) {
             dsl.insertInto(LINKAGE_TOKEN)
-			   .set(LINKAGE_TOKEN.ENTITY_TYPE_ID, instance.getEntityTypeID())
-			   .set(LINKAGE_TOKEN.ENTITY_INSTANCE_ID, instance.getId())
-			   .set(LINKAGE_TOKEN.PROJECT_ID, instance.getProjectID())
+			   .set(LINKAGE_TOKEN.ENTITY_TYPE_ID, entity.getEntityTypeID())
+			   .set(LINKAGE_TOKEN.ENTITY_ID, entity.getId())
+			   .set(LINKAGE_TOKEN.PROJECT_ID, entity.getProjectID())
 			   .set(LINKAGE_TOKEN.FIELD_PATH, token.getFieldPath())
 			   .set(LINKAGE_TOKEN.TAG, token.getTag())
 			   .set(LINKAGE_TOKEN.TOKEN_TYPE, token.getTokenType().dbName())
@@ -149,40 +149,40 @@ public class LinkageIndexService {
         log.debug("Inserted " + inserted + " linkage tokens successfully.");
 
         if (noTokensGenerated) {
-        	log.trace("No linkage tokens were generated for the instance with TrustDeckID = " + instance.getTrustdeckID() + ".");
+        	log.trace("No linkage tokens were generated for the entity with TrustDeckID = " + entity.getTrustdeckID() + ".");
         }
 
         return true;
     }
 
     /**
-     * Removes all record linkage index entries for a given entity instance.
-     * This method should only be used when an entity instance is physically 
+     * Removes all record linkage index entries for a given entity.
+     * This method should only be used when an entity is physically 
      * deleted or permanently purged. It should not be called during normal 
-     * soft deletion, because tombstoned entity instances should still be 
+     * soft deletion, because tombstoned entities should still be 
      * detectable during record linkage.
      * 
-     * @param trustDeckID the TrustDeck ID of the entity instance whose linkage index entries should be removed
+     * @param trustDeckID the TrustDeck ID of the entity whose linkage index entries should be removed
      * @return {@code true} when the linkage index entries were removed, {@code false} otherwise
      */
     @Transactional
-    public boolean removeAllIndicesForInstance(UUID trustDeckID) {
+    public boolean removeAllIndicesForEntity(UUID trustDeckID) {
         try {
-        	// Delete all linkage tokens that belong to the entity instance identified by the given TrustDeck ID
+        	// Delete all linkage tokens that belong to the entity identified by the given TrustDeck ID
         	dsl.deleteFrom(LINKAGE_TOKEN)
 	            .whereExists(
-	            	// Check whether there is a matching entity instance for the current linkage token
+	            	// Check whether there is a matching entity for the current linkage token
 	            	dsl.selectOne()
-	                   .from(ENTITY_INSTANCE)
-	                   // Find the entity instance by its external TrustDeck ID
-	                   .where(ENTITY_INSTANCE.TRUSTDECK_ID.eq(trustDeckID))
-	                   // Match the linkage token to the entity instance by entity type and database ID
-	                   .and(ENTITY_INSTANCE.ENTITY_TYPE_ID.eq(LINKAGE_TOKEN.ENTITY_TYPE_ID))
-	                   .and(ENTITY_INSTANCE.ID.eq(LINKAGE_TOKEN.ENTITY_INSTANCE_ID))
+	                   .from(ENTITY)
+	                   // Find the entity by its external TrustDeck ID
+	                   .where(ENTITY.TRUSTDECK_ID.eq(trustDeckID))
+	                   // Match the linkage token to the entity by entity type and database ID
+	                   .and(ENTITY.ENTITY_TYPE_ID.eq(LINKAGE_TOKEN.ENTITY_TYPE_ID))
+	                   .and(ENTITY.ID.eq(LINKAGE_TOKEN.ENTITY_ID))
 	            )
 	            .execute();
 		} catch (DataAccessException e) {
-			log.debug("Could not remove all record linkage index entries for entity instance with TrustDeckID = " 
+			log.debug("Could not remove all record linkage index entries for entity with TrustDeckID = " 
 					+ trustDeckID.toString(), e);
 			return false;
 		}
@@ -193,7 +193,7 @@ public class LinkageIndexService {
     /**
      * Creates a text key that identifies one generated linkage token.
      * Tokens with the same tag, token type, and token value would produce the 
-     * same database row for one entity instance, so this key is used to keep 
+     * same database row for one entity, so this key is used to keep 
      * only one of them before inserting the tokens.
      * 
      * @param token the linkage token for which the key should be generated

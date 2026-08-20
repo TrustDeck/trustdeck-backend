@@ -19,16 +19,16 @@ package org.trustdeck.linkage.model;
 
 /**
  * This enum represents the status of a record linkage candidate.
- * It indicates whether a candidate refers to an active entity instance
- * or to an entity instance that has already been soft-deleted.
+ * It indicates whether a candidate refers to an active entity
+ * or to an entity that has already been soft-deleted.
  * 
  * @author Armin Müller
  */
 public enum CandidateStatus {
 
-	/** The candidate refers to an active entity instance. */
+	/** The candidate refers to an active entity. */
 	ACTIVE,
 
-	/** The candidate refers to a soft-deleted entity instance. */
+	/** The candidate refers to a soft-deleted entity. */
 	DELETED;
 }

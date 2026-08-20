@@ -16,7 +16,7 @@ import org.jooq.impl.SchemaImpl;
 import org.trustdeck.jooq.generated.tables.Algorithm;
 import org.trustdeck.jooq.generated.tables.AuditEvent;
 import org.trustdeck.jooq.generated.tables.Domain;
-import org.trustdeck.jooq.generated.tables.EntityInstance;
+import org.trustdeck.jooq.generated.tables.Entity;
 import org.trustdeck.jooq.generated.tables.EntityType;
 import org.trustdeck.jooq.generated.tables.LinkageToken;
 import org.trustdeck.jooq.generated.tables.PermissionGrant;
@@ -56,9 +56,9 @@ public class Public extends SchemaImpl {
     public final Domain DOMAIN = Domain.DOMAIN;
 
     /**
-     * The table <code>public.entity_instance</code>.
+     * The table <code>public.entity</code>.
      */
-    public final EntityInstance ENTITY_INSTANCE = EntityInstance.ENTITY_INSTANCE;
+    public final Entity ENTITY = Entity.ENTITY;
 
     /**
      * The table <code>public.entity_type</code>.
@@ -148,7 +148,7 @@ public class Public extends SchemaImpl {
             Algorithm.ALGORITHM,
             AuditEvent.AUDIT_EVENT,
             Domain.DOMAIN,
-            EntityInstance.ENTITY_INSTANCE,
+            Entity.ENTITY,
             EntityType.ENTITY_TYPE,
             LinkageToken.LINKAGE_TOKEN,
             PermissionGrant.PERMISSION_GRANT,

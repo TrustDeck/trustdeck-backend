@@ -26,20 +26,20 @@ public class LinkageTokenRecord extends UpdatableRecordImpl<LinkageTokenRecord> 
     private static final long serialVersionUID = 1L;
 
     /**
-     * Setter for <code>public.linkage_token.entity_instance_id</code>.
+     * Setter for <code>public.linkage_token.entity_id</code>.
      */
     @Override
-    public LinkageTokenRecord setEntityInstanceId(Long value) {
+    public LinkageTokenRecord setEntityId(Long value) {
         set(0, value);
         return this;
     }
 
     /**
-     * Getter for <code>public.linkage_token.entity_instance_id</code>.
+     * Getter for <code>public.linkage_token.entity_id</code>.
      */
     @NotNull
     @Override
-    public Long getEntityInstanceId() {
+    public Long getEntityId() {
         return (Long) get(0);
     }
 
@@ -210,7 +210,7 @@ public class LinkageTokenRecord extends UpdatableRecordImpl<LinkageTokenRecord> 
 
     @Override
     public Field<Long> field1() {
-        return LinkageToken.LINKAGE_TOKEN.ENTITY_INSTANCE_ID;
+        return LinkageToken.LINKAGE_TOKEN.ENTITY_ID;
     }
 
     @Override
@@ -255,7 +255,7 @@ public class LinkageTokenRecord extends UpdatableRecordImpl<LinkageTokenRecord> 
 
     @Override
     public Long component1() {
-        return getEntityInstanceId();
+        return getEntityId();
     }
 
     @Override
@@ -300,7 +300,7 @@ public class LinkageTokenRecord extends UpdatableRecordImpl<LinkageTokenRecord> 
 
     @Override
     public Long value1() {
-        return getEntityInstanceId();
+        return getEntityId();
     }
 
     @Override
@@ -345,7 +345,7 @@ public class LinkageTokenRecord extends UpdatableRecordImpl<LinkageTokenRecord> 
 
     @Override
     public LinkageTokenRecord value1(Long value) {
-        setEntityInstanceId(value);
+        setEntityId(value);
         return this;
     }
 
@@ -417,7 +417,7 @@ public class LinkageTokenRecord extends UpdatableRecordImpl<LinkageTokenRecord> 
 
     @Override
     public void from(ILinkageToken from) {
-        setEntityInstanceId(from.getEntityInstanceId());
+        setEntityId(from.getEntityId());
         setEntityTypeId(from.getEntityTypeId());
         setProjectId(from.getProjectId());
         setFieldPath(from.getFieldPath());
@@ -449,10 +449,10 @@ public class LinkageTokenRecord extends UpdatableRecordImpl<LinkageTokenRecord> 
     /**
      * Create a detached, initialised LinkageTokenRecord
      */
-    public LinkageTokenRecord(Long entityInstanceId, Integer entityTypeId, Integer projectId, String fieldPath, String tag, String tokenType, String tokenValue, Double weight, OffsetDateTime createdAt) {
+    public LinkageTokenRecord(Long entityId, Integer entityTypeId, Integer projectId, String fieldPath, String tag, String tokenType, String tokenValue, Double weight, OffsetDateTime createdAt) {
         super(LinkageToken.LINKAGE_TOKEN);
 
-        setEntityInstanceId(entityInstanceId);
+        setEntityId(entityId);
         setEntityTypeId(entityTypeId);
         setProjectId(projectId);
         setFieldPath(fieldPath);
@@ -471,7 +471,7 @@ public class LinkageTokenRecord extends UpdatableRecordImpl<LinkageTokenRecord> 
         super(LinkageToken.LINKAGE_TOKEN);
 
         if (value != null) {
-            setEntityInstanceId(value.getEntityInstanceId());
+            setEntityId(value.getEntityId());
             setEntityTypeId(value.getEntityTypeId());
             setProjectId(value.getProjectId());
             setFieldPath(value.getFieldPath());
