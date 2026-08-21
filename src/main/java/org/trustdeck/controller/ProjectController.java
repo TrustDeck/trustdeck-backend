@@ -43,12 +43,14 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.trustdeck.dto.PermissionDTO;
+import org.trustdeck.dto.ProjectDomainDTO;
 import org.trustdeck.dto.ProjectDTO;
 import org.trustdeck.configuration.DefaultProperties;
 import org.trustdeck.exception.DuplicateProjectException;
 import org.trustdeck.exception.UnexpectedResultSizeException;
 import org.trustdeck.security.audittrail.annotation.Audit;
 import org.trustdeck.service.PermissionDBService;
+import org.trustdeck.service.DomainDBAccessService;
 import org.trustdeck.service.ProjectDBService;
 import org.trustdeck.service.ResponseService;
 import org.trustdeck.utils.Assertion;
@@ -78,6 +80,10 @@ public class ProjectController {
     /** Enables access to the permission grants database methods. */
     @Autowired
     private PermissionDBService permissionDBService;
+
+    /** Enables access to project-owned domains. */
+    @Autowired
+    private DomainDBAccessService domainDBAccessService;
     
     @Autowired
     private DefaultProperties defaults;
@@ -248,6 +254,32 @@ public class ProjectController {
 		log.debug("Successfully retrieved a project for abbreviation \"" + projectAbbreviation + "\".");
 		return responseService.ok(responseContentType, project);
 	}
+
+    /**
+     * Returns all domains owned by a project, including nested descendants.
+     *
+     * @param projectAbbreviation the project's abbreviation
+     * @param responseContentType the requested response content type
+     * @return the project's flat domain list, or 404 when the project does not exist
+     */
+    @GetMapping("/projects/{projectAbbreviation}/domains")
+    @PreAuthorize("isAuthenticated() and @auth.hasProjectPermission(#root, #projectAbbreviation, 'project:read')")
+    @Audit
+    public ResponseEntity<?> getProjectDomains(
+            @PathVariable String projectAbbreviation,
+            @RequestHeader(name = "accept", required = false) String responseContentType) {
+        if (Assertion.isNullOrEmpty(projectAbbreviation)) {
+            return responseService.badRequest(responseContentType);
+        }
+
+        ProjectDTO project = projectDBService.getProjectByAbbreviation(projectAbbreviation);
+        if (project == null) {
+            return responseService.notFound(responseContentType);
+        }
+
+        List<ProjectDomainDTO> domains = domainDBAccessService.listDomainsByProjectId(project.getId());
+        return responseService.ok(responseContentType, domains);
+    }
 	
 	/**
 	 * Method to retrieve statistics about a certain project

@@ -35,6 +35,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.trustdeck.algorithms.PathFinder;
 import org.trustdeck.dto.DomainDTO;
+import org.trustdeck.dto.ProjectDomainDTO;
 import org.trustdeck.dto.PseudonymDTO;
 import org.trustdeck.dto.PseudonymUpdateDTO;
 import org.trustdeck.exception.DomainNotFoundException;
@@ -59,6 +60,7 @@ import static org.jooq.impl.DSL.select;
 import static org.trustdeck.jooq.generated.Tables.DOMAIN;
 import static org.trustdeck.jooq.generated.Tables.ALGORITHM;
 import static org.trustdeck.jooq.generated.Tables.PSEUDONYM;
+import static org.trustdeck.jooq.generated.Tables.PROJECT;
 
 /**
  * This class is used to encapsulate all methods needed to access the database for handling domains.
@@ -769,6 +771,30 @@ public class DomainDBAccessService {
             log.error("Couldn't query the database: " + e.getClass() + ": " + e.getMessage());
             return null;
         }
+    }
+
+    /**
+     * Returns every domain owned by a project, including all nested domains.
+     * Domain hierarchies cannot cross project boundaries, so filtering by project
+     * ownership includes every descendant without recursive traversal.
+     *
+     * @param projectId the owning project's ID
+     * @return domains ordered by name
+     */
+    @Transactional(readOnly = true)
+    public List<ProjectDomainDTO> listDomainsByProjectId(int projectId) {
+        var superDomain = DOMAIN.as("super_domain");
+
+        return dsl.select(DOMAIN.NAME, PROJECT.ABBREVIATION, superDomain.NAME)
+                .from(DOMAIN)
+                .join(PROJECT).on(DOMAIN.PROJECT_ID.eq(PROJECT.ID))
+                .leftJoin(superDomain).on(DOMAIN.SUPERDOMAINID.eq(superDomain.ID))
+                .where(DOMAIN.PROJECT_ID.eq(projectId))
+                .orderBy(DOMAIN.NAME.asc())
+                .fetch(record -> new ProjectDomainDTO(
+                        record.get(DOMAIN.NAME),
+                        record.get(PROJECT.ABBREVIATION),
+                        record.get(superDomain.NAME)));
     }
     
     /**
