@@ -328,6 +328,24 @@ public class DomainRecord extends UpdatableRecordImpl<DomainRecord> implements R
         return (Boolean) get(16);
     }
 
+    /**
+     * Setter for <code>public.domain.project_id</code>.
+     */
+    @Override
+    public DomainRecord setProjectId(Integer value) {
+        set(Domain.DOMAIN.PROJECT_ID, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>public.domain.project_id</code>.
+     */
+    @NotNull
+    @Override
+    public Integer getProjectId() {
+        return get(Domain.DOMAIN.PROJECT_ID);
+    }
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -753,6 +771,7 @@ public class DomainRecord extends UpdatableRecordImpl<DomainRecord> implements R
         setSuperdomainid(from.getSuperdomainid());
         setAlgorithmId(from.getAlgorithmId());
         setAlgorithmInherited(from.getAlgorithmInherited());
+        setProjectId(from.getProjectId());
         resetChangedOnNotNull();
     }
 
@@ -821,8 +840,9 @@ public class DomainRecord extends UpdatableRecordImpl<DomainRecord> implements R
             setMultiplepsnallowedinherited(value.getMultiplepsnallowedinherited());
             setDescription(value.getDescription());
             setSuperdomainid(value.getSuperdomainid());
-            setAlgorithmId(value.getAlgorithmId());
-            setAlgorithmInherited(value.getAlgorithmInherited());
+        setAlgorithmId(value.getAlgorithmId());
+        setAlgorithmInherited(value.getAlgorithmInherited());
+        setProjectId(value.getProjectId());
             resetChangedOnNotNull();
         }
     }

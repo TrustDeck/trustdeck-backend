@@ -36,6 +36,7 @@ import org.junit.jupiter.api.Test;
 import org.opentest4j.AssertionFailedError;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.trustdeck.dto.DomainDTO;
+import org.trustdeck.dto.ProjectDTO;
 import org.trustdeck.service.AssertWebRequestService;
 
 /**
@@ -61,6 +62,7 @@ public class TestsDomainServiceIT extends AssertWebRequestService {
         DomainDTO reducedDomainDto = new DomainDTO();
         reducedDomainDto.setName(domainName);
         reducedDomainDto.setPrefix("WS-");
+        reducedDomainDto.setProjectAbbreviation("TEST");
 
         // Unauthorized tests for creating a domain
         this.assertBadRequestRequest("createDomainBadRequest", post("/api/domains"), null, reducedDomainDto, "");
@@ -74,6 +76,7 @@ public class TestsDomainServiceIT extends AssertWebRequestService {
         DomainDTO completeDomainDto = new DomainDTO();
         completeDomainDto.setName(domainNameComplete);
         completeDomainDto.setPrefix("WS-");
+        completeDomainDto.setProjectAbbreviation("TEST");
 
         // Unauthorized tests for creating a domain
         this.assertBadRequestRequest("createDomainCompleteBadRequest", post("/api/domains/complete"), null, completeDomainDto, "");
@@ -83,6 +86,42 @@ public class TestsDomainServiceIT extends AssertWebRequestService {
         content = response.getContentAsString();
         assertNotNull(this.applySingleJsonContentToClass(content, DomainDTO.class));
 
+    }
+
+    /**
+     * Tests that every domain belongs to a project and domain trees cannot span projects.
+     *
+     * @throws Exception forwards any internally thrown exceptions
+     */
+    @Test
+    @DisplayName("domainProjectAssociationTest")
+    public void domainProjectAssociationTest() throws Exception {
+        DomainDTO missingProject = new DomainDTO();
+        missingProject.setName("Missing-Project");
+        missingProject.setPrefix("MP-");
+        this.assertUnprocessableEntity("createDomainWithoutProject", post("/api/domains"), null, missingProject, this.getAccessToken());
+
+        DomainDTO associatedDomain = new DomainDTO();
+        associatedDomain.setName("Associated-Domain");
+        associatedDomain.setPrefix("AD-");
+        associatedDomain.setProjectAbbreviation("TEST");
+        MockHttpServletResponse response = this.assertCreatedRequest("createProjectAssociatedDomain", post("/api/domains"), null,
+                associatedDomain, this.getAccessToken());
+        DomainDTO storedDomain = this.applySingleJsonContentToClass(response.getContentAsString(), DomainDTO.class);
+        assertEquals("TEST", storedDomain.getProjectAbbreviation());
+
+        ProjectDTO otherProject = new ProjectDTO();
+        otherProject.setName("Other Test Study");
+        otherProject.setAbbreviation("OTHER");
+        this.assertCreatedRequest("createOtherProject", post("/api/projects"), null, otherProject, this.getAccessToken());
+
+        DomainDTO crossProjectChild = new DomainDTO();
+        crossProjectChild.setName("Cross-Project-Child");
+        crossProjectChild.setPrefix("CP-");
+        crossProjectChild.setSuperDomainName("Associated-Domain");
+        crossProjectChild.setProjectAbbreviation("OTHER");
+        this.assertUnprocessableEntity("createCrossProjectDomainChild", post("/api/domains"), null, crossProjectChild,
+                this.getAccessToken());
     }
 
     /**
@@ -247,6 +286,7 @@ public class TestsDomainServiceIT extends AssertWebRequestService {
         firstDomainDto.setName("TestStudie-Labor-Analyse");
         firstDomainDto.setPrefix("TS-L");
         firstDomainDto.setSuperDomainName(parentDomainName);
+        firstDomainDto.setProjectAbbreviation("TEST");
 
         // Should have the permission on the domain
         this.assertCreatedRequest("addFirstDomainForListHierarchy", post("/api/domains"), null, firstDomainDto, this.getAccessToken());
@@ -258,6 +298,7 @@ public class TestsDomainServiceIT extends AssertWebRequestService {
         secondDomainDto.setName("TestStudie-Paper");
         secondDomainDto.setPrefix("TS-P");
         secondDomainDto.setSuperDomainName(parentDomainName);
+        secondDomainDto.setProjectAbbreviation("TEST");
 
         // Should have the permission on the domain
         this.assertCreatedRequest("addSecondDomainForListHierarchy", post("/api/domains"), null, secondDomainDto, this.getAccessToken());
@@ -270,6 +311,7 @@ public class TestsDomainServiceIT extends AssertWebRequestService {
         thirdDomainDto.setName("No-Permission-Domain");
         thirdDomainDto.setPrefix("NoPe");
         thirdDomainDto.setSuperDomainName("TestStudie-Labor-Analyse");
+        thirdDomainDto.setProjectAbbreviation("TEST");
 
         // Should NOT have the permission on the domain
         this.assertCreatedRequest("addThirdDomainForListHierarchy", post("/api/domains"), null, thirdDomainDto, this.getAccessToken());

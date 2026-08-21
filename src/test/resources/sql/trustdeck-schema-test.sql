@@ -100,6 +100,26 @@ CREATE TABLE public.algorithm (
 );
 
 --
+-- Name: project; Type: TABLE; Schema: public; Owner: trustdeck-manager
+--
+
+CREATE TABLE public.project (
+    id integer NOT NULL,
+    name character varying(255) NOT NULL,
+    abbreviation character varying(50) NOT NULL,
+    start_date timestamp with time zone DEFAULT now() NOT NULL,
+    end_date timestamp with time zone,
+    store_entities boolean NOT NULL,
+    store_pseudonyms boolean NOT NULL,
+    description text,
+    CONSTRAINT project_check CHECK (((end_date IS NULL) OR (end_date >= start_date)))
+);
+
+CREATE SEQUENCE public.project_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+
+ALTER SEQUENCE public.project_id_seq OWNED BY public.project.id;
+
+--
 -- Name: domain; Type: TABLE; Schema: public; Owner: trustdeck-manager
 --
 
@@ -120,7 +140,8 @@ CREATE TABLE public.domain (
 	multiplepsnallowed boolean NOT NULL,
 	multiplepsnallowedinherited boolean NOT NULL,
     description text,
-    superdomainid integer
+    superdomainid integer,
+    project_id integer NOT NULL
 );
 
 ALTER TABLE public.domain OWNER TO "trustdeck-manager";
@@ -207,6 +228,8 @@ ALTER TABLE ONLY public.domain ALTER COLUMN id SET DEFAULT nextval('public.domai
 
 ALTER TABLE ONLY public.pseudonym ALTER COLUMN id SET DEFAULT nextval('public.pseudonym_id_seq'::regclass);
 
+ALTER TABLE ONLY public.project ALTER COLUMN id SET DEFAULT nextval('public.project_id_seq'::regclass);
+
 
 --
 -- Name: auditevent auditevent_pkey; Type: CONSTRAINT; Schema: public; Owner: trustdeck-manager
@@ -230,6 +253,15 @@ ALTER TABLE ONLY public.domain
 
 ALTER TABLE ONLY public.domain
     ADD CONSTRAINT domain_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.project
+    ADD CONSTRAINT project_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.project
+    ADD CONSTRAINT project_name_key UNIQUE (name);
+
+ALTER TABLE ONLY public.project
+    ADD CONSTRAINT project_abbreviation_key UNIQUE (abbreviation);
 
 
 --
@@ -293,6 +325,9 @@ ALTER TABLE ONLY public.domain
 
 ALTER TABLE ONLY public.domain
     ADD CONSTRAINT domain_algorithm_id_fkey FOREIGN KEY (algorithm_id) REFERENCES public.algorithm(id);
+
+ALTER TABLE ONLY public.domain
+    ADD CONSTRAINT domain_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.project(id) ON DELETE RESTRICT;
 
 
 --

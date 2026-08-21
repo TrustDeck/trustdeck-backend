@@ -168,7 +168,8 @@ CREATE TABLE public.domain (
     multiplepsnallowed boolean NOT NULL,
     multiplepsnallowedinherited boolean NOT NULL,
     description text,
-    superdomainid integer
+    superdomainid integer,
+    project_id integer NOT NULL
 );
 
 
@@ -794,6 +795,13 @@ CREATE UNIQUE INDEX metadataidx ON public.domain USING btree (name);
 
 
 --
+-- Name: domain_project_id_idx; Type: INDEX; Schema: public; Owner: trustdeck-manager
+--
+
+CREATE INDEX domain_project_id_idx ON public.domain USING btree (project_id);
+
+
+--
 -- Name: uq_permission_grant; Type: INDEX; Schema: public; Owner: trustdeck-manager
 --
 
@@ -809,6 +817,9 @@ ALTER TABLE ONLY public.domain
 
 ALTER TABLE ONLY public.domain
     ADD CONSTRAINT domain_algorithm_id_fkey FOREIGN KEY (algorithm_id) REFERENCES public.algorithm(id);
+
+ALTER TABLE ONLY public.domain
+    ADD CONSTRAINT domain_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.project(id) ON DELETE RESTRICT;
 
 
 --

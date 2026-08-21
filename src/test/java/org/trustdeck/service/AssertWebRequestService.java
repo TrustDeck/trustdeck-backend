@@ -71,6 +71,7 @@ import org.springframework.web.context.WebApplicationContext;
 import org.trustdeck.dto.DomainDTO;
 import org.trustdeck.dto.AlgorithmDTO;
 import org.trustdeck.dto.PseudonymDTO;
+import org.trustdeck.dto.ProjectDTO;
 import org.trustdeck.model.IdentifierItem;
 import org.trustdeck.utils.Assertion;
 
@@ -154,22 +155,31 @@ public class AssertWebRequestService {
 	        // Reset the database
 	        try (Connection conn = getDatabaseConnection(TRUSTDECK)) {
 	        	// Remove all data from the database
-	        	log.debug("Truncating table domain.");
-	        	conn.createStatement().execute("TRUNCATE TABLE domain CASCADE;");
+	        log.debug("Truncating table project and its dependent data.");
+	        conn.createStatement().execute("TRUNCATE TABLE project CASCADE;");
 	        	
 	        	// Reset the sequence counter
 	        	log.debug("Resetting the sequence counter in the database.");
                 conn.createStatement().execute("ALTER SEQUENCE domain_id_seq RESTART WITH 1;");
+                conn.createStatement().execute("ALTER SEQUENCE project_id_seq RESTART WITH 1;");
             }
 	        
 	        // Remove all access rights and roles on domains (incl. orphaned ones, 
 	        // i.e. those roles that do not have a domain in the database anymore)
 	        permissionDBService.removeDomainPermissions();
+	        permissionDBService.removeProjectPermissions();
+
+            // Create the project required by all test domains
+            ProjectDTO projectDTO = new ProjectDTO();
+            projectDTO.setName("Test Study");
+            projectDTO.setAbbreviation("TEST");
+            assertCreatedRequest("createTestProject", post("/api/projects"), null, projectDTO, this.getAccessToken());
 	        
 	        // Create the test domain DTO
 	        DomainDTO domainDTO = new DomainDTO();
 	        domainDTO.setName("TestStudie");
 	        domainDTO.setPrefix("TS-");
+	        domainDTO.setProjectAbbreviation(projectDTO.getAbbreviation());
 	        domainDTO.setValidFrom(LocalDateTime.of(2022, 2, 26, 19, 15, 20, 885853000));
 	        domainDTO.setValidTo(LocalDateTime.of(2052, 2, 19, 19, 15, 20, 885853000));
 	        domainDTO.setEnforceStartDateValidity(true);

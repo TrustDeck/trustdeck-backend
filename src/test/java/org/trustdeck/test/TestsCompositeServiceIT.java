@@ -86,6 +86,7 @@ public class TestsCompositeServiceIT extends AssertWebRequestService {
         d.setName(name);
         d.setPrefix(prefix);
         d.setSuperDomainName(parentName);
+        d.setProjectAbbreviation("TEST");
         this.assertCreatedRequest("addDomain", post("/api/domains"), null, d, this.getAccessToken());
     }
 
@@ -393,6 +394,7 @@ public class TestsCompositeServiceIT extends AssertWebRequestService {
         DomainDTO domainDTO = new DomainDTO();
         domainDTO.setName("valTimeTest");
         domainDTO.setPrefix("VTT-");
+        domainDTO.setProjectAbbreviation("TEST");
         domainDTO.setValidFrom(LocalDateTime.parse("2023-01-01T00:00:00"));
         domainDTO.setValidityTime("1 year");
 

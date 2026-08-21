@@ -36,6 +36,7 @@ public class Domain implements IDomain {
     private Integer superdomainid;
     private Integer algorithmId;
     private Boolean algorithmInherited;
+    private Integer projectId;
 
     public Domain() {}
 
@@ -57,6 +58,7 @@ public class Domain implements IDomain {
         this.superdomainid = value.getSuperdomainid();
         this.algorithmId = value.getAlgorithmId();
         this.algorithmInherited = value.getAlgorithmInherited();
+        this.projectId = value.getProjectId();
     }
 
     public Domain(
@@ -400,6 +402,24 @@ public class Domain implements IDomain {
         return this;
     }
 
+    /**
+     * Getter for <code>public.domain.project_id</code>.
+     */
+    @NotNull
+    @Override
+    public Integer getProjectId() {
+        return this.projectId;
+    }
+
+    /**
+     * Setter for <code>public.domain.project_id</code>.
+     */
+    @Override
+    public Domain setProjectId(Integer projectId) {
+        this.projectId = projectId;
+        return this;
+    }
+
     @Override
     public boolean equals(Object obj) {
         if (this == obj)
@@ -587,6 +607,7 @@ public class Domain implements IDomain {
         setSuperdomainid(from.getSuperdomainid());
         setAlgorithmId(from.getAlgorithmId());
         setAlgorithmInherited(from.getAlgorithmInherited());
+        setProjectId(from.getProjectId());
     }
 
     @Override

@@ -43,6 +43,7 @@ public class TestsScenariosServiceIT extends AssertWebRequestService {
         DomainDTO rootDomainDto = new DomainDTO();
         rootDomainDto.setName("ProjectX");
         rootDomainDto.setPrefix("PX-");
+        rootDomainDto.setProjectAbbreviation("TEST");
         LocalDateTime validFromTime = LocalDateTime.now().withNano(0).minusMonths(2);
         rootDomainDto.setValidFrom(validFromTime);
         LocalDateTime validToTime = validFromTime.plusYears(20);
@@ -73,6 +74,7 @@ public class TestsScenariosServiceIT extends AssertWebRequestService {
         childOneDomainDto.setName("ProjectX-Labor");
         childOneDomainDto.setPrefix("PX-L-");
         childOneDomainDto.setSuperDomainName("ProjectX");
+        childOneDomainDto.setProjectAbbreviation("TEST");
         this.assertCreatedRequest("createScenarioChildOneDomainComplete", post("/api/domains"), null, childOneDomainDto, this.getAccessToken());
 
         //create the first child
@@ -80,6 +82,7 @@ public class TestsScenariosServiceIT extends AssertWebRequestService {
         childTwoDomainDto.setName("ProjectX-Paper");
         childTwoDomainDto.setPrefix("PX-P-");
         childTwoDomainDto.setSuperDomainName("ProjectX");
+        childTwoDomainDto.setProjectAbbreviation("TEST");
         this.assertCreatedRequest("createScenarioChildTwoDomainComplete", post("/api/domains"), null, childTwoDomainDto, this.getAccessToken());
 
         //create the first child
@@ -87,6 +90,7 @@ public class TestsScenariosServiceIT extends AssertWebRequestService {
         childThreeDomainDto.setName("ProjectX-MRT");
         childThreeDomainDto.setPrefix("PX-MRT-");
         childThreeDomainDto.setSuperDomainName("ProjectX");
+        childThreeDomainDto.setProjectAbbreviation("TEST");
         this.assertCreatedRequest("createScenarioChildThreeDomainComplete", post("/api/domains"), null, childThreeDomainDto, this.getAccessToken());
 
         //create the first child
@@ -94,6 +98,7 @@ public class TestsScenariosServiceIT extends AssertWebRequestService {
         childOfchildTwoDomainDto.setName("ProjectX-PaperXY");
         childOfchildTwoDomainDto.setPrefix("PX-PXY-");
         childOfchildTwoDomainDto.setSuperDomainName("ProjectX-Paper");
+        childOfchildTwoDomainDto.setProjectAbbreviation("TEST");
         this.assertCreatedRequest("createScenarioChildOfchildTwoDomainComplete", post("/api/domains"), null, childOfchildTwoDomainDto, this.getAccessToken());
 
     }

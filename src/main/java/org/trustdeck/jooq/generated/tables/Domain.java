@@ -139,6 +139,11 @@ public class Domain extends TableImpl<DomainRecord> {
      */
     public final TableField<DomainRecord, Boolean> ALGORITHM_INHERITED = createField(DSL.name("algorithm_inherited"), SQLDataType.BOOLEAN.nullable(false), this, "");
 
+    /**
+     * The column <code>public.domain.project_id</code>.
+     */
+    public final TableField<DomainRecord, Integer> PROJECT_ID = createField(DSL.name("project_id"), SQLDataType.INTEGER.nullable(false), this, "");
+
     private Domain(Name alias, Table<DomainRecord> aliased) {
         this(alias, aliased, null);
     }
@@ -199,11 +204,12 @@ public class Domain extends TableImpl<DomainRecord> {
 
     @Override
     public List<ForeignKey<DomainRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.DOMAIN__DOMAIN_SUPERDOMAINID_FKEY, Keys.DOMAIN__DOMAIN_ALGORITHM_ID_FKEY);
+        return Arrays.asList(Keys.DOMAIN__DOMAIN_SUPERDOMAINID_FKEY, Keys.DOMAIN__DOMAIN_ALGORITHM_ID_FKEY, Keys.DOMAIN__DOMAIN_PROJECT_ID_FKEY);
     }
 
     private transient Domain _domain;
     private transient Algorithm _algorithm;
+    private transient Project _project;
 
     /**
      * Get the implicit join path to the <code>public.domain</code> table.
@@ -223,6 +229,16 @@ public class Domain extends TableImpl<DomainRecord> {
             _algorithm = new Algorithm(this, Keys.DOMAIN__DOMAIN_ALGORITHM_ID_FKEY);
 
         return _algorithm;
+    }
+
+    /**
+     * Get the implicit join path to the <code>public.project</code> table.
+     */
+    public Project project() {
+        if (_project == null)
+            _project = new Project(this, Keys.DOMAIN__DOMAIN_PROJECT_ID_FKEY);
+
+        return _project;
     }
 
     @Override

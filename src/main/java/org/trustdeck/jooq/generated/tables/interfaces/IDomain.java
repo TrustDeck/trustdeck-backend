@@ -200,6 +200,17 @@ public interface IDomain extends Serializable {
     @NotNull
     public Boolean getAlgorithmInherited();
 
+    /**
+     * Setter for <code>public.domain.project_id</code>.
+     */
+    public IDomain setProjectId(Integer value);
+
+    /**
+     * Getter for <code>public.domain.project_id</code>.
+     */
+    @NotNull
+    public Integer getProjectId();
+
     // -------------------------------------------------------------------------
     // FROM and INTO
     // -------------------------------------------------------------------------

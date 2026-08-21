@@ -31,6 +31,7 @@ import org.trustdeck.jooq.generated.tables.interfaces.IDomain;
 import org.trustdeck.jooq.generated.tables.pojos.Domain;
 import org.trustdeck.service.DomainDBAccessService;
 import org.trustdeck.service.AlgorithmDBService;
+import org.trustdeck.service.ProjectDBService;
 import org.trustdeck.utils.Assertion;
 import org.trustdeck.utils.SpringBeanLocator;
 
@@ -57,6 +58,12 @@ public class DomainDTO implements IObjectDTO<IDomain, DomainDTO> {
     @Setter(value=AccessLevel.NONE)
     @JsonIgnore
     private AlgorithmDBService algorithmDBService = SpringBeanLocator.getBean(AlgorithmDBService.class);
+
+    /** Enables access to the project associated with this domain. */
+    @Getter(value=AccessLevel.NONE)
+    @Setter(value=AccessLevel.NONE)
+    @JsonIgnore
+    private ProjectDBService projectDBService = SpringBeanLocator.getBean(ProjectDBService.class);
 	
     /** The id of this domain. */
     private Integer id;
@@ -115,6 +122,9 @@ public class DomainDTO implements IObjectDTO<IDomain, DomainDTO> {
     /** The super-domain name of this domain. */
     private String superDomainName;
 
+    /** The abbreviation of the project this domain belongs to. */
+    private String projectAbbreviation;
+
     /**
      * Maps all values from jOOQ's Domain object to a DomainDTO object.
      */
@@ -140,6 +150,8 @@ public class DomainDTO implements IObjectDTO<IDomain, DomainDTO> {
         Domain d = (pojo.getSuperdomainid() != null && pojo.getSuperdomainid() > 0) ? domainDBAccessService.getDomainByID(pojo.getSuperdomainid()) : null;
         this.setSuperDomainName(d != null ? d.getName() : null);
         this.setSuperDomainID(d != null ? d.getId() : null);
+        ProjectDTO project = pojo.getProjectId() == null ? null : projectDBService.getProjectByID(pojo.getProjectId());
+        this.setProjectAbbreviation(project != null ? project.getAbbreviation() : null);
         
         return this;
     }
@@ -217,6 +229,7 @@ public class DomainDTO implements IObjectDTO<IDomain, DomainDTO> {
         out += (this.getDescription() != null) ? "description: " + this.getDescription() + ", " : "";
         out += (this.getSuperDomainID() != null) ? "superDomainID: " + this.getSuperDomainID() + ", " : "";
         out += (this.getSuperDomainName() != null) ? "superDomainName: " + this.getSuperDomainName() + ", " : "";
+        out += (this.getProjectAbbreviation() != null) ? "projectAbbreviation: " + this.getProjectAbbreviation() + ", " : "";
 
         return (out.endsWith(", ") ? out.substring(0, out.length() - 2) : out);
     }
@@ -224,7 +237,8 @@ public class DomainDTO implements IObjectDTO<IDomain, DomainDTO> {
     @Override
     @JsonIgnore
     public Boolean validate() {
-        if (this.getName() == null || this.getName().trim().equals("") || this.getPrefix() == null) {
+        if (this.getName() == null || this.getName().trim().equals("") || this.getPrefix() == null
+                || Assertion.isNullOrEmpty(this.getProjectAbbreviation())) {
             return false;
         }
 

@@ -702,16 +702,16 @@ public class DomainDBAccessService {
                         .insertInto(DOMAIN, DOMAIN.NAME, DOMAIN.PREFIX, DOMAIN.VALIDFROM, DOMAIN.VALIDFROMINHERITED,
                                 DOMAIN.VALIDTO, DOMAIN.VALIDTOINHERITED, DOMAIN.ENFORCESTARTDATEVALIDITY,
                                 DOMAIN.ENFORCESTARTDATEVALIDITYINHERITED, DOMAIN.ENFORCEENDDATEVALIDITY,
-                                 DOMAIN.ENFORCEENDDATEVALIDITYINHERITED, DOMAIN.MULTIPLEPSNALLOWED,
-                                 DOMAIN.MULTIPLEPSNALLOWEDINHERITED, DOMAIN.DESCRIPTION, DOMAIN.SUPERDOMAINID,
-                                 DOMAIN.ALGORITHM_ID, DOMAIN.ALGORITHM_INHERITED)
+                                  DOMAIN.ENFORCEENDDATEVALIDITYINHERITED, DOMAIN.MULTIPLEPSNALLOWED,
+                                  DOMAIN.MULTIPLEPSNALLOWEDINHERITED, DOMAIN.DESCRIPTION, DOMAIN.SUPERDOMAINID,
+                                  DOMAIN.ALGORITHM_ID, DOMAIN.ALGORITHM_INHERITED, DOMAIN.PROJECT_ID)
                         .values(domain.getName(), domain.getPrefix(), domain.getValidfrom(), domain.getValidfrominherited(),
                                 domain.getValidto(), domain.getValidtoinherited(), domain.getEnforcestartdatevalidity(),
                                 domain.getEnforcestartdatevalidityinherited(), domain.getEnforceenddatevalidity(),
                                 domain.getEnforceenddatevalidityinherited(), domain.getMultiplepsnallowed(),
-                                domain.getMultiplepsnallowedinherited(), domain.getDescription(),
-                                (domain.getSuperdomainid() == null || domain.getSuperdomainid() == 0) ? null : domain.getSuperdomainid(),
-                                domain.getAlgorithmId(), domain.getAlgorithmInherited())
+                                 domain.getMultiplepsnallowedinherited(), domain.getDescription(),
+                                 (domain.getSuperdomainid() == null || domain.getSuperdomainid() == 0) ? null : domain.getSuperdomainid(),
+                                 domain.getAlgorithmId(), domain.getAlgorithmInherited(), domain.getProjectId())
                         .returning(DOMAIN.ID)
                         .fetchOne(DOMAIN.ID);
 

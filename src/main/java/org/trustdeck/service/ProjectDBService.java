@@ -40,6 +40,7 @@ import java.util.ArrayList;
 import java.util.List;
 import static org.trustdeck.jooq.generated.Tables.ENTITY;
 import static org.trustdeck.jooq.generated.Tables.ENTITY_TYPE;
+import static org.trustdeck.jooq.generated.Tables.DOMAIN;
 import static org.trustdeck.jooq.generated.Tables.PROJECT;
 
 /**
@@ -287,16 +288,19 @@ public class ProjectDBService {
 			return null;
 		}
 		
-		// Check if the project is in use (find project_id mentions in the type table and in the entity table)
+		// Check if the project is in use (find project_id mentions in the type, entity, and domain tables)
 		int usedBy = 0;
     	try {
     		usedBy = dsl.select(
-    				DSL.field(dsl.selectCount()
+			DSL.field(dsl.selectCount()
     	                     .from(ENTITY_TYPE)
     	                     .where(ENTITY_TYPE.PROJECT_ID.eq(oldProject.getId())))
-    				.add(DSL.field(dsl.selectCount()
+			.add(DSL.field(dsl.selectCount()
     	                     .from(ENTITY)
-    	                     .where(ENTITY.PROJECT_ID.eq(oldProject.getId()))))
+	                     .where(ENTITY.PROJECT_ID.eq(oldProject.getId())))
+                    .add(DSL.field(dsl.selectCount()
+                            .from(DOMAIN)
+                            .where(DOMAIN.PROJECT_ID.eq(oldProject.getId())))))
     				).fetchOne(0, int.class);
     	} catch (DataAccessException e) {
     		log.debug("Searching for entity type references in the database failed.", e);

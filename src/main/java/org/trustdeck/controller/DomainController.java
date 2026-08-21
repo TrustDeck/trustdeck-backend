@@ -35,6 +35,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.trustdeck.dto.DomainDTO;
 import org.trustdeck.dto.DomainTreeDTO;
 import org.trustdeck.dto.AlgorithmDTO;
+import org.trustdeck.dto.ProjectDTO;
 import org.trustdeck.configuration.DefaultProperties;
 import org.trustdeck.jooq.generated.tables.pojos.Algorithm;
 import org.trustdeck.jooq.generated.tables.pojos.Domain;
@@ -42,6 +43,7 @@ import org.trustdeck.security.audittrail.annotation.Audit;
 import org.trustdeck.service.AuthorizationService;
 import org.trustdeck.service.AlgorithmDBService;
 import org.trustdeck.service.DomainDBAccessService;
+import org.trustdeck.service.ProjectDBService;
 import org.trustdeck.service.ResponseService;
 import org.trustdeck.utils.Assertion;
 import org.trustdeck.utils.Utility;
@@ -96,6 +98,10 @@ public class DomainController {
     @Autowired
     private AlgorithmDBService algorithmDBService;
 
+    /** Enables access to projects when associating domains. */
+    @Autowired
+    private ProjectDBService projectDBService;
+
     /**
      * Method to create a new domain. Creates the record inside the
      * domain table.
@@ -145,11 +151,11 @@ public class DomainController {
     @Audit
     public ResponseEntity<?> createDomain(@RequestBody DomainDTO domainDTO,
                                           @RequestHeader(name = "accept", required = false) String responseContentType) {
-        
+
     	if (!domainDTO.validate() || !domainDTO.isValidStandardView()) {
             return responseService.unprocessableEntity(responseContentType);
         }
-        
+
     	return createDomain(domainDTO, responseContentType, false);
     }
 
@@ -177,11 +183,19 @@ public class DomainController {
      *             domain cannot be persisted</li>
      */
     private ResponseEntity<?> createDomain(DomainDTO dto, String responseContentType, boolean complete) {
-        // A domain cannot be created without a name and a pseudonym prefix
-        if (dto.getName() == null || dto.getPrefix() == null) {
+        // A domain cannot be created without a name, pseudonym prefix, and project
+        if (dto.getName() == null || dto.getPrefix() == null || Assertion.isNullOrEmpty(dto.getProjectAbbreviation())) {
             return responseService.unprocessableEntity(responseContentType);
         }
-        
+
+        // Resolve the requested project and ensure new domains are only added to active projects
+        ProjectDTO project = projectDBService.getProjectByAbbreviation(dto.getProjectAbbreviation());
+        if (project == null) {
+            return responseService.notFound(responseContentType);
+        } else if (project.getEndDate() != null && project.getEndDate().isBefore(java.time.OffsetDateTime.now())) {
+            return responseService.gone(responseContentType);
+        }
+
         // Build the location before persisting so invalid names are rejected early
         URI location;
         try {
@@ -189,11 +203,16 @@ public class DomainController {
         } catch (URISyntaxException e) {
             return responseService.notAcceptable(responseContentType);
         }
-        
+
         // Resolve the requested parent; child domains inherit omitted settings from it
         Domain parent = dto.getSuperDomainName() == null ? null : domainDBAccessService.getDomainByName(dto.getSuperDomainName());
         if (dto.getSuperDomainName() != null && parent == null) {
             return responseService.notFound(responseContentType);
+        }
+
+        // A domain hierarchy must not cross project boundaries
+        if (parent != null && !project.getId().equals(parent.getProjectId())) {
+            return responseService.unprocessableEntity(responseContentType);
         }
 
         // Apply explicit values first, then inherited values, then configured defaults
@@ -217,6 +236,7 @@ public class DomainController {
                 : parent == null ? defaults.getDomain().isAllowMultiplePsn() : parent.getMultiplepsnallowed());
         domain.setMultiplepsnallowedinherited(dto.getMultiplePsnAllowed() == null && parent != null);
         domain.setSuperdomainid(parent == null ? 0 : parent.getId());
+        domain.setProjectId(project.getId());
 
         // Reuse the parent's algorithm when possible; otherwise create one from the request or defaults
         if (dto.getAlgorithm() == null && parent != null) {
@@ -241,15 +261,15 @@ public class DomainController {
         if (resultDto != null && !authorizationService.hasDomainPermission(resultDto.getName(), "complete-view")) {
             resultDto.toReducedStandardView();
         }
-        
+
         if (DomainDBAccessService.INSERTION_SUCCESS.equals(result)) {
             return responseService.created(responseContentType, location, resultDto);
         }
-        
+
         if (DomainDBAccessService.INSERTION_DUPLICATE.equals(result)) {
             return responseService.ok(responseContentType, resultDto);
         }
-        
+
         return responseService.unprocessableEntity(responseContentType);
     }
 
@@ -627,6 +647,11 @@ public class DomainController {
             return responseService.notFound(responseContentType);
         }
         
+        // Domains retain their initial project association throughout their lifetime
+        if (!hasUnchangedProjectAssociation(domainDTO, old)) {
+            return responseService.unprocessableEntity(responseContentType);
+        }
+
         // Check if the new name is already in use
         String domainName;
         if (newDomainName != null && !newDomainName.isBlank()) {
@@ -740,6 +765,11 @@ public class DomainController {
             return responseService.notFound(responseContentType);
         }
         
+        // Domains retain their initial project association throughout their lifetime
+        if (!hasUnchangedProjectAssociation(domainDTO, old)) {
+            return responseService.unprocessableEntity(responseContentType);
+        }
+
         // Check if the new name is already in use
         String domainName;
         if (newName != null && !newName.isBlank()) {
@@ -977,6 +1007,22 @@ public class DomainController {
         }
         
         return true;
+    }
+
+    /**
+     * Ensures update requests either omit the project or retain the stored project.
+     *
+     * @param dto the requested domain changes
+     * @param domain the stored domain
+     * @return {@code true} when the requested project association is unchanged
+     */
+    private boolean hasUnchangedProjectAssociation(DomainDTO dto, Domain domain) {
+        if (Assertion.isNullOrEmpty(dto.getProjectAbbreviation())) {
+            return true;
+        }
+
+        ProjectDTO project = projectDBService.getProjectByID(domain.getProjectId());
+        return project != null && project.getAbbreviation().equalsIgnoreCase(dto.getProjectAbbreviation());
     }
     
     /**
