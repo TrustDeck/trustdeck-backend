@@ -11,13 +11,13 @@ import java.util.function.Function;
 
 import org.jooq.Field;
 import org.jooq.ForeignKey;
-import org.jooq.Function17;
+import org.jooq.Function18;
 import org.jooq.Identity;
 import org.jooq.Index;
 import org.jooq.Name;
 import org.jooq.Record;
 import org.jooq.Records;
-import org.jooq.Row17;
+import org.jooq.Row18;
 import org.jooq.Schema;
 import org.jooq.SelectField;
 import org.jooq.Table;
@@ -184,7 +184,7 @@ public class Domain extends TableImpl<DomainRecord> {
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.METADATAIDX);
+        return Arrays.asList(Indexes.DOMAIN_PROJECT_ID_IDX, Indexes.METADATAIDX);
     }
 
     @Override
@@ -281,18 +281,18 @@ public class Domain extends TableImpl<DomainRecord> {
     }
 
     // -------------------------------------------------------------------------
-    // Row17 type methods
+    // Row18 type methods
     // -------------------------------------------------------------------------
 
     @Override
-    public Row17<Integer, String, String, LocalDateTime, Boolean, LocalDateTime, Boolean, Boolean, Boolean, Boolean, Boolean, Boolean, Boolean, String, Integer, Integer, Boolean> fieldsRow() {
-        return (Row17) super.fieldsRow();
+    public Row18<Integer, String, String, LocalDateTime, Boolean, LocalDateTime, Boolean, Boolean, Boolean, Boolean, Boolean, Boolean, Boolean, String, Integer, Integer, Boolean, Integer> fieldsRow() {
+        return (Row18) super.fieldsRow();
     }
 
     /**
      * Convenience mapping calling {@link SelectField#convertFrom(Function)}.
      */
-    public <U> SelectField<U> mapping(Function17<? super Integer, ? super String, ? super String, ? super LocalDateTime, ? super Boolean, ? super LocalDateTime, ? super Boolean, ? super Boolean, ? super Boolean, ? super Boolean, ? super Boolean, ? super Boolean, ? super Boolean, ? super String, ? super Integer, ? super Integer, ? super Boolean, ? extends U> from) {
+    public <U> SelectField<U> mapping(Function18<? super Integer, ? super String, ? super String, ? super LocalDateTime, ? super Boolean, ? super LocalDateTime, ? super Boolean, ? super Boolean, ? super Boolean, ? super Boolean, ? super Boolean, ? super Boolean, ? super Boolean, ? super String, ? super Integer, ? super Integer, ? super Boolean, ? super Integer, ? extends U> from) {
         return convertFrom(Records.mapping(from));
     }
 
@@ -300,7 +300,7 @@ public class Domain extends TableImpl<DomainRecord> {
      * Convenience mapping calling {@link SelectField#convertFrom(Class,
      * Function)}.
      */
-    public <U> SelectField<U> mapping(Class<U> toType, Function17<? super Integer, ? super String, ? super String, ? super LocalDateTime, ? super Boolean, ? super LocalDateTime, ? super Boolean, ? super Boolean, ? super Boolean, ? super Boolean, ? super Boolean, ? super Boolean, ? super Boolean, ? super String, ? super Integer, ? super Integer, ? super Boolean, ? extends U> from) {
+    public <U> SelectField<U> mapping(Class<U> toType, Function18<? super Integer, ? super String, ? super String, ? super LocalDateTime, ? super Boolean, ? super LocalDateTime, ? super Boolean, ? super Boolean, ? super Boolean, ? super Boolean, ? super Boolean, ? super Boolean, ? super Boolean, ? super String, ? super Integer, ? super Integer, ? super Boolean, ? super Integer, ? extends U> from) {
         return convertFrom(toType, Records.mapping(from));
     }
 }

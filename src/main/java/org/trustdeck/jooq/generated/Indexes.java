@@ -29,6 +29,7 @@ public class Indexes {
 
     public static final Index ALGORITHM_NAME_UINDEX = Internal.createIndex(DSL.name("algorithm_name_uindex"), Algorithm.ALGORITHM, new OrderField[] { Algorithm.ALGORITHM.NAME }, false);
     public static final Index AUDITUSERNAMEIDX = Internal.createIndex(DSL.name("auditusernameidx"), AuditEvent.AUDIT_EVENT, new OrderField[] { AuditEvent.AUDIT_EVENT.USER_NAME }, false);
+    public static final Index DOMAIN_PROJECT_ID_IDX = Internal.createIndex(DSL.name("domain_project_id_idx"), Domain.DOMAIN, new OrderField[] { Domain.DOMAIN.PROJECT_ID }, false);
     public static final Index ENTITY_TYPE_FTS_IDX = Internal.createIndex(DSL.name("entity_type_fts_idx"), EntityType.ENTITY_TYPE, new OrderField[] { EntityType.ENTITY_TYPE.FULL_TEXT_SEARCH_VECTOR }, false);
     public static final Index ENTITY_TYPE_NAME_IDX = Internal.createIndex(DSL.name("entity_type_name_idx"), EntityType.ENTITY_TYPE, new OrderField[] { EntityType.ENTITY_TYPE.NAME }, false);
     public static final Index ENTITY_TYPE_TYPE_DEFINITION_GIN_IDX = Internal.createIndex(DSL.name("entity_type_type_definition_gin_idx"), EntityType.ENTITY_TYPE, new OrderField[] { EntityType.ENTITY_TYPE.TYPE_DEFINITION }, false);

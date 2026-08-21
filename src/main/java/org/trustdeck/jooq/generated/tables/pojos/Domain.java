@@ -78,7 +78,8 @@ public class Domain implements IDomain {
         String description,
         Integer superdomainid,
         Integer algorithmId,
-        Boolean algorithmInherited
+        Boolean algorithmInherited,
+        Integer projectId
     ) {
         this.id = id;
         this.name = name;
@@ -97,6 +98,7 @@ public class Domain implements IDomain {
         this.superdomainid = superdomainid;
         this.algorithmId = algorithmId;
         this.algorithmInherited = algorithmInherited;
+        this.projectId = projectId;
     }
 
     /**
@@ -531,6 +533,12 @@ public class Domain implements IDomain {
         }
         else if (!this.algorithmInherited.equals(other.algorithmInherited))
             return false;
+        if (this.projectId == null) {
+            if (other.projectId != null)
+                return false;
+        }
+        else if (!this.projectId.equals(other.projectId))
+            return false;
         return true;
     }
 
@@ -555,6 +563,7 @@ public class Domain implements IDomain {
         result = prime * result + ((this.superdomainid == null) ? 0 : this.superdomainid.hashCode());
         result = prime * result + ((this.algorithmId == null) ? 0 : this.algorithmId.hashCode());
         result = prime * result + ((this.algorithmInherited == null) ? 0 : this.algorithmInherited.hashCode());
+        result = prime * result + ((this.projectId == null) ? 0 : this.projectId.hashCode());
         return result;
     }
 
@@ -579,6 +588,7 @@ public class Domain implements IDomain {
         sb.append(", ").append(superdomainid);
         sb.append(", ").append(algorithmId);
         sb.append(", ").append(algorithmInherited);
+        sb.append(", ").append(projectId);
 
         sb.append(")");
         return sb.toString();

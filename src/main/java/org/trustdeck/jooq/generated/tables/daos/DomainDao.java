@@ -324,4 +324,19 @@ public class DomainDao extends DAOImpl<DomainRecord, org.trustdeck.jooq.generate
     public List<org.trustdeck.jooq.generated.tables.pojos.Domain> fetchByAlgorithmInherited(Boolean... values) {
         return fetch(Domain.DOMAIN.ALGORITHM_INHERITED, values);
     }
+
+    /**
+     * Fetch records that have <code>project_id BETWEEN lowerInclusive AND
+     * upperInclusive</code>
+     */
+    public List<org.trustdeck.jooq.generated.tables.pojos.Domain> fetchRangeOfProjectId(Integer lowerInclusive, Integer upperInclusive) {
+        return fetchRange(Domain.DOMAIN.PROJECT_ID, lowerInclusive, upperInclusive);
+    }
+
+    /**
+     * Fetch records that have <code>project_id IN (values)</code>
+     */
+    public List<org.trustdeck.jooq.generated.tables.pojos.Domain> fetchByProjectId(Integer... values) {
+        return fetch(Domain.DOMAIN.PROJECT_ID, values);
+    }
 }
