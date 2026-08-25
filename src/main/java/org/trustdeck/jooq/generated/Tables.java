@@ -12,6 +12,10 @@ import org.trustdeck.jooq.generated.tables.AuditEvent;
 import org.trustdeck.jooq.generated.tables.Domain;
 import org.trustdeck.jooq.generated.tables.Entity;
 import org.trustdeck.jooq.generated.tables.EntityType;
+import org.trustdeck.jooq.generated.tables.EntityinstanceT1;
+import org.trustdeck.jooq.generated.tables.EntityinstanceT2;
+import org.trustdeck.jooq.generated.tables.EntityinstanceT3;
+import org.trustdeck.jooq.generated.tables.EntityinstanceT4;
 import org.trustdeck.jooq.generated.tables.LinkageToken;
 import org.trustdeck.jooq.generated.tables.PermissionGrant;
 import org.trustdeck.jooq.generated.tables.PgpArmorHeaders;
@@ -51,6 +55,26 @@ public class Tables {
      * The table <code>public.entity_type</code>.
      */
     public static final EntityType ENTITY_TYPE = EntityType.ENTITY_TYPE;
+
+    /**
+     * The table <code>public.entityinstance_t1</code>.
+     */
+    public static final EntityinstanceT1 ENTITYINSTANCE_T1 = EntityinstanceT1.ENTITYINSTANCE_T1;
+
+    /**
+     * The table <code>public.entityinstance_t2</code>.
+     */
+    public static final EntityinstanceT2 ENTITYINSTANCE_T2 = EntityinstanceT2.ENTITYINSTANCE_T2;
+
+    /**
+     * The table <code>public.entityinstance_t3</code>.
+     */
+    public static final EntityinstanceT3 ENTITYINSTANCE_T3 = EntityinstanceT3.ENTITYINSTANCE_T3;
+
+    /**
+     * The table <code>public.entityinstance_t4</code>.
+     */
+    public static final EntityinstanceT4 ENTITYINSTANCE_T4 = EntityinstanceT4.ENTITYINSTANCE_T4;
 
     /**
      * The table <code>public.linkage_token</code>.
