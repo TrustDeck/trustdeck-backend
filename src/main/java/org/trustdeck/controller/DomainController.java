@@ -238,9 +238,16 @@ public class DomainController {
         domain.setSuperdomainid(parent == null ? 0 : parent.getId());
         domain.setProjectId(project.getId());
 
-        // Reuse the parent's algorithm when possible; otherwise create one from the request or defaults
+        // A child receives its own algorithm record with inherited values, but never shares its parent's salt
         if (dto.getAlgorithm() == null && parent != null) {
-            domain.setAlgorithmId(parent.getAlgorithmId());
+            AlgorithmDTO algorithm = new AlgorithmDTO().assignPojoValues(algorithmDBService.getAlgorithmByID(parent.getAlgorithmId()));
+            algorithm.setSalt(null);
+            Integer algorithmId = algorithmDBService.createOrGetAlgorithm(algorithm.convertToPOJO());
+            if (algorithmId == null) {
+                return responseService.unprocessableEntity(responseContentType);
+            }
+
+            domain.setAlgorithmId(algorithmId);
             domain.setAlgorithmInherited(true);
         } else {
             AlgorithmDTO algorithm = dto.getAlgorithm() == null ? defaultAlgorithm() : dto.getAlgorithm();
@@ -895,7 +902,7 @@ public class DomainController {
             	updatedDomDTO = updatedDomDTO.toReducedStandardView();
             }
             
-            log.info("Successfully updated the salt for the domain \"" + domainName + "\". It is now \"" + newSalt + "\".");
+            log.info("Successfully updated the salt for the domain \"" + domainName + "\".");
             return responseService.ok(responseContentType, updatedDomDTO);
         } else {
             // Updating the salt failed. Return an error 422-UNPROCESSABLE_ENTITY.

@@ -44,17 +44,13 @@ public class CustomAccessDeniedHandler implements AccessDeniedHandler {
      * @param accessDeniedException the AccessDeniedException as object
      */
     public void handle(HttpServletRequest request, HttpServletResponse response, AccessDeniedException accessDeniedException) {
-    	log.debug("The requesting user is lacking the permission for accessing the endpoint.");
-        String authHeader = request.getHeader("Authorization");
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            log.trace("Bearer token: " + authHeader.substring("Bearer ".length()));
-        }
+        log.debug("Access denied for [" + request.getMethod() + "] " + request.getRequestURI() + ".");
 
         if (!response.isCommitted()) {
         	// Set a 403-FORBIDDEN status
             response.setStatus(HttpStatus.FORBIDDEN.value());
             
-            // Try to add an accompanying text.
+            // Try to add an accompanying text
             PrintWriter writer;
             try {
 				writer = response.getWriter();

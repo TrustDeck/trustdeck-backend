@@ -37,6 +37,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import static org.trustdeck.jooq.generated.Tables.ALGORITHM;
 import static org.trustdeck.jooq.generated.Tables.DOMAIN;
+import static org.trustdeck.jooq.generated.Keys.ALGORITHM_CONFIGURATION_KEY;
 
 import java.security.SecureRandom;
 import java.util.List;
@@ -95,7 +96,45 @@ public class AlgorithmDBService {
      */
     @Transactional
     public Integer createAlgorithm(Algorithm algorithm) {
-		// Insert new algorithm object into the database
+		AlgorithmRecord algoRecord = normalizeAlgorithm(algorithm);
+		Integer existingId = getAlgorithmIdIfExistsInDatabase(algoRecord);
+		if (existingId != null) {
+			log.debug("Reusing an existing algorithm with name \"" + algoRecord.getName() + "\".");
+			return existingId;
+		}
+
+		AlgorithmRecord created = dsl.insertInto(ALGORITHM)
+				.set(algoRecord)
+				.onConflictOnConstraint(ALGORITHM_CONFIGURATION_KEY)
+				.doNothing()
+				.returning(ALGORITHM.ID)
+				.fetchOne();
+		if (created != null) {
+			log.debug("Created a new algorithm with name \"" + algoRecord.getName() + "\".");
+			return created.getId();
+		}
+
+		// Another transaction inserted this exact unique configuration after our lookup
+		existingId = getAlgorithmIdIfExistsInDatabase(algoRecord);
+		if (existingId != null) {
+			log.debug("Reusing an existing algorithm with name " + algoRecord.getName() + " after a concurrent insert.");
+			return existingId;
+		}
+
+		throw new DataAccessException("Algorithm insert conflicted but the matching algorithm could not be retrieved.");
+	}
+
+    /**
+     * Normalizes an algorithm configuration into a database record.
+     * Missing or invalid values are replaced with configured defaults. Invalid
+     * salts are replaced with a newly generated salt. For random algorithms, the
+     * pseudonym length is calculated from the normalized random-generation
+     * configuration unless a longer explicit length was supplied.
+     *
+     * @param algorithm the requested algorithm configuration
+     * @return a fully populated algorithm record ready for lookup or persistence
+     */
+	private AlgorithmRecord normalizeAlgorithm(Algorithm algorithm) {
 		int saltLength = (algorithm.getSaltLength() >= MINIMUM_SALT_LENGTH && algorithm.getSaltLength() <= MAXIMUM_SALT_LENGTH) ? algorithm.getSaltLength() : defaults.getAlgorithm().getSaltLength();
 		
 		AlgorithmRecord algoRecord = dsl.newRecord(ALGORITHM);
@@ -112,11 +151,11 @@ public class AlgorithmDBService {
 		algoRecord.setSaltLength(saltLength);
 		
 		// Calculate pseudonym length, if a randomness algorithm is used
-		if (algorithm.getName().trim().toUpperCase().startsWith("RANDOM")) {
+		if (algoRecord.getName().trim().toUpperCase().startsWith("RANDOM")) {
 			// Check if the parameters for the algorithm are the default ones 
-			if (algorithm.getRandomAlgorithmDesiredSize() == defaults.getAlgorithm().getRandomDesiredSize()
-					&& algorithm.getRandomAlgorithmDesiredSuccessProbability() == defaults.getAlgorithm().getRandomDesiredSuccessProbability()
-					&& defaults.getAlgorithm().getRandomAlphabet().equals(algorithm.getAlphabet())) {
+			if (algoRecord.getRandomAlgorithmDesiredSize() == defaults.getAlgorithm().getRandomDesiredSize()
+					&& algoRecord.getRandomAlgorithmDesiredSuccessProbability() == defaults.getAlgorithm().getRandomDesiredSuccessProbability()
+					&& defaults.getAlgorithm().getRandomAlphabet().equals(algoRecord.getAlphabet())) {
 				// Defaults are used --> use default length
 				algoRecord.setPseudonymLength(defaults.getAlgorithm().getRandomPseudonymLength());
 			} else {
@@ -132,18 +171,8 @@ public class AlgorithmDBService {
 				}
 			}
 		}
-		
-    	// Store and determine success
-        int wasStored = 0;
-        try {
-        	wasStored = algoRecord.insert();
-        } catch (Exception e) {
-        	log.debug("Failed to create algorithm: " + e.getMessage());
-        }
-        
-        // Return the new algorithm ID
-        log.debug("Creating the algorithm object \"" + algorithm.getName() + "\" " + ((wasStored == 1) ? "succeeded." : "failed."));
-        return wasStored == 1 ? algoRecord.getId() : null;
+
+		return algoRecord;
     }
     
 	/**
@@ -154,14 +183,7 @@ public class AlgorithmDBService {
      */
     @Transactional
     public Integer createOrGetAlgorithm(Algorithm algorithm) {
-    	Integer id = getAlgorithmIdIfExistsInDatabase(algorithm);
-    	
-    	if (id != null) {
-    		log.debug("Algorithm already exists in the database. Returning ID instead of creating it anew.");
-    		return id;
-    	} else {
-    		return createAlgorithm(algorithm);
-    	}
+        return createAlgorithm(algorithm);
     }
     
     /**
@@ -315,38 +337,20 @@ public class AlgorithmDBService {
      * {@code null} if nothing was found or an error occurred.
      */
     @Transactional
-    private Integer getAlgorithmIdIfExistsInDatabase(Algorithm algorithm) {
-    	Integer id = null;
-    	
-    	try {
-    		id = dsl.select(ALGORITHM.ID)
-    		        .from(ALGORITHM)
-    		        .where(
-    		            ALGORITHM.NAME.eq(algorithm.getName())
-    		            .and(ALGORITHM.ALPHABET.eq(algorithm.getAlphabet()))
-			            .and(ALGORITHM.RANDOM_ALGORITHM_DESIRED_SIZE.eq(algorithm.getRandomAlgorithmDesiredSize()))
-			            .and(ALGORITHM.RANDOM_ALGORITHM_DESIRED_SUCCESS_PROBABILITY.eq(algorithm.getRandomAlgorithmDesiredSuccessProbability()))
-			            .and(ALGORITHM.CONSECUTIVE_VALUE_COUNTER.eq(algorithm.getConsecutiveValueCounter()))
-			            .and(ALGORITHM.PSEUDONYM_LENGTH.eq(algorithm.getPseudonymLength()))
-			            .and(ALGORITHM.PADDING_CHARACTER.eq(algorithm.getPaddingCharacter()))
-			            .and(ALGORITHM.ADD_CHECK_DIGIT.eq(algorithm.getAddCheckDigit()))
-			            .and(ALGORITHM.LENGTH_INCLUDES_CHECK_DIGIT.eq(algorithm.getLengthIncludesCheckDigit()))
-    		            .and(ALGORITHM.SALT.eq(algorithm.getSalt()))
-			            .and(ALGORITHM.SALT_LENGTH.eq(algorithm.getSaltLength()))
-    		        )
-    		        .fetchOneInto(Integer.class); // returns null if no match is found
-    	} catch (TooManyRowsException e) {
-    	    log.debug("Too many entries found while searching for an algorithm object that should be unique: " + e.getMessage());
-    	    return null;
-    	} catch (MappingException f) {
-    		log.debug("Could not convert algorithm-id-search result into an integer: " + f.getMessage());
-    		return null;
-    	} catch (DataAccessException g) {
-    	    log.debug("Could not retrieve the algorithm ID from database: " + g.getMessage());
-    	    return null;
-    	}
-    	
-    	return id;
+    private Integer getAlgorithmIdIfExistsInDatabase(AlgorithmRecord algorithm) {
+        return dsl.select(ALGORITHM.ID)
+                .from(ALGORITHM)
+                .where(ALGORITHM.NAME.eq(algorithm.getName()))
+                .and(ALGORITHM.ALPHABET.eq(algorithm.getAlphabet()))
+                .and(ALGORITHM.RANDOM_ALGORITHM_DESIRED_SIZE.eq(algorithm.getRandomAlgorithmDesiredSize()))
+                .and(ALGORITHM.RANDOM_ALGORITHM_DESIRED_SUCCESS_PROBABILITY.eq(algorithm.getRandomAlgorithmDesiredSuccessProbability()))
+                .and(ALGORITHM.PSEUDONYM_LENGTH.eq(algorithm.getPseudonymLength()))
+                .and(ALGORITHM.PADDING_CHARACTER.eq(algorithm.getPaddingCharacter()))
+                .and(ALGORITHM.ADD_CHECK_DIGIT.eq(algorithm.getAddCheckDigit()))
+                .and(ALGORITHM.LENGTH_INCLUDES_CHECK_DIGIT.eq(algorithm.getLengthIncludesCheckDigit()))
+                .and(ALGORITHM.SALT.eq(algorithm.getSalt()))
+                .and(ALGORITHM.SALT_LENGTH.eq(algorithm.getSaltLength()))
+                .fetchOne(ALGORITHM.ID);
     }
     
     /**
