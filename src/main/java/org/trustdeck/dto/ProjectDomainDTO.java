@@ -18,5 +18,5 @@
 package org.trustdeck.dto;
 
 /** A domain and its project-scoped hierarchy information. */
-public record ProjectDomainDTO(String name, String projectAbbreviation, String superDomainName) {
+public record ProjectDomainDTO(String name, String prefix, String projectAbbreviation, String superDomainName) {
 }

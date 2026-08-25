@@ -785,7 +785,7 @@ public class DomainDBAccessService {
     public List<ProjectDomainDTO> listDomainsByProjectId(int projectId) {
         var superDomain = DOMAIN.as("super_domain");
 
-        return dsl.select(DOMAIN.NAME, PROJECT.ABBREVIATION, superDomain.NAME)
+        return dsl.select(DOMAIN.NAME, DOMAIN.PREFIX, PROJECT.ABBREVIATION, superDomain.NAME)
                 .from(DOMAIN)
                 .join(PROJECT).on(DOMAIN.PROJECT_ID.eq(PROJECT.ID))
                 .leftJoin(superDomain).on(DOMAIN.SUPERDOMAINID.eq(superDomain.ID))
@@ -793,6 +793,7 @@ public class DomainDBAccessService {
                 .orderBy(DOMAIN.NAME.asc())
                 .fetch(record -> new ProjectDomainDTO(
                         record.get(DOMAIN.NAME),
+                        record.get(DOMAIN.PREFIX),
                         record.get(PROJECT.ABBREVIATION),
                         record.get(superDomain.NAME)));
     }
