@@ -136,6 +136,7 @@ public class EntityController {
 	 * @param projectAbbreviation the abbreviation of the project to which the request is scoped to
 	 * @param entityTypeName the name of the entity type associated with this entity
 	 * @param entityDTO the data transfer object containing this entity's data
+	 * @param recordLinkageResolution (optional) resolution-option for automatic record linkage candidates
 	 * @param responseContentType (optional) the response content type
 	 * @return <li>a <b>201-CREATED</b> status with the created entity on success</li>
      *         <li>a <b>400-BAD_REQUEST</b> status when the entity payload is 
@@ -148,12 +149,13 @@ public class EntityController {
      *         the record linkage tokens could not be created/stored in the database</li>
 	 */
 	@PostMapping("/projects/{projectAbbreviation}/entities/{entityTypeName}")
-	@PreAuthorize("isAuthenticated() and @auth.hasProjectPermission(#root, #projectAbbreviation, 'entity:create')")
+	@PreAuthorize("isAuthenticated() and @auth.hasProjectPermission(#root, #projectAbbreviation, 'entity:create') and (#recordLinkageResolution != 'CREATE_ORIGINAL' or @auth.hasProjectPermission(#root, #projectAbbreviation, 'entity:resolve-linkage'))")
 	@Audit
 	public ResponseEntity<?> createEntity(@PathVariable("projectAbbreviation") String projectAbbreviation,
-			   									  @PathVariable("entityTypeName") String entityTypeName,
-												  @RequestBody EntityDTO entityDTO,
-												  @RequestHeader(name = "accept", required = false) String responseContentType) {
+										  @PathVariable("entityTypeName") String entityTypeName,
+										  @RequestBody EntityDTO entityDTO,
+										  @RequestParam(name = "recordLinkageResolution", required = false) String recordLinkageResolution,
+										  @RequestHeader(name = "accept", required = false) String responseContentType) {
 		// Check if project exists and still active
 		ProjectDTO project = projectDBService.getProjectByAbbreviation(projectAbbreviation);
 		if (project == null) {
@@ -218,7 +220,7 @@ public class EntityController {
             }
 
             // Return matching entity or list of possible matches
-            if (!candidates.isEmpty()) {
+            if (!candidates.isEmpty() && !"CREATE_ORIGINAL".equals(recordLinkageResolution)) {
                 RecordLinkageCandidateDTO bestCandidate = candidates.getFirst();
                 if (linkageConfig.returnsExistingOnMatch() && bestCandidate.getCandidateStatus() == CandidateStatus.ACTIVE) {
                     log.info("Automatic record linkage found an existing entity; returning it instead of creating a duplicate.");

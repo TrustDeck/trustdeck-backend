@@ -157,6 +157,7 @@ app:
       - entity:delete
       - entity:search
       - entity:record-linkage
+      - entity:resolve-linkage
       - entity:list-pseudonyms
     global:
       - domain:create
