@@ -6,6 +6,7 @@ networks:
 services:
   trustdeck-backend:
     container_name: trustdeck-backend
+    restart: unless-stopped
     env_file:
       - ../trustdeck.env
     build:
