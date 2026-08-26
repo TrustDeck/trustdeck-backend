@@ -53,6 +53,7 @@ import java.net.URISyntaxException;
 import java.security.SecureRandom;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -79,6 +80,7 @@ public class DomainController {
     /** The minimum length for the salt. */
     private static final int MINIMUM_SALT_LENGTH = 8;
     
+    /** Enables access to default values. */
     @Autowired
     private DefaultProperties defaults;
 
@@ -220,7 +222,7 @@ public class DomainController {
         domain.setName(dto.getName());
         domain.setPrefix(dto.getPrefix());
         domain.setDescription(dto.getDescription());
-        domain.setValidfrom(dto.getValidFrom() != null ? dto.getValidFrom() : parent == null ? LocalDateTime.now() : parent.getValidfrom());
+        domain.setValidfrom(dto.getValidFrom() != null ? dto.getValidFrom() : parent == null ? LocalDateTime.now(ZoneOffset.UTC) : parent.getValidfrom());
         domain.setValidfrominherited(dto.getValidFrom() == null && parent != null);
         domain.setValidto(dto.getValidTo() != null ? dto.getValidTo() : dto.getValidityTime() != null
                 ? Utility.plusValidityTime(domain.getValidfrom(), dto.getValidityTime())

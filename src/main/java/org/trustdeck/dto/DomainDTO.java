@@ -19,6 +19,8 @@ package org.trustdeck.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonGetter;
+import com.fasterxml.jackson.annotation.JsonSetter;
 
 import lombok.AccessLevel;
 import lombok.Data;
@@ -34,6 +36,7 @@ import org.trustdeck.service.AlgorithmDBService;
 import org.trustdeck.service.ProjectDBService;
 import org.trustdeck.utils.Assertion;
 import org.trustdeck.utils.SpringBeanLocator;
+import org.trustdeck.utils.Utility;
 
 import java.time.LocalDateTime;
 
@@ -75,12 +78,16 @@ public class DomainDTO implements IObjectDTO<IDomain, DomainDTO> {
     private String prefix;
 
     /** The date (and time) when the validity period of the entry starts. */
+    @Getter(value=AccessLevel.NONE)
+    @Setter(value=AccessLevel.NONE)
     private LocalDateTime validFrom;
 
     /** Determines if the validFrom value was inherited from the super domain. */
     private Boolean validFromInherited;
 
     /** The date (and time) when the validity period of the entry ends. */
+    @Getter(value=AccessLevel.NONE)
+    @Setter(value=AccessLevel.NONE)
     private LocalDateTime validTo;
     
     /** An amount of time a domain should be valid for. (Only needed for the creation.) */
@@ -124,6 +131,58 @@ public class DomainDTO implements IObjectDTO<IDomain, DomainDTO> {
 
     /** The abbreviation of the project this domain belongs to. */
     private String projectAbbreviation;
+
+    @JsonIgnore
+    public LocalDateTime getValidFrom() {
+        return validFrom;
+    }
+
+    @JsonIgnore
+    public void setValidFrom(LocalDateTime validFrom) {
+        this.validFrom = validFrom;
+    }
+
+    @JsonGetter("validFrom")
+    public String getValidFromJson() {
+        return Utility.formatUtcDateTime(validFrom);
+    }
+
+    @JsonSetter("validFrom")
+    public void setValidFromJson(String validFrom) {
+        this.validFrom = parseUtcDateTime(validFrom, "validFrom");
+    }
+
+    @JsonIgnore
+    public LocalDateTime getValidTo() {
+        return validTo;
+    }
+
+    @JsonIgnore
+    public void setValidTo(LocalDateTime validTo) {
+        this.validTo = validTo;
+    }
+
+    @JsonGetter("validTo")
+    public String getValidToJson() {
+        return Utility.formatUtcDateTime(validTo);
+    }
+
+    @JsonSetter("validTo")
+    public void setValidToJson(String validTo) {
+        this.validTo = parseUtcDateTime(validTo, "validTo");
+    }
+
+    private LocalDateTime parseUtcDateTime(String value, String fieldName) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        LocalDateTime parsed = Utility.parseUtcDateTime(value);
+        if (parsed == null) {
+            throw new IllegalArgumentException("Invalid " + fieldName + " timestamp");
+        }
+        return parsed;
+    }
 
     /**
      * Maps all values from jOOQ's Domain object to a DomainDTO object.

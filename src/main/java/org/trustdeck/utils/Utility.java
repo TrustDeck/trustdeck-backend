@@ -30,6 +30,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
@@ -291,13 +292,24 @@ public class Utility {
 	 * @return the given date-time as an instance of OffsetDateTime, or {@code null} if no known format was detected
 	 */
 	public static OffsetDateTime parseDateTimeString(String dateTime) {
+		return parseDateTimeString(dateTime, ZoneId.systemDefault());
+	}
+
+	/**
+	 * Parses a date-time using the supplied zone when the input has no offset.
+	 *
+	 * @param dateTime the date-time text to parse
+	 * @param defaultZone the zone to apply to a timezone-less input (can be empty --> uses system timezone)
+	 * @return the parsed date-time, or {@code null} when no supported format matches
+	 */
+	public static OffsetDateTime parseDateTimeString(String dateTime, ZoneId defaultZone) {
         // Check if the input is given
 		if (Assertion.isNullOrEmpty(dateTime)) {
-        	return null;
+         	return null;
         }
 		
-		// Use the system time zone when necessary for conversion/parsing
-        ZoneId timeZone = ZoneId.systemDefault();
+		// Use the caller-provided zone when the input has no explicit offset.
+        ZoneId timeZone = defaultZone != null ? defaultZone : ZoneId.systemDefault();
         
         // Try best-fit parsing: OffsetDateTime, ZonedDateTime, LocalDateTime, LocalDate
         try {
@@ -330,6 +342,27 @@ public class Utility {
             return null;
         }
     }
+
+	/**
+	 * Parses an API validity timestamp into the UTC value used by legacy database columns.
+	 * 
+	 * @param dateTime the String to parse
+	 * @return the given date time in UTC
+	 */
+	public static LocalDateTime parseUtcDateTime(String dateTime) {
+		OffsetDateTime parsed = parseDateTimeString(dateTime, ZoneOffset.UTC);
+		return parsed == null ? null : parsed.withOffsetSameInstant(ZoneOffset.UTC).toLocalDateTime();
+	}
+
+	/**
+	 * Formats a legacy UTC database value as an offset-aware API timestamp.
+	 * 
+	 * @param dateTime the date time value from the database
+	 * @return the date time as a string that includes the timezone-offset
+	 */
+	public static String formatUtcDateTime(LocalDateTime dateTime) {
+		return dateTime == null ? null : dateTime.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+	}
 	
 	/**
 	 * A method to truncate strings when they're getting too long.

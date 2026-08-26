@@ -52,6 +52,7 @@ import org.trustdeck.utils.Utility.Pair;
 
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -1473,7 +1474,8 @@ public class PseudonymController {
             return responseService.notFound(responseContentType);
         }
 		
-		if (domain.getValidfrom().isAfter(LocalDateTime.now()) || domain.getValidto().isBefore(LocalDateTime.now())) {
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        if (domain.getValidfrom().isAfter(now) || domain.getValidto().isBefore(now)) {
 			log.debug("The domain's validity period has not yet started or has already ended, so that no pseudonyms can be retrieved from it.");
 			return responseService.gone(responseContentType);
 		}
