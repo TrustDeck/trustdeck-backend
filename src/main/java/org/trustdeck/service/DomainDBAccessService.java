@@ -947,7 +947,8 @@ public class DomainDBAccessService {
                     update.setOldDomain(oldDomain);
                     update.setNewIdentifierItem(oldIdItem);
                     update.setNewPsn(old.getPseudonym());
-                    update.setNewDomain(newDomain);
+                    // A domain update changes its configuration, not its database identity.
+                    update.setNewDomain(oldDomain);
                     update.setNewDomainName(newDomain.getName());
                     update.setValidFrom(old.getValidfrominherited() ? newDomain.getValidfrom() : oldDomain.getValidfrom());
                     update.setValidFromInherited(old.getValidfrominherited());
