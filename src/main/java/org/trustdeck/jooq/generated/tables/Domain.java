@@ -110,16 +110,6 @@ public class Domain extends TableImpl<DomainRecord> {
     public final TableField<DomainRecord, Boolean> ENFORCEENDDATEVALIDITYINHERITED = createField(DSL.name("enforceenddatevalidityinherited"), SQLDataType.BOOLEAN.nullable(false), this, "");
 
     /**
-     * The column <code>public.domain.algorithm_id</code>.
-     */
-    public final TableField<DomainRecord, Integer> ALGORITHM_ID = createField(DSL.name("algorithm_id"), SQLDataType.INTEGER.nullable(false), this, "");
-
-    /**
-     * The column <code>public.domain.algorithm_inherited</code>.
-     */
-    public final TableField<DomainRecord, Boolean> ALGORITHM_INHERITED = createField(DSL.name("algorithm_inherited"), SQLDataType.BOOLEAN.nullable(false), this, "");
-
-    /**
      * The column <code>public.domain.multiplepsnallowed</code>.
      */
     public final TableField<DomainRecord, Boolean> MULTIPLEPSNALLOWED = createField(DSL.name("multiplepsnallowed"), SQLDataType.BOOLEAN.nullable(false), this, "");
@@ -138,6 +128,16 @@ public class Domain extends TableImpl<DomainRecord> {
      * The column <code>public.domain.superdomainid</code>.
      */
     public final TableField<DomainRecord, Integer> SUPERDOMAINID = createField(DSL.name("superdomainid"), SQLDataType.INTEGER, this, "");
+
+    /**
+     * The column <code>public.domain.algorithm_id</code>.
+     */
+    public final TableField<DomainRecord, Integer> ALGORITHM_ID = createField(DSL.name("algorithm_id"), SQLDataType.INTEGER.nullable(false), this, "");
+
+    /**
+     * The column <code>public.domain.algorithm_inherited</code>.
+     */
+    public final TableField<DomainRecord, Boolean> ALGORITHM_INHERITED = createField(DSL.name("algorithm_inherited"), SQLDataType.BOOLEAN.nullable(false), this, "");
 
     /**
      * The column <code>public.domain.project_id</code>.
@@ -204,22 +204,12 @@ public class Domain extends TableImpl<DomainRecord> {
 
     @Override
     public List<ForeignKey<DomainRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.DOMAIN__DOMAIN_ALGORITHM_ID_FKEY, Keys.DOMAIN__DOMAIN_SUPERDOMAINID_FKEY, Keys.DOMAIN__DOMAIN_PROJECT_ID_FKEY);
+        return Arrays.asList(Keys.DOMAIN__DOMAIN_SUPERDOMAINID_FKEY, Keys.DOMAIN__DOMAIN_ALGORITHM_ID_FKEY, Keys.DOMAIN__DOMAIN_PROJECT_ID_FKEY);
     }
 
-    private transient Algorithm _algorithm;
     private transient Domain _domain;
+    private transient Algorithm _algorithm;
     private transient Project _project;
-
-    /**
-     * Get the implicit join path to the <code>public.algorithm</code> table.
-     */
-    public Algorithm algorithm() {
-        if (_algorithm == null)
-            _algorithm = new Algorithm(this, Keys.DOMAIN__DOMAIN_ALGORITHM_ID_FKEY);
-
-        return _algorithm;
-    }
 
     /**
      * Get the implicit join path to the <code>public.domain</code> table.
@@ -229,6 +219,16 @@ public class Domain extends TableImpl<DomainRecord> {
             _domain = new Domain(this, Keys.DOMAIN__DOMAIN_SUPERDOMAINID_FKEY);
 
         return _domain;
+    }
+
+    /**
+     * Get the implicit join path to the <code>public.algorithm</code> table.
+     */
+    public Algorithm algorithm() {
+        if (_algorithm == null)
+            _algorithm = new Algorithm(this, Keys.DOMAIN__DOMAIN_ALGORITHM_ID_FKEY);
+
+        return _algorithm;
     }
 
     /**
@@ -285,14 +285,14 @@ public class Domain extends TableImpl<DomainRecord> {
     // -------------------------------------------------------------------------
 
     @Override
-    public Row18<Integer, String, String, LocalDateTime, Boolean, LocalDateTime, Boolean, Boolean, Boolean, Boolean, Boolean, Integer, Boolean, Boolean, Boolean, String, Integer, Integer> fieldsRow() {
+    public Row18<Integer, String, String, LocalDateTime, Boolean, LocalDateTime, Boolean, Boolean, Boolean, Boolean, Boolean, Boolean, Boolean, String, Integer, Integer, Boolean, Integer> fieldsRow() {
         return (Row18) super.fieldsRow();
     }
 
     /**
      * Convenience mapping calling {@link SelectField#convertFrom(Function)}.
      */
-    public <U> SelectField<U> mapping(Function18<? super Integer, ? super String, ? super String, ? super LocalDateTime, ? super Boolean, ? super LocalDateTime, ? super Boolean, ? super Boolean, ? super Boolean, ? super Boolean, ? super Boolean, ? super Integer, ? super Boolean, ? super Boolean, ? super Boolean, ? super String, ? super Integer, ? super Integer, ? extends U> from) {
+    public <U> SelectField<U> mapping(Function18<? super Integer, ? super String, ? super String, ? super LocalDateTime, ? super Boolean, ? super LocalDateTime, ? super Boolean, ? super Boolean, ? super Boolean, ? super Boolean, ? super Boolean, ? super Boolean, ? super Boolean, ? super String, ? super Integer, ? super Integer, ? super Boolean, ? super Integer, ? extends U> from) {
         return convertFrom(Records.mapping(from));
     }
 
@@ -300,7 +300,7 @@ public class Domain extends TableImpl<DomainRecord> {
      * Convenience mapping calling {@link SelectField#convertFrom(Class,
      * Function)}.
      */
-    public <U> SelectField<U> mapping(Class<U> toType, Function18<? super Integer, ? super String, ? super String, ? super LocalDateTime, ? super Boolean, ? super LocalDateTime, ? super Boolean, ? super Boolean, ? super Boolean, ? super Boolean, ? super Boolean, ? super Integer, ? super Boolean, ? super Boolean, ? super Boolean, ? super String, ? super Integer, ? super Integer, ? extends U> from) {
+    public <U> SelectField<U> mapping(Class<U> toType, Function18<? super Integer, ? super String, ? super String, ? super LocalDateTime, ? super Boolean, ? super LocalDateTime, ? super Boolean, ? super Boolean, ? super Boolean, ? super Boolean, ? super Boolean, ? super Boolean, ? super Boolean, ? super String, ? super Integer, ? super Integer, ? super Boolean, ? super Integer, ? extends U> from) {
         return convertFrom(toType, Records.mapping(from));
     }
 }
