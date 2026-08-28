@@ -1075,14 +1075,15 @@ public class PermissionDBService {
      * Method to remove all entity type-specific permissions at once for a given entity type.
      * The user is identified through the request.
      * 
-     * @param entityTypeName the name of the entity type for which the permissions should be removed
+     * @param entityTypeId the persistent ID of the entity type for which permissions should be removed
+     * @param entityTypeName the entity type name, used only for logging
      * @return {@code true} when the deletion was successful, {@code false} otherwise
      */
 	@Transactional
-	public boolean removeEntityTypePermissionsForSubject(String entityTypeName, int projectID) {
+	public boolean removeEntityTypePermissionsForSubject(int entityTypeId, String entityTypeName) {
 		String subjectID = subjectIdFromRequest();
 		String type = "ENTITY_TYPE";
-		int resourceID = edba.getEntityTypeByName(entityTypeName, projectID).getId();
+		int resourceID = entityTypeId;
 		
 		// Get list of permissions from the database
 		List<PermissionDTO> activePermissions = getAllPermissionsForSubject(subjectID);

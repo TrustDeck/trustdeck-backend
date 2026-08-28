@@ -584,7 +584,7 @@ public class EntityTypeController {
 		
 		// Delete the entity type by setting the is_deprecated flag
 		if (entityTypeDBService.deleteEntityType(deleteDTO)) {
-			permissionDBService.removeEntityTypePermissionsForSubject(deleteDTO.getName(), deleteDTO.getProjectId());
+			permissionDBService.removeEntityTypePermissionsForSubject(deleteDTO.getId(), deleteDTO.getName());
 			log.info("Successfully deleted the entity type.");
 			return responseService.noContent(responseContentType);
 		} else {
