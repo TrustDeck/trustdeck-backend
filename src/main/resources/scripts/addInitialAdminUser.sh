@@ -486,7 +486,7 @@ parse_actions() {
   awk -v target_group="$group" '
     BEGIN {
       in_app=0
-      in_roles=0
+      in_permissions=0
       current_group=""
     }
 
@@ -495,12 +495,12 @@ parse_actions() {
       next
     }
 
-    in_app && /^[[:space:]]{2}roles:[[:space:]]*$/ {
-      in_roles=1
+    in_app && /^  permissions:[[:space:]]*$/ {
+      in_permissions=1
       next
     }
 
-    in_roles && /^[[:space:]]{4}[A-Za-z0-9_-]+:[[:space:]]*$/ {
+    in_permissions && /^    [A-Za-z0-9_-]+:[[:space:]]*$/ {
       line=$0
       sub(/^[[:space:]]+/, "", line)
       sub(/:.*/, "", line)
@@ -508,11 +508,11 @@ parse_actions() {
       next
     }
 
-    in_roles &&
+    in_permissions &&
     current_group == target_group &&
-    /^[[:space:]]{6}-[[:space:]]*/ {
+    /^      -[[:space:]]*/ {
       line=$0
-      sub(/^[[:space:]]{6}-[[:space:]]*/, "", line)
+      sub(/^      -[[:space:]]*/, "", line)
       gsub(/[[:space:]]+$/, "", line)
 
       if (length(line) > 0) {
@@ -522,8 +522,8 @@ parse_actions() {
       next
     }
 
-    in_roles && /^[^[:space:]]/ {
-      in_roles=0
+    in_permissions && /^[^[:space:]]/ {
+      in_permissions=0
       in_app=0
     }
   ' "$APPLICATION_YML"
@@ -935,7 +935,6 @@ WITH actions(action) AS (
 entity_types(id) AS (
     SELECT id
     FROM entity_type
-    WHERE project_id IS NOT NULL
 )
 INSERT INTO permission_grant
 (
