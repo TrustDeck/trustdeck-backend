@@ -25,6 +25,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Component;
 import org.trustdeck.dto.ProjectDTO;
+import org.trustdeck.dto.EntityTypeDTO;
 import org.trustdeck.jooq.generated.tables.pojos.Domain;
 import org.trustdeck.utils.Assertion;
 
@@ -40,6 +41,9 @@ public class AuthorizationService {
     /** Enables access to project database methods. */
     @Autowired
     private ProjectDBService projectDBService;
+
+    @Autowired
+    private EntityTypeDBService entityTypeDBService;
     
     /** Enables access to domain database methods. */
     @Autowired
@@ -183,6 +187,15 @@ public class AuthorizationService {
         }
         
         return permissionDBService.isActionAllowed(jwt.getSubject(), "PROJECT", id, action);
+    }
+
+    public boolean hasEntityTypePermission(MethodSecurityExpressionOperations root, String projectAbbreviation, String entityTypeName, String action) {
+        if (!Assertion.isNotNullOrEmpty(projectAbbreviation, entityTypeName, action) || root.getAuthentication() == null || !(root.getAuthentication().getPrincipal() instanceof Jwt jwt)) {
+            return false;
+        }
+        ProjectDTO project = projectDBService.getProjectByAbbreviation(projectAbbreviation);
+        EntityTypeDTO type = project == null ? null : entityTypeDBService.getEntityTypeByName(entityTypeName, project.getId());
+        return type != null && permissionDBService.isActionAllowed(jwt.getSubject(), "ENTITY_TYPE", type.getId(), action);
     }
 
     /**

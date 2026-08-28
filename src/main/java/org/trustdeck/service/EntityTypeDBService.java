@@ -185,16 +185,13 @@ public class EntityTypeDBService {
     }
 
 	/**
-     * Method to retrieve an entity type from the database by explicitly providing the two variables
-     * name and projectID. Tuples of these are unique in the database.
-     * Base types will have no projectID, so it can be null.
+     * Method to retrieve an entity type from the database.
      * 
-     * @param entityTypeId the entity type's ID
-     * @param projectID the project to which the entity type is assigned to
+     * @param entityTypeId the entity type's (internal) ID
      * @return the retrieved entity type when successfully found, or {@code null} when nothing was found.
      */
     @Transactional
-    public EntityTypeDTO getEntityTypeById(int entityTypeId, Integer projectID) {
+    public EntityTypeDTO getEntityTypeByID(int entityTypeId) {
     	// Check if all the necessary arguments are available
     	if (entityTypeId <= 0) {
     		log.debug("For retrieving the entity type, there is an argument missing or empty.");
@@ -204,20 +201,9 @@ public class EntityTypeDBService {
     	// Build and execute the query
     	List<EntityType> entityTypes = null;
     	try {
-    		Condition cond = DSL.trueCondition()
-			        .and(ENTITY_TYPE.ID.equal(entityTypeId))
-			        .and(ENTITY_TYPE.IS_DEPRECATED.eq(false));
-
-			// Add the projectID as a condition, if available
-			if (projectID != null) {
-				cond = cond.and(ENTITY_TYPE.PROJECT_ID.eq(projectID));
-			} else {
-				// If the projectID is null, assume we are searching for a base type (which has no associated project)
-				cond = cond.and(ENTITY_TYPE.IS_BASE_TYPE.eq(true));
-			}
-
-			entityTypes = dsl.selectFrom(ENTITY_TYPE)
-					.where(cond)
+    		entityTypes = dsl.selectFrom(ENTITY_TYPE)
+					.where(ENTITY_TYPE.ID.equal(entityTypeId))
+					.and(ENTITY_TYPE.IS_DEPRECATED.eq(false))
 					.fetchInto(EntityType.class);
         } catch (MappingException e) {
         	log.debug("Could not map the entity type search result into the EntityType-POJO.", e);
@@ -259,7 +245,7 @@ public class EntityTypeDBService {
     	}
     	
     	if (entityTypeDTO.getId() != null) {
-    		return getEntityTypeById(entityTypeDTO.getId(), entityTypeDTO.getProjectId());
+    		return getEntityTypeByID(entityTypeDTO.getId());
     	} else if (entityTypeDTO.getName() != null) {
     		return getEntityTypeByName(entityTypeDTO.getName(), entityTypeDTO.getProjectId());
     	} else {

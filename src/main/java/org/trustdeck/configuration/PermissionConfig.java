@@ -26,101 +26,119 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Configuration class that holds the operational roles for the application.
+ * Configuration class that holds the operational permissions for the application.
  *
  * This class is used to map configuration properties defined under the `app` prefix in the application’s
- * configuration file (e.g., `application.yml` or `application.properties`). It contains a list of role names
+ * configuration file (e.g., `application.yml` or `application.properties`). It contains a list of permission names
  * that define the operations required by the application.
  *
  * For example, a configuration in `application.yml` might look like:
  * <pre>
  * app:
- *   roles:
- *     ACE:
- *       - domain:read
- *       - domain:update
- *       ...
- *     KING:
+ *   permissions:
+ *     project:
  *       - project:read
  *       - project:delete
  *       ...
+ *     domain:
+ *       - domain:read
+ *       - domain:update
+ *       ...
+ *     entity-type:
+ *       - entity:create
+         - entity:read
+         ...
  *     global:
  *       - domain:create
  *       - project:create
+ *       ...
  * </pre>
  *
- * @author Armin Müller and Eric Wündisch
+ * @author Armin Müller
  */
 @Data
 @Configuration
 @ConfigurationProperties(prefix = "app")
-public class RoleConfig {
+public class PermissionConfig {
 
     /**
-     * List of actions defined for the application under `app.roles` in the yml-file.
-     * It represents the names of various rights and roles (e.g., create, read, update, delete) that the application
-     * will use to define roles and permissions.
+     * List of actions defined for the application under `app.permissions` in the yml-file.
+     * It represents the names of various rights and permissions (e.g., create, read, update, delete) 
+     * that the application will use to define permissions.
      */
-    private Map<String, List<String>> roles;
+    private Map<String, List<String>> permissions;
     
-    /** The key to extract the administrative roles from the yml. */
-    public static final String GLOBAL_ROLES_GROUP_KEY = "global";
+    /** The key to extract the project-specific permissions from the yml. */
+    public static final String PROJECT_PERMISSIONS_GROUP_KEY = "project";
     
-    /** The key to extract the ACE-specific roles from the yml. */
-    public static final String ACE_ROLES_GROUP_KEY = "ACE";
+    /** The key to extract the domain-specific permissions from the yml. */
+    public static final String DOMAIN_PERMISSIONS_GROUP_KEY = "domain";
+
+    /** The key to extract the entity-type-specific permissions from the yml. */
+    public static final String ENTITY_TYPE_PERMISSIONS_GROUP_KEY = "entity-type";
     
-    /** The key to extract the KING-specific roles from the yml. */
-    public static final String KING_ROLES_GROUP_KEY = "KING";
+    /** The key to extract the administrative permissions from the yml. */
+    public static final String GLOBAL_PERMISSIONS_GROUP_KEY = "global";
     
     /**
-     * Retrieves the roles for a group defined by it's name (e.g. "ACE").
+     * Retrieves the permissions for a configured resource scope (e.g. "domain").
      * 
-     * @param groupName the name that indicates the sublist of roles
-     * @return a list of roles found
+     * @param groupName the name that indicates the sublist of permissions
+     * @return a list of permissions found
      */
-    public List<String> getRoleSublist(String groupName) {
-    	List<String> roleSublist = roles.get(groupName);
-        return roleSublist == null ? null : roleSublist;
+    public List<String> getPermissionSublist(String groupName) {
+    	List<String> permissionSublist = permissions.get(groupName);
+        return permissionSublist == null ? null : permissionSublist;
     }
     
     /**
-     * Retrieves the roles for ACE.
+     * Retrieves the project-specific permissions.
      * 
-     * @return a list of roles found
+     * @return a list of permissions found
      */
-    public List<String> getACERoles() {
-        return getRoleSublist(ACE_ROLES_GROUP_KEY);
+    public List<String> getProjectPermissions() {
+        return getPermissionSublist(PROJECT_PERMISSIONS_GROUP_KEY);
     }
     
     /**
-     * Retrieves the roles for KING.
+     * Retrieves the domain-specific permissions.
      * 
-     * @return a list of roles found
+     * @return a list of permissions found
      */
-    public List<String> getKINGRoles() {
-        return getRoleSublist(KING_ROLES_GROUP_KEY);
+    public List<String> getDomainPermissions() {
+        return getPermissionSublist(DOMAIN_PERMISSIONS_GROUP_KEY);
+    }
+
+    /**
+     * Retrieves the entity-type-specific permissions.
+     * 
+     * @return a list of permissions found
+     */
+    public List<String> getEntityTypePermissions() {
+        return getPermissionSublist(ENTITY_TYPE_PERMISSIONS_GROUP_KEY);
     }
     
     /**
-     * Retrieves the roles that are neither ACE- nor KING-specific but global.
+     * Retrieves the global permissions.
      * 
-     * @return a list of roles found
+     * @return a list of permissions found
      */
-    public List<String> getGlobalRoles() {
-        return getRoleSublist(GLOBAL_ROLES_GROUP_KEY);
+    public List<String> getGlobalPermissions() {
+        return getPermissionSublist(GLOBAL_PERMISSIONS_GROUP_KEY);
     }
     
     /**
-     * Returns a list of all defined roles including all global roles.
+     * Returns a list of all defined permissions including all global permissions.
      * 
-     * @return a list of all roles defined in the application.yml
+     * @return a list of all permissions defined in the application.yml
      */
-    public List<String> getAllRoles() {
-    	List<String> allRoles = new ArrayList<>();
-    	allRoles.addAll(getACERoles());
-    	allRoles.addAll(getKINGRoles());
-    	allRoles.addAll(getGlobalRoles());
+    public List<String> getAllPermissions() {
+    	List<String> allPermissions = new ArrayList<>();
+		allPermissions.addAll(getProjectPermissions());
+		allPermissions.addAll(getDomainPermissions());
+		allPermissions.addAll(getEntityTypePermissions());
+    	allPermissions.addAll(getGlobalPermissions());
     	
-    	return allRoles;
+    	return allPermissions;
     }
 }

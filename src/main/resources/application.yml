@@ -114,9 +114,22 @@ app:
   linkage:
     pprl:
       secret: ${TRUSTDECK_PPRL_SECRET}
-  roles:
-    # Name of all possible rights -- used for rights and roles management
-    ACE:
+  permissions:
+    # Name of all possible permissions -- used for rights and roles management
+    project:
+      - project:read
+      - project:update
+      - project:delete
+      - project:manage-permissions
+      - image:create
+      - image:read
+      - image:update
+      - image:delete
+      - type:read
+      - type:update
+      - type:delete
+      - type:search
+    domain:
       - domain:delete
       - domain:read
       - domain:read-salt
@@ -137,20 +150,7 @@ app:
       - pseudonym:link
       - pseudonym:search
       - complete-view
-    KING:
-      - project:read
-      - project:update
-      - project:delete
-      - project:manage-permissions
-      - image:create
-      - image:read
-      - image:update
-      - image:delete
-      - type:create
-      - type:read
-      - type:update
-      - type:delete
-      - type:search
+    entity-type:
       - entity:create
       - entity:read
       - entity:update
@@ -159,6 +159,7 @@ app:
       - entity:record-linkage
       - entity:resolve-linkage
       - entity:list-pseudonyms
+      - entity-type:manage-permissions
     global:
       - domain:create
       - domain:create-complete
@@ -166,6 +167,7 @@ app:
       - domain:search
       - project:create
       - project:list-all
+      - type:create
       - base-type:create
       - base-type:read
       - base-type:search

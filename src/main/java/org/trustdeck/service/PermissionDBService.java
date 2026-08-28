@@ -32,9 +32,10 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.interceptor.TransactionAspectSupport;
-import org.trustdeck.configuration.RoleConfig;
+import org.trustdeck.configuration.PermissionConfig;
 import org.trustdeck.configuration.DefaultProperties;
 import org.trustdeck.dto.EffectivePermissionDTO;
+import org.trustdeck.dto.EntityTypeDTO;
 import org.trustdeck.dto.PermissionDTO;
 import org.trustdeck.dto.PermissionUpdateDTO;
 import org.trustdeck.dto.ProjectDTO;
@@ -65,6 +66,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.trustdeck.jooq.generated.Tables.PERMISSION_GRANT;
+import static org.trustdeck.jooq.generated.Tables.ENTITY_TYPE;
+import static org.trustdeck.jooq.generated.Tables.PROJECT;
 
 /**
  * This class encapsulates the database access for permissions.
@@ -86,10 +89,14 @@ public class PermissionDBService {
     /** Enables the access to the project specific database access methods. */
     @Autowired
     private ProjectDBService pdba;
+    
+    /** Enables the access to the entity-type specific database access methods. */
+    @Autowired
+    private EntityTypeDBService edba;
 
 	/** Configuration for roles and operations. This is used to validate the operations and permissions. */
 	@Autowired
-	private RoleConfig roleConfig;
+	private PermissionConfig permissionConfig;
 	
 	/** Service that provides the methods for the interaction with Keycloak. */
 	@Autowired
@@ -170,6 +177,10 @@ public class PermissionDBService {
 							} else if ("PROJECT".equalsIgnoreCase(r.getResourceType())) {
 								ProjectDTO proj = pdba.getProjectByID(r.getResourceId());
 								p.setProjectAbbreviation(proj == null ? null : proj.getAbbreviation());
+							} else if ("ENTITY_TYPE".equalsIgnoreCase(r.getResourceType())) {
+								EntityTypeDTO type = edba.getEntityTypeByID(r.getResourceId());
+								p.setEntityTypeName(type == null ? null : type.getName());
+								p.setProjectAbbreviation(getEntityTypeProjectAbbreviation(r.getResourceId()));
 							}
 
 							return p;
@@ -421,6 +432,10 @@ public class PermissionDBService {
 		} else if (resourceType.equalsIgnoreCase("Project")) {
 			ProjectDTO proj = pdba.getProjectByID(p.getResourceId());
 			p.setProjectAbbreviation(proj == null ? null : proj.getAbbreviation());
+		} else if (resourceType.equalsIgnoreCase("Entity_Type")) {
+			EntityTypeDTO type = edba.getEntityTypeByID(p.getResourceId());
+			p.setEntityTypeName(type == null ? null : type.getName());
+			p.setProjectAbbreviation(getEntityTypeProjectAbbreviation(p.getResourceId()));
 		}
 		
 		return p;
@@ -481,9 +496,20 @@ public class PermissionDBService {
      * @return a list of permissions the user has for the given project
      */
     @Transactional
-    public List<PermissionDTO> getPermissionsForProject(Integer projectId, String subjectId) {
-    	return getPermissionsForResource("PROJECT", projectId, subjectId);
-    }
+	public List<PermissionDTO> getPermissionsForProject(Integer projectId, String subjectId) {
+		return getPermissionsForResource("PROJECT", projectId, subjectId);
+	}
+
+    /**
+     * Method to retrieve all permissions of a given user for a given entity type.
+     * 
+     * @param entityTypeId the entity type's internal database ID
+     * @param subjectId the subject's/user's (Keycloak) ID
+     * @return a list of permissions the user has for the given entity type
+     */
+	public List<PermissionDTO> getPermissionsForEntityType(Integer entityTypeId, String subjectId) {
+		return getPermissionsForResource("ENTITY_TYPE", entityTypeId, subjectId);
+	}
 	
 	/**
 	 * Method to retrieve the currently active permissions for a given subject
@@ -513,10 +539,11 @@ public class PermissionDBService {
 	        		       .and(PERMISSION_GRANT.VALID_FROM.isNull().or(PERMISSION_GRANT.VALID_FROM.le(now)))
 	        		       .and(PERMISSION_GRANT.VALID_TO.isNull().or(PERMISSION_GRANT.VALID_TO.gt(now)))
 	        		       .orderBy(PERMISSION_GRANT.RESOURCE_TYPE.asc(), PERMISSION_GRANT.RESOURCE_ID.asc(), PERMISSION_GRANT.ACTION.asc())
-	        		       .fetch(r -> EffectivePermissionDTO.builder()
-	        		            .resourceType(r.get(PERMISSION_GRANT.RESOURCE_TYPE))
-	        		            .resourceName(getResourceNameOrAbbreviationForID(r.get(PERMISSION_GRANT.RESOURCE_TYPE), r.get(PERMISSION_GRANT.RESOURCE_ID)))
-	        		            .action(r.get(PERMISSION_GRANT.ACTION))
+                        .fetch(r -> EffectivePermissionDTO.builder()
+                                .resourceType(r.get(PERMISSION_GRANT.RESOURCE_TYPE))
+                                .resourceName(getResourceNameOrAbbreviationForID(r.get(PERMISSION_GRANT.RESOURCE_TYPE), r.get(PERMISSION_GRANT.RESOURCE_ID)))
+                                .projectAbbreviation(!"ENTITY_TYPE".equalsIgnoreCase(r.get(PERMISSION_GRANT.RESOURCE_TYPE)) ? null : getEntityTypeProjectAbbreviation(r.get(PERMISSION_GRANT.RESOURCE_ID)))
+                                .action(r.get(PERMISSION_GRANT.ACTION))
 	        		            .build()
 	        		       );
 			} catch (DataAccessException e) {
@@ -864,7 +891,7 @@ public class PermissionDBService {
 	@Transactional
 	public boolean addDomainPermissionsForSubject(int domainId) {
 		// Get list of domain-related rights
-		List<String> domainRights = roleConfig.getACERoles();
+		List<String> domainRights = permissionConfig.getDomainPermissions();
 		if (domainRights == null || domainRights.isEmpty()) {
 			log.trace("No permissions to add --> done.");
 			return true;
@@ -910,7 +937,7 @@ public class PermissionDBService {
 	@Transactional
 	public boolean addProjectPermissionsForSubject(String projectAbbreviation) {
 		// Get list of project-related rights
-		List<String> projectRights = roleConfig.getKINGRoles();
+		List<String> projectRights = permissionConfig.getProjectPermissions();
 		if (projectRights == null || projectRights.isEmpty()) {
 			log.trace("No permissions to add --> done.");
 			return true;
@@ -947,6 +974,52 @@ public class PermissionDBService {
 		return true;
 	}
 	
+	/**
+     * Method to add all entity-type-specific permissions at once for a given entity type.
+     * The user is identified through the request.
+     * 
+     * @param entityTypeId the (internal) ID of the entity type for which these permissions should be created
+     * @return {@code true} when the insertion was successful, {@code false} otherwise
+     */
+	@Transactional
+	public boolean addEntityTypePermissionsForSubject(int entityTypeId) {
+		// Get list of entity type-related rights
+		List<String> entityTypeRights = permissionConfig.getEntityTypePermissions();
+		if (entityTypeRights == null || entityTypeRights.isEmpty()) {
+			log.trace("No permissions to add --> done.");
+			return true;
+		}
+		
+		String subjectID = subjectIdFromRequest();
+		String resourceType = "ENTITY_TYPE";
+		
+		// Prepare a list of all permissions
+		List<PermissionDTO> permissions = new ArrayList<PermissionDTO>();
+		for (String action : entityTypeRights) {
+			permissions.add(PermissionDTO.builder()
+					.subjectId(subjectID)
+					.resourceType(resourceType)
+					.resourceId(entityTypeId)
+					.action(action)
+					.build());
+		}
+		
+		// Add the permissions
+		log.trace("Adding " + permissions.size() + " permissions for the entity type with id: " + entityTypeId);
+		List<Pair<PermissionDTO, String>> results = createPermissions(permissions);
+		
+		if (results == null || results.isEmpty()) {
+			log.error("Could not create any permissions for entity type with id \"" + entityTypeId + "\", so the process was aborted.");
+			return false;
+		} else if (results.contains(new Pair<PermissionDTO, String>(null, INSERTION_ERROR))) {
+			log.warn("Could not add all permissions for entity type with id \"" + entityTypeId + "\". The permissions might be incomplete.");
+			return true;
+		}
+		
+		log.debug("Successfully created the permissions for entity type with id: " + entityTypeId);
+		return true;
+	}
+
 	/**
      * Method to remove all domain-specific permissions at once for a given domain.
      * The user is identified through the request.
@@ -995,6 +1068,57 @@ public class PermissionDBService {
 		cachingService.invalidateContext(subjectID, type, resourceID);
 		
 		log.debug("Successfully removed all permissions for domain \"" + domainName + "\".");
+		return true;
+	}
+	
+	/**
+     * Method to remove all entity type-specific permissions at once for a given entity type.
+     * The user is identified through the request.
+     * 
+     * @param entityTypeName the name of the entity type for which the permissions should be removed
+     * @return {@code true} when the deletion was successful, {@code false} otherwise
+     */
+	@Transactional
+	public boolean removeEntityTypePermissionsForSubject(String entityTypeName, int projectID) {
+		String subjectID = subjectIdFromRequest();
+		String type = "ENTITY_TYPE";
+		int resourceID = edba.getEntityTypeByName(entityTypeName, projectID).getId();
+		
+		// Get list of permissions from the database
+		List<PermissionDTO> activePermissions = getAllPermissionsForSubject(subjectID);
+
+		// Check if the list is empty
+		if (activePermissions == null || activePermissions.isEmpty()) {
+			log.trace("No permissions to remove --> done.");
+			return true;
+		}
+		
+		// Remove all permissions in this list that are not related to the given entity type
+		activePermissions = activePermissions.stream().filter(p -> p.getResourceType().equalsIgnoreCase(type) && p.getResourceId() == resourceID).toList();
+		
+		// Check again if the list is empty
+		if (activePermissions == null || activePermissions.isEmpty()) {
+			log.trace("No permissions to remove --> done.");
+			return true;
+		}
+		
+		// Remove the permissions
+		log.trace("Removing " + activePermissions.size() + " permissions for the entity type \"" + entityTypeName + "\".");
+		List<Boolean> results = deletePermissions(activePermissions);
+		
+		if (results == null || results.isEmpty()) {
+			log.error("Could not remove any permissions for entity type \"" + entityTypeName + "\", so the process was aborted.");
+			return false;
+		} else if (results.contains(false)) {
+			log.warn("Could not remove all permissions for entity type \"" + entityTypeName + "\". There might be orphaned permissions.");
+			return true;
+		}
+
+		// Invalidate cache entries
+		cachingService.invalidateSubject(subjectID);
+		cachingService.invalidateContext(subjectID, type, resourceID);
+		
+		log.debug("Successfully removed all permissions for entity type \"" + entityTypeName + "\".");
 		return true;
 	}
 	
@@ -1085,6 +1209,28 @@ public class PermissionDBService {
 			TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
 			
 			log.error("Couldn't remove all domain-specific permissions from the database and aborted: " + e.getMessage(), e);
+			return false;
+		}
+		
+		// Invalidate cache
+		cachingService.clearAllPermissionCaches();
+
+		return true; 
+	}
+
+	/**
+     * Method to remove all entity type-specific permissions from the database.
+     * 
+     * @return {@code true} when the deletion was successful, {@code false} otherwise
+     */
+	@Transactional
+	public boolean removeEntityTypePermissions() {
+		try {
+			dsl.deleteFrom(PERMISSION_GRANT).where(PERMISSION_GRANT.RESOURCE_TYPE.eq("ENTITY_TYPE")).execute();
+		} catch (DataAccessException e) {
+			TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+			
+			log.error("Couldn't remove all entity type-specific permissions from the database and aborted: " + e.getMessage(), e);
 			return false;
 		}
 		
@@ -1214,6 +1360,8 @@ public class PermissionDBService {
 			action = "domain:manage-permissions";
 		} else if (resourceType.equalsIgnoreCase("PROJECT")) {
 			action = "project:manage-permissions";
+		} else if (resourceType.equalsIgnoreCase("ENTITY_TYPE")) {
+			action = "entity-type:manage-permissions";
 		} else if (resourceType.equalsIgnoreCase("GLOBAL")) {
 			action = "global:manage-permissions";
 		} else {
@@ -1242,21 +1390,24 @@ public class PermissionDBService {
 		}
 		
 		// The action must match the given resource type
-		if (resourceType.equalsIgnoreCase("DOMAIN") && !roleConfig.getACERoles().contains(action)) {
+		if (resourceType.equalsIgnoreCase("DOMAIN") && !permissionConfig.getDomainPermissions().contains(action)) {
 			log.trace("Bounded delegation not allowed, as the given action (" + action + ") is not domain-scoped, as the resourceType suggested.");
 			return false;
-		} else if (resourceType.equalsIgnoreCase("PROJECT") && !roleConfig.getKINGRoles().contains(action)) {
+		} else if (resourceType.equalsIgnoreCase("PROJECT") && !permissionConfig.getProjectPermissions().contains(action)) {
 			log.trace("Bounded delegation not allowed, as the given action (" + action + ") is not project-scoped, as the resourceType suggested.");
 			return false;
-		} else if (resourceType.equalsIgnoreCase("GLOBAL") && !roleConfig.getGlobalRoles().contains(action)) {
+		} else if (resourceType.equalsIgnoreCase("ENTITY_TYPE") && !permissionConfig.getEntityTypePermissions().contains(action)) {
+			log.trace("Bounded delegation not allowed, as the given action (" + action + ") is not entity type-scoped, as the resourceType suggested.");
+			return false;
+		} else if (resourceType.equalsIgnoreCase("GLOBAL") && !permissionConfig.getGlobalPermissions().contains(action)) {
 			log.trace("Bounded delegation not allowed, as the given action (" + action + ") is not global-scoped, as the resourceType suggested.");
 			return false;
 		}
 		
 		// The assigning subject must be allowed to manage permissions on this resource
 		if (!isPermissionManagementAllowed(subjectId, resourceType, resourceId)) {
-			log.trace("The assigning subject is not allowed to grant actions for this resourceType (" + resourceType + 
-					") and resource (ID = " + resourceId + ").");
+			log.trace("The assigning subject is not allowed to grant actions for this resourceType (" 
+					+ resourceType + ") and resource (ID = " + resourceId + ").");
 			return false;
 		}
 		
@@ -1418,7 +1569,8 @@ public class PermissionDBService {
 		if (request != null) {
 			// Check if the information needed is in the token
 			Principal principal = request.getUserPrincipal();
-	        if (principal instanceof JwtAuthenticationToken token
+	        
+			if (principal instanceof JwtAuthenticationToken token
 	                && token.getToken() != null
 	                && token.getToken().getSubject() != null
 	                && !token.getToken().getSubject().isBlank()) {
@@ -1455,7 +1607,7 @@ public class PermissionDBService {
 	 * @param id the resource's (internal) ID
 	 * @return the name (for domains) or the abbreviation (for projects) of the resource
 	 */
-	public String getResourceNameOrAbbreviationForID(String resourceType, int id) {
+	private String getResourceNameOrAbbreviationForID(String resourceType, int id) {
 		if (resourceType == null || id < 0) {
 			log.trace("Invalid parameters for ID to resource name/abbreviation mapping.");
 			return null;
@@ -1467,37 +1619,33 @@ public class PermissionDBService {
 		} else if (resourceType.equalsIgnoreCase("PROJECT")) {
 			ProjectDTO p = pdba.getProjectByID(id);
 			return p == null ? null : p.getAbbreviation();
+		} else if (resourceType.equalsIgnoreCase("ENTITY_TYPE")) {
+			EntityTypeDTO e = edba.getEntityTypeByID(id);
+			return e == null ? null : e.getName();
 		} else if (resourceType.equalsIgnoreCase("GLOBAL")) {
 			return null;
 		} else {
 			return null;
 		}
 	}
-	
+
 	/**
-	 * Helper method that returns the resource's (internal) ID given 
-	 * the name of a domain or the abbreviation of a project.
+	 * Retrieves the project's abbreviation given an entity type ID.
 	 * 
-	 * @param resourceType the resource's type, e.g. "DOMAIN" or "PROJECT"
-	 * @param nameOrAbbreviation the resource's name (for domains) or abbreviation (for projects)
-	 * @return the (internal) ID of the resource, '0' for resourceType=GLOBAL, null on failure
+	 * @param entityTypeId the internal database ID of the entity type
+	 * @return the entity type's surrounding project's abbreviation, or {@code null} if unsuccessful
 	 */
-	public Integer getResourceIDForNameOrAbbreviation(String resourceType, String nameOrAbbreviation) {
-		if (Assertion.isNullOrEmpty(resourceType, nameOrAbbreviation)) {
-			log.trace("Invalid parameters for resource name/abbreviation to ID mapping.");
+	@Transactional(readOnly = true)
+	private String getEntityTypeProjectAbbreviation(Integer entityTypeId) {
+		if (entityTypeId == null) {
 			return null;
 		}
 		
-		if (resourceType.equalsIgnoreCase("DOMAIN")) {
-			Domain d = ddba.getDomainByName(nameOrAbbreviation);
-			return d == null ? null : d.getId();
-		} else if (resourceType.equalsIgnoreCase("PROJECT")) {
-			ProjectDTO p = pdba.getProjectByAbbreviation(nameOrAbbreviation);
-			return p == null ? null : p.getId();
-		} else if (resourceType.equalsIgnoreCase("GLOBAL")) {
-			return 0;
-		} else {
-			return null;
-		}
+		return dsl.select(PROJECT.ABBREVIATION)
+	            .from(ENTITY_TYPE)
+	            .join(PROJECT)
+	                .on(PROJECT.ID.eq(ENTITY_TYPE.PROJECT_ID))
+	            .where(ENTITY_TYPE.ID.eq(entityTypeId))
+	            .fetchOne(PROJECT.ABBREVIATION);
 	}
 }

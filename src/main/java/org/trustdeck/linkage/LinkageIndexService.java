@@ -83,7 +83,7 @@ public class LinkageIndexService {
     @Transactional
     public boolean rebuildIndex(EntityDTO entity) {
     	// Retrieve the entity type corresponding to the given entity
-    	EntityTypeDTO entityType = entityTypeService.getEntityTypeById(entity.getEntityTypeID(), entity.getProjectID());
+    	EntityTypeDTO entityType = entityTypeService.getEntityTypeByID(entity.getEntityTypeID());
         
     	// Check if we found anything
         if (entityType == null) {

@@ -48,6 +48,9 @@ public class EffectivePermissionDTO {
     /** The name of the resource. */
     private String resourceName;
 
+    /** The owning project for project-scoped entity type resources. */
+    private String projectAbbreviation;
+
     /** The action that is effectively allowed on the resource, e.g. "domain:read". */
     private String action;
 
@@ -89,6 +92,7 @@ public class EffectivePermissionDTO {
 
 		out += (this.getResourceType() != null) ? "resourceType: " + this.getResourceType() + ", " : "";
 		out += (this.getResourceName() != null) ? "resourceName: " + this.getResourceName() + ", " : "";
+		out += (this.getProjectAbbreviation() != null) ? "projectAbbreviation: " + this.getProjectAbbreviation() + ", " : "";
 		out += (this.getAction() != null) ? "action: " + this.getAction() + ", " : "";
 		out += (this.getValidFrom() != null) ? "validFrom: " + this.getValidFrom().toString() + ", " : "";
 		out += (this.getValidTo() != null) ? "validTo: " + this.getValidTo().toString() + ", " : "";

@@ -64,6 +64,9 @@ public class PermissionDTO implements IObjectDTO<IPermissionGrant, PermissionDTO
 	
 	/** The project this permission applies to. Either this or the domainName should be used. */
 	private String projectAbbreviation;
+
+	/** The entity type this permission applies to. */
+	private String entityTypeName;
 	
 	/** The action that this permission represents on the resource, e.g. domain:read, pseudonym:create. */
 	private String action;
@@ -152,6 +155,7 @@ public class PermissionDTO implements IObjectDTO<IPermissionGrant, PermissionDTO
 	    out += (this.getResourceId() != null) ? "resourceId: " + this.getResourceId() + ", " : "";
 	    out += (this.getDomainName() != null) ? "domainName: " + this.getDomainName() + ", " : "";
 	    out += (this.getProjectAbbreviation() != null) ? "projectAbbreviation: " + this.getProjectAbbreviation() + ", " : "";
+	    out += (this.getEntityTypeName() != null) ? "entityTypeName: " + this.getEntityTypeName() + ", " : "";
 	    out += (this.getAction() != null) ? "action: " + this.getAction() + ", " : "";
 	    out += (this.getDecision() != null) ? "decision: " + this.getDecision() + ", " : "";
 	    out += (this.getValidFrom() != null) ? "validFrom: " + this.getValidFrom().toString() + ", " : "";
@@ -173,6 +177,7 @@ public class PermissionDTO implements IObjectDTO<IPermissionGrant, PermissionDTO
 		// or (XOR) is a global permission with neither domain name nor project abbreviation
 		return (this.getResourceType().equalsIgnoreCase("Domain") && Assertion.isNotNullOrEmpty(this.getDomainName()))
 			 ^ (this.getResourceType().equalsIgnoreCase("Project") && Assertion.isNotNullOrEmpty(this.getProjectAbbreviation()))
+			 ^ (this.getResourceType().equalsIgnoreCase("Entity_Type") && Assertion.isNotNullOrEmpty(this.getEntityTypeName()))
 			 ^ (this.getResourceType().equalsIgnoreCase("Global") && Assertion.isNullOrEmpty(this.getDomainName(), this.getProjectAbbreviation()));
 	}
 }
