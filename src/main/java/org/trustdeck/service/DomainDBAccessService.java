@@ -30,6 +30,7 @@ import org.jooq.SelectQuery;
 import org.jooq.exception.DataAccessException;
 import org.jooq.exception.MappingException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -80,10 +81,12 @@ public class DomainDBAccessService {
 
     /** Enables the access to the domain specific database access methods. */
     @Autowired
+    @Lazy
     private PseudonymDBAccessService pseudonymDBAccessService;
     
     /** Enables access to the permission grants database methods. */
     @Autowired
+    @Lazy
     private PermissionDBService permissionDBService;
 
     /** Represents the duplication status of a requested insertion of a domain into the database. */

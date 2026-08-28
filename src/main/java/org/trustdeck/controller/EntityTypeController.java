@@ -45,6 +45,7 @@ import org.trustdeck.service.EntityTypeDBService;
 import org.trustdeck.service.JsonSchemaService;
 import org.trustdeck.service.ProjectDBService;
 import org.trustdeck.service.ResponseService;
+import org.trustdeck.service.PermissionDBService;
 import org.trustdeck.utils.Assertion;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -80,6 +81,10 @@ public class EntityTypeController {
 	/** Enables access to the JSON schema validation functionalities. */
 	@Autowired
 	private JsonSchemaService jsonSchemaService;
+
+	/** Enables access to the permission grants database methods. */
+	@Autowired
+	private PermissionDBService permissionDBService;
 
     /** Pattern/Regex of allowed characters for the name attribute of entity types. */
     private static final Pattern VALID_NAME_CHAR_PATTERN = Pattern.compile("^[a-zA-Z0-9_-]+$");
@@ -196,7 +201,7 @@ public class EntityTypeController {
      *         is invalid/not a valid extension of the base type</li>
 	 */
 	@PostMapping("/projects/{projectAbbreviation}/entities/config")
-	@PreAuthorize("isAuthenticated() and @auth.hasProjectPermission(#root, #projectAbbreviation, 'type:create')")
+	@PreAuthorize("isAuthenticated() and @auth.hasGlobalPermission(#root, 'type:create')")
 	@Audit
 	public ResponseEntity<?> createProjectEntityType(@PathVariable("projectAbbreviation") String projectAbbreviation,
 												 	 @RequestBody EntityTypeDTO entityTypeDTO,
@@ -300,7 +305,10 @@ public class EntityTypeController {
 		// Evaluate success
 		if (createdType == null) {
 			log.debug("Creating a new base type failed.");
-			responseService.unprocessableEntity(responseContentType);
+			return responseService.unprocessableEntity(responseContentType);
+		}
+		if (!permissionDBService.addEntityTypePermissionsForSubject(createdType.getId())) {
+			log.warn("Entity type was created but creator permissions could not be assigned.");
 		}
 		
 		log.info("Successfully created a new project specific entity type.");
@@ -576,8 +584,8 @@ public class EntityTypeController {
 		
 		// Delete the entity type by setting the is_deprecated flag
 		if (entityTypeDBService.deleteEntityType(deleteDTO)) {
+			permissionDBService.removeEntityTypePermissionsForSubject(deleteDTO.getId(), deleteDTO.getName());
 			log.info("Successfully deleted the entity type.");
-			log.info("Successfully deleted entity type \"" + deleteDTO.getName() + "\".");
 			return responseService.noContent(responseContentType);
 		} else {
 			log.debug("Could not delete the entity type.");

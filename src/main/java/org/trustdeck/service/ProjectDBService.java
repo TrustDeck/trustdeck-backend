@@ -23,6 +23,7 @@ import org.jooq.exception.IntegrityConstraintViolationException;
 import org.jooq.exception.MappingException;
 import org.jooq.impl.DSL;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.trustdeck.dto.ProjectDTO;
@@ -58,6 +59,7 @@ public class ProjectDBService {
     
     /** Enables access to the permission grants database methods. */
     @Autowired
+    @Lazy
     private PermissionDBService permissionDBService;
 
     /**

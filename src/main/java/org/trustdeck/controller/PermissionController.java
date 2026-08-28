@@ -37,19 +37,21 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.trustdeck.configuration.RoleConfig;
+import org.trustdeck.configuration.PermissionConfig;
 import org.trustdeck.configuration.DefaultProperties;
 import org.trustdeck.dto.UserDTO;
 import org.trustdeck.jooq.generated.tables.pojos.Domain;
 import org.trustdeck.dto.EffectivePermissionDTO;
 import org.trustdeck.dto.PermissionDTO;
 import org.trustdeck.dto.ProjectDTO;
+import org.trustdeck.dto.EntityTypeDTO;
 import org.trustdeck.security.audittrail.annotation.Audit;
 import org.trustdeck.service.DomainDBAccessService;
 import org.trustdeck.service.KeycloakService;
 import org.trustdeck.service.PermissionDBService;
 import org.trustdeck.service.ProjectDBService;
 import org.trustdeck.service.ResponseService;
+import org.trustdeck.service.EntityTypeDBService;
 import org.trustdeck.utils.Assertion;
 import org.trustdeck.utils.Utility.Pair;
 
@@ -76,7 +78,7 @@ public class PermissionController {
 
 	/** Configuration for roles and operations. This is used to validate the operations and permissions. */
 	@Autowired
-	private RoleConfig roleConfig;
+	private PermissionConfig permissionConfig;
 
 	/** Enables access to the permission grants database methods. */
     @Autowired
@@ -90,6 +92,11 @@ public class PermissionController {
     @Autowired
     private ProjectDBService projectDBService;
 
+    /** Enables access to the entity type's data base interaction methods. */
+    @Autowired
+    private EntityTypeDBService entityTypeDBService;
+
+    /** Enables access to default values. */
     @Autowired
     private DefaultProperties defaults;
 
@@ -153,7 +160,7 @@ public class PermissionController {
 	 * 		   <li>a <b>404-NOT_FOUND</b> status when the specified domain was not found</li>
 	 */
 	@PostMapping("/domains/{domainName}")
-	@PreAuthorize("isAuthenticated() and @auth.hasGlobalPermission(#root, 'global:manage-permissions')")
+	@PreAuthorize("isAuthenticated() and @auth.hasDomainPermission(#root, #domainName, 'domain:manage-permissions')")
 	@Audit
 	public ResponseEntity<?> createDomainPermissions(@PathVariable("domainName") String domainName,
 	                                                 @RequestParam(name = "userId") String userId,
@@ -215,8 +222,8 @@ public class PermissionController {
 			}
 			
 			// Ensure that the action is domain-specific
-			if (!roleConfig.getACERoles().contains(p.getAction())) {
-				if (roleConfig.getAllRoles().contains(p.getAction())) {
+			if (!permissionConfig.getDomainPermissions().contains(p.getAction())) {
+				if (permissionConfig.getAllPermissions().contains(p.getAction())) {
 					log.trace("Permission validation failed because the action was not domain-specific.");
 					continue;
 				} else {
@@ -294,7 +301,7 @@ public class PermissionController {
 	 * 		   <li>a <b>404-NOT_FOUND</b> status when the specified project was not found</li>
 	 */
 	@PostMapping("/projects/{projectAbbreviation}")
-	@PreAuthorize("isAuthenticated() and @auth.hasGlobalPermission(#root, 'global:manage-permissions')")
+	@PreAuthorize("isAuthenticated() and @auth.hasProjectPermission(#root, #projectAbbreviation, 'project:manage-permissions')")
 	@Audit
 	public ResponseEntity<?> createProjectPermissions(@PathVariable("projectAbbreviation") String projectAbbreviation,
 	                                                  @RequestParam(name = "userId") String userId,
@@ -355,8 +362,8 @@ public class PermissionController {
 			}
 			
 			// Ensure that the action is project-specific
-			if (!roleConfig.getKINGRoles().contains(p.getAction())) {
-				if (roleConfig.getAllRoles().contains(p.getAction())) {
+			if (!permissionConfig.getProjectPermissions().contains(p.getAction())) {
+				if (permissionConfig.getAllPermissions().contains(p.getAction())) {
 					log.trace("Permission validation failed because the action was not project-specific.");
 					continue;
 				} else {
@@ -481,8 +488,8 @@ public class PermissionController {
  			}
  			
  			// Ensure that the action is globally scoped
- 			if (!roleConfig.getGlobalRoles().contains(p.getAction())) {
-				if (roleConfig.getAllRoles().contains(p.getAction())) {
+ 			if (!permissionConfig.getGlobalPermissions().contains(p.getAction())) {
+				if (permissionConfig.getAllPermissions().contains(p.getAction())) {
 	 				log.trace("Permission validation failed because the action was not global-scoped.");
 	 				continue;
 				} else {
@@ -541,6 +548,142 @@ public class PermissionController {
 	    	return responseService.created(responseContentType, result);
 	    }
 	}
+
+    /**
+     * Creates entity-type-specific permissions for a given user.
+     *
+     * @param projectAbbreviation the abbreviation of the project
+     * @param entityTypeName the name of the entity type
+     * @param userId the ID of the user
+     * @param permissions the desired list of permissions
+     * @param responseContentType (optional) the response content type
+     * @return <li>a <b>200-OK</b> status when all requested permissions already exist</li>
+     *         <li>a <b>201-CREATED</b> status with the creation results when all permissions were created</li>
+     *         <li>a <b>206-PARTIAL_CONTENT</b> status with the creation results when some insertions failed</li>
+     *         <li>a <b>400-BAD_REQUEST</b> status when required parameters or valid permissions are missing</li>
+     *         <li>a <b>403-FORBIDDEN</b> status when the requester cannot 
+     *         delegate the requested permissions</li>
+     *         <li>a <b>404-NOT_FOUND</b> status when the type name could 
+     *         not be resolved</li>
+     */
+    @PostMapping("/projects/{projectAbbreviation}/entity-types/{entityTypeName}")
+    @PreAuthorize("isAuthenticated() and @auth.hasEntityTypePermission(#root, #projectAbbreviation, #entityTypeName, 'entity-type:manage-permissions')")
+    @Audit
+    public ResponseEntity<?> createEntityTypePermissions(@PathVariable String projectAbbreviation,
+                                                         @PathVariable String entityTypeName,
+                                                         @RequestParam String userId,
+                                                         @RequestBody List<PermissionDTO> permissions,
+                                                         @RequestHeader(name = "accept", required = false) String responseContentType) {
+        // Gather all the needed information
+        EntityTypeDTO type = resolveEntityType(projectAbbreviation, entityTypeName);
+        if (type == null) {
+            log.trace("Type name could not be resolved.");
+            return responseService.notFound(responseContentType);
+        } else if (Assertion.isNullOrEmpty(userId) || permissions == null || permissions.isEmpty()) {
+            log.trace("User ID or permissions are missing.");
+            return responseService.badRequest(responseContentType);
+        }
+
+        // Pre-fill the result list to preserve the input order
+        final int n = permissions.size();
+        List<PermissionDTO> result = new ArrayList<>(n);
+        for (int i = 0; i < n; i++) {
+            result.add(null);
+        }
+        
+        // Build a validated list for the batch insert and keep track of the indexes
+        List<PermissionDTO> validated = new ArrayList<>();
+        List<Integer> originalIndex = new ArrayList<>();
+        
+        for (int i = 0; i < n; i++) {
+			PermissionDTO p = permissions.get(i);
+			
+			// Ignore nulls
+			if (p == null) {
+				log.trace("Permission validation failed because it was null.");
+				continue;
+			}
+
+			// Ensure that the correct user gets the permissions assigned
+			if (!userId.equals(p.getSubjectId())) {
+				log.trace("Permission validation failed because permission's subjectId did not match the userId "
+						+ "given in the URI (expected = " + userId + ", actual = " + p.getSubjectId() + ").");
+				continue;
+			}
+			
+			// Ensure that the permissions are for the correct resource
+			if (!"ENTITY_TYPE".equalsIgnoreCase(p.getResourceType())) {
+				log.trace("Permission validation failed because the resource type was not \"ENTITY_TYPE\".");
+				continue;
+			}
+			
+			// Add resource ID
+			p.setResourceId(type.getId());
+			
+			// Ignore empty actions
+			if (Assertion.isNullOrEmpty(p.getAction())) {
+				log.trace("Permission validation failed because the action was null or empty.");
+				continue;
+			}
+			
+			// Ensure that the action is entity-type-specific
+			if (!permissionConfig.getEntityTypePermissions().contains(p.getAction())) {
+				if (permissionConfig.getAllPermissions().contains(p.getAction())) {
+					log.trace("Permission validation failed because the action was not entity-type-specific.");
+					continue;
+				} else {
+					log.trace("Permission validation failed because the action was not recognized.");
+					continue;
+				}
+			}
+
+			validated.add(p);
+			originalIndex.add(i);
+		}
+		
+		// Check if there is anything to do
+		if (validated.isEmpty()) {
+			log.debug("There were no valid permissions to be created.");
+			return responseService.badRequest(responseContentType);
+		}
+
+		// Batch insert
+		List<Pair<PermissionDTO, String>> created = permissionDBService.createPermissionsSecured(validated);
+		if (created == null) {
+			log.debug("Failed to insert any permissions.");
+			return responseService.badRequest(responseContentType);
+		}
+		
+		if (created.isEmpty() || created.size() == 0) {
+			log.debug("No actions were added. This is usually because the requester failed bounded delegation checks.");
+			return responseService.forbidden(responseContentType);
+		}
+		
+		// Map the list of created permissions back into original order
+	    for (int j = 0; j < created.size(); j++) {
+	        int idx = originalIndex.get(j);
+	        result.set(idx, created.get(j).first());
+	    }
+	    
+	    // Return the results; decide on the proper status code
+	    log.debug("Successfully created " + created.stream().filter(e -> e != null && e.first() != null).count() + " entity-type "
+    			+ "permission(s) out of " + created.size() + " requested permissions for user " + userId 
+    			+ " in entity-type " + type.getName() + ".");
+
+	    boolean hasErrors = created.stream().anyMatch(p -> p != null && PermissionDBService.INSERTION_ERROR.equals(p.second()));
+	    boolean hasDuplicates = created.stream().anyMatch(p -> p != null && PermissionDBService.INSERTION_DUPLICATE_PERMISSION.equals(p.second()));
+	    
+	    if (hasErrors) {
+	    	// There were errors --> partial success
+	    	return responseService.partialContent(responseContentType, result);
+	    } else if (hasDuplicates) {
+	    	// There were duplicates --> return code 200
+	    	return responseService.ok(responseContentType, result);
+	    } else {
+	    	// All requested permissions were created
+	    	return responseService.created(responseContentType, result);
+	    }
+    }
 
 	/**
 	 * Retrieves the permissions of a user for a specific domain.
@@ -664,6 +807,55 @@ public class PermissionController {
 
         return responseService.ok(responseContentType, permissions);
     }
+
+    /**
+     * Method for retrieving permissions that are entity-type-specific scoped.
+     * 
+     * @param projectAbbreviation the abbreviation of the project
+     * @param entityTypeName the name of the entity type 
+     * @param userId the ID of the user
+	 * @param responseContentType (optional) the response content type
+     * @return <li>a <b>200-OK</b> status with the list of permissions 
+     * 		   for the user when successful</li>
+     *         <li>a <b>400-BAD_REQUEST</b> status when the <i>userId</i> 
+     *         is missing or empty</li>
+     *         <li>a <b>404-NOT_FOUND</b> status when the permissions 
+     *         for the project were not found or the type name could
+     *         not be resolved</li>
+     */
+    @GetMapping("/projects/{projectAbbreviation}/entity-types/{entityTypeName}")
+    @PreAuthorize("isAuthenticated() and @auth.hasEntityTypePermission(#root, #projectAbbreviation, #entityTypeName, 'entity-type:manage-permissions')")
+    @Audit
+    public ResponseEntity<?> getEntityTypePermissions(@PathVariable String projectAbbreviation,
+    												  @PathVariable String entityTypeName,
+            										  @RequestParam String userId,
+            										  @RequestHeader(name = "accept", required = false) String responseContentType) {
+    	// Check if we have all the info needed
+    	if (Assertion.isNullOrEmpty(projectAbbreviation, entityTypeName, userId)) {
+        	log.debug("The project abbreviation, the entity type name, or the user ID was empty");
+            return responseService.badRequest(responseContentType);
+        }
+
+    	EntityTypeDTO type = resolveEntityType(projectAbbreviation, entityTypeName);
+        if (type == null) {
+        	log.debug("No enitity type found.");
+            return responseService.notFound(responseContentType);
+        }
+
+        // Retrieve the permissions of this user
+        List<PermissionDTO> permissions = permissionDBService.getPermissionsForEntityType(type.getId(), userId);
+        if (permissions == null || permissions.isEmpty()) {
+        	log.debug("No permissions found for the given user and entity type.");
+        	return responseService.notFound(responseContentType);
+        }
+        
+        // Add the type's name to non null entity types
+        permissions.stream().filter(Objects::nonNull).filter(p -> p.getEntityTypeName() == null)
+        	.forEach(p -> p.setEntityTypeName(type.getName()));
+        
+        log.debug("Successfully retrieved the permissions for user " + userId + " in entity type " + type.getName() + ".");
+        return responseService.ok(responseContentType, permissions);
+    }
     
     /**
      * Method for retrieving all permissions defined in the application.yml.
@@ -679,18 +871,23 @@ public class PermissionController {
     public ResponseEntity<?> getAllPermissions(@RequestHeader(name = "accept", required = false) String responseContentType) {
     	List<EffectivePermissionDTO> permissions = new ArrayList<>();
     	
-    	// Add domain-specific roles
-    	for (String aceRole : roleConfig.getACERoles()) {
-    		permissions.add(EffectivePermissionDTO.builder().resourceType("DOMAIN").action(aceRole).build());
+    	// Add project-specific roles
+		for (String projectRole : permissionConfig.getProjectPermissions()) {
+			permissions.add(EffectivePermissionDTO.builder().resourceType("PROJECT").action(projectRole).build());
     	}
     	
-    	// Add project-specific roles
-    	for (String kingRole : roleConfig.getKINGRoles()) {
-    		permissions.add(EffectivePermissionDTO.builder().resourceType("PROJECT").action(kingRole).build());
+    	// Add domain-specific roles
+		for (String domainRole : permissionConfig.getDomainPermissions()) {
+			permissions.add(EffectivePermissionDTO.builder().resourceType("DOMAIN").action(domainRole).build());
+    	}
+    	
+    	// Add entity-type-specific roles
+		for (String entityTypeRole : permissionConfig.getEntityTypePermissions()) {
+			permissions.add(EffectivePermissionDTO.builder().resourceType("ENTITY_TYPE").action(entityTypeRole).build());
     	}
     	
     	// Add global roles
-    	for (String globalRole : roleConfig.getGlobalRoles()) {
+    	for (String globalRole : permissionConfig.getGlobalPermissions()) {
     		permissions.add(EffectivePermissionDTO.builder().resourceType("GLOBAL").action(globalRole).build());
     	}
     	
@@ -767,7 +964,7 @@ public class PermissionController {
 			}
 
 			// Ensure that the action is domain-specific
-			if (!roleConfig.getACERoles().contains(p.getAction())) {
+			if (!permissionConfig.getDomainPermissions().contains(p.getAction())) {
 				log.trace("Permission validation failed because the action was not domain-specific.");
 				continue;
 			}
@@ -859,7 +1056,7 @@ public class PermissionController {
 			}
 
 			// Ensure that the action is project-specific
-			if (!roleConfig.getKINGRoles().contains(p.getAction())) {
+			if (!permissionConfig.getProjectPermissions().contains(p.getAction())) {
 				log.trace("Permission validation failed because the action was not project-specific.");
 				continue;
 			}
@@ -934,7 +1131,7 @@ public class PermissionController {
  			}
  			
  			// Ensure that the action is globally scoped
- 			if (!roleConfig.getGlobalRoles().contains(p.getAction())) {
+ 			if (!permissionConfig.getGlobalPermissions().contains(p.getAction())) {
  				log.trace("Permission validation failed because the action was not global-scoped.");
  				continue;
  			}
@@ -955,6 +1152,97 @@ public class PermissionController {
         	return responseService.ok(responseContentType);
         } else {
         	log.debug("Failed to update the global permissions for user " + userId + ".");
+        	return responseService.badRequest(responseContentType);
+        }
+    }
+
+    /**
+     * Replaces the entity-type-specific permissions for a given user.
+     *
+     * @param projectAbbreviation the abbreviation of the project
+     * @param entityTypeName the name of the entity type
+     * @param userId the ID of the user
+     * @param permissions the desired list of permissions
+     * @param responseContentType (optional) the response content type
+     * @return <li>a <b>200-OK</b> status when the permissions were synchronized successfully</li>
+     *         <li>a <b>400-BAD_REQUEST</b> status when required parameters are missing or replacement failed</li>
+     *         <li>a <b>404-NOT_FOUND</b> status when the type name could not be resolved</li>
+     */
+    @PutMapping("/projects/{projectAbbreviation}/entity-types/{entityTypeName}")
+    @PreAuthorize("isAuthenticated() and @auth.hasEntityTypePermission(#root, #projectAbbreviation, #entityTypeName, 'entity-type:manage-permissions')")
+    @Audit
+    public ResponseEntity<?> updateEntityTypePermissions(@PathVariable String projectAbbreviation,
+                                                         @PathVariable String entityTypeName,
+                                                         @RequestParam String userId,
+                                                         @RequestBody List<PermissionDTO> permissions,
+                                                         @RequestHeader(name = "accept", required = false) String responseContentType) {
+        
+    	if (Assertion.isNullOrEmpty(projectAbbreviation, entityTypeName, userId) || permissions == null) {
+        	log.debug("Missing parameter (projectAbbreviation, entityTypeName, userId, or list of permissions).");
+            return responseService.badRequest(responseContentType);
+        }
+
+        // Retrieve entity type
+    	EntityTypeDTO type = resolveEntityType(projectAbbreviation, entityTypeName);
+        if (type == null) {
+        	log.debug("No enitity type found.");
+            return responseService.notFound(responseContentType);
+        }
+
+        // Validate the payload by enforcing correct subject/resource binding
+        List<String> validatedActions = new ArrayList<>();
+        for (PermissionDTO p : permissions) {
+            if (p == null) {
+            	log.trace("Permission validation failed because it was null.");
+            	continue;
+            }
+            
+            if (Assertion.isNullOrEmpty(p.getEntityTypeName()) || !p.getEntityTypeName().equals(entityTypeName)) {
+            	log.trace("Permission validation failed because the entity type's name was different from the URI-entity type's name.");
+            	continue;
+            }
+
+            // Ensure that the correct user gets the permissions assigned
+            if (!userId.equals(p.getSubjectId())) {
+            	log.trace("Permission validation failed because permission's subjectId did not match the userId "
+            			+ "given in the URI (expected = " + userId + ", actual = " + p.getSubjectId() + ").");
+            	continue;
+            }
+            
+            // Ensure that the permissions are for the correct resource
+            if (!"ENTITY_TYPE".equalsIgnoreCase(p.getResourceType())) {
+            	log.trace("Permission validation failed because the resource type was not \"ENTITY_TYPE\".");
+            	continue;
+            }
+			
+			// Add resource ID
+			p.setResourceId(type.getId());
+
+			// Ignore empty actions
+			if (Assertion.isNullOrEmpty(p.getAction())) {
+				log.trace("Permission validation failed because the action was null or empty.");
+				continue;
+			}
+
+			// Ensure that the action is entity type-specific
+			if (!permissionConfig.getEntityTypePermissions().contains(p.getAction())) {
+				log.trace("Permission validation failed because the action was not entity-type-specific.");
+				continue;
+			}
+            
+            // At this point we have a valid permission --> add it to the list
+            validatedActions.add(p.getAction());
+        }
+
+        // Replace the old actions with the set of new actions
+        log.trace("Found " + validatedActions.size() + " valid permissions for the replacement process.");
+        boolean result = permissionDBService.replacePermissionsForResourceSecured(userId, "ENTITY_TYPE", type.getId(), validatedActions);
+        
+        if (result) {
+        	log.debug("Successfully updated the entity type permissions for user " + userId + " in entity type " + type.getName());
+        	return responseService.ok(responseContentType);
+        } else {
+        	log.debug("Failed to update the entity type permissions for user " + userId + " in entity type " + type.getName());
         	return responseService.badRequest(responseContentType);
         }
     }
@@ -1043,7 +1331,7 @@ public class PermissionController {
 	 		}
 
 			// Ensure that the action is domain-specific
-			if (!roleConfig.getACERoles().contains(p.getAction())) {
+			if (!permissionConfig.getDomainPermissions().contains(p.getAction())) {
 				log.trace("Permission validation failed because the action was not domain-specific.");
 				continue;
 			}
@@ -1085,7 +1373,7 @@ public class PermissionController {
 	    	// There were errors --> partial success
 	    	return responseService.partialContent(responseContentType, result);
 	    } else {
-	    	// All requested permissions were created
+	    	// All requested permissions were deleted
 	    	return responseService.noContent(responseContentType);
 	    }
     }
@@ -1174,7 +1462,7 @@ public class PermissionController {
 	 		}
 
 			// Ensure that the action is project-specific
-			if (!roleConfig.getKINGRoles().contains(p.getAction())) {
+			if (!permissionConfig.getProjectPermissions().contains(p.getAction())) {
 				log.trace("Permission validation failed because the action was not project-specific.");
 				continue;
 			}
@@ -1216,7 +1504,7 @@ public class PermissionController {
 	    	// There were errors --> partial success
 	    	return responseService.partialContent(responseContentType, result);
 	    } else {
-	    	// All requested permissions were created
+	    	// All requested permissions were deleted
 	    	return responseService.noContent(responseContentType);
 	    }
     }
@@ -1288,7 +1576,7 @@ public class PermissionController {
  			}
  			
  			// Ensure that the action is globally scoped
- 			if (!roleConfig.getGlobalRoles().contains(p.getAction())) {
+ 			if (!permissionConfig.getGlobalPermissions().contains(p.getAction())) {
  				log.trace("Permission validation failed because the action was not global-scoped.");
  				continue;
  			}
@@ -1332,8 +1620,147 @@ public class PermissionController {
 	    	// There were errors --> partial success
 	    	return responseService.partialContent(responseContentType, result);
 	    } else {
-	    	// All requested permissions were created
+	    	// All requested permissions were deleted
 	    	return responseService.noContent(responseContentType);
 	    }
+    }
+
+    /**
+     * Deletes entity-type-specific permissions for a given user.
+     *
+     * @param projectAbbreviation the abbreviation of the project
+     * @param entityTypeName the name of the entity type
+     * @param userId the ID of the user
+     * @param permissions the permissions to delete
+     * @param responseContentType (optional) the response content type
+     * @return <li>a <b>204-NO_CONTENT</b> status when the permissions were deleted successfully</li>
+     *         <li>a <b>400-BAD_REQUEST</b> status when required parameters or valid permissions are missing</li>
+     *         <li>a <b>403-FORBIDDEN</b> status when the requester cannot revoke the requested permissions</li>
+     *         <li>a <b>404-NOT_FOUND</b> status when the type name could not be resolved</li>
+     */
+    @DeleteMapping("/projects/{projectAbbreviation}/entity-types/{entityTypeName}")
+    @PreAuthorize("isAuthenticated() and @auth.hasEntityTypePermission(#root, #projectAbbreviation, #entityTypeName, 'entity-type:manage-permissions')")
+    @Audit
+    public ResponseEntity<?> deleteEntityTypePermissions(@PathVariable String projectAbbreviation,
+                                                         @PathVariable String entityTypeName,
+                                                         @RequestParam String userId,
+                                                         @RequestBody List<PermissionDTO> permissions,
+                                                         @RequestHeader(name = "accept", required = false) String responseContentType) {
+        
+    	if (Assertion.isNullOrEmpty(projectAbbreviation, entityTypeName, userId) || permissions == null || permissions.isEmpty()) {
+            log.debug("Missing parameter (projectAbbreviation, entityTypeName, userId, or list of permissions).");
+            return responseService.badRequest(responseContentType);
+        }
+
+        // Retrieve entity type
+    	EntityTypeDTO type = resolveEntityType(projectAbbreviation, entityTypeName);
+        if (type == null) {
+        	log.debug("No enitity type found.");
+            return responseService.notFound(responseContentType);
+        }
+
+        // Preserve input order in the response
+        List<Boolean> result = new ArrayList<>();
+        for (int i = 0; i < permissions.size(); i++) {
+            result.add(null);
+        }
+
+        // Build sanitized list
+        List<PermissionDTO> validated = new ArrayList<>();
+        List<Integer> originalIndex = new ArrayList<>();
+
+        for (int i = 0; i < permissions.size(); i++) {
+            PermissionDTO p = permissions.get(i);
+
+            if (p == null) {
+            	log.trace("Permission validation failed because it was null.");
+                continue;
+            }
+            
+            if (Assertion.isNullOrEmpty(p.getEntityTypeName()) || !p.getEntityTypeName().equals(entityTypeName)) {
+            	log.trace("Permission validation failed because the entity type's name was different from the URI-entity type's name.");
+            	continue;
+            }
+
+            // Ensure that the correct user is affected
+            if (!userId.equals(p.getSubjectId())) {
+            	log.trace("Permission validation failed because permission's subjectId did not match the userId "
+            			+ "given in the URI (expected = " + userId + ", actual = " + p.getSubjectId() + ").");
+            	continue;
+            }
+
+            // Ensure that the permissions are for the correct resource
+            if (!"ENTITY_TYPE".equalsIgnoreCase(p.getResourceType())) {
+            	log.trace("Permission validation failed because the resource type was not \"ENTITY_TYPE\".");
+            	continue;
+            }
+            
+            // Add resource ID
+ 			p.setResourceId(type.getId());
+
+	 		// Ignore empty actions
+	 		if (Assertion.isNullOrEmpty(p.getAction())) {
+	 			log.trace("Permission validation failed because the action was null or empty.");
+	 			continue;
+	 		}
+
+			// Ensure that the action is entity-type-specific
+			if (!permissionConfig.getEntityTypePermissions().contains(p.getAction())) {
+				log.trace("Permission validation failed because the action was not entity-type-specific.");
+				continue;
+			}
+
+            // At this point we have a valid permission --> add it to the list
+            validated.add(p);
+            originalIndex.add(i);
+        }
+
+		// Check if we there is anything to do
+        if (validated.isEmpty()) {
+            log.debug("There were no valid permissions to be deleted.");
+            return responseService.ok(responseContentType, result);
+        }
+
+        // Delete permissions
+        List<Boolean> deleted = permissionDBService.deletePermissionsSecured(validated);
+        if (deleted == null) {
+            log.debug("Deletion of " + validated.size() + " permissions failed.");
+            return responseService.badRequest(responseContentType);
+        }
+		
+		if (deleted.isEmpty() || deleted.size() == 0) {
+			log.debug("No actions were deleted. This is usually because the requester failed bounded delegation checks.");
+			return responseService.forbidden(responseContentType);
+		}
+
+        // Map the list of deleted permissions back into original order
+        for (int j = 0; j < deleted.size(); j++) {
+            int idx = originalIndex.get(j);
+            result.set(idx, deleted.get(j));
+        }
+
+        // Return the results; decide on the proper status code
+	    log.debug("Successfully deleted " + deleted.stream().filter(e -> e.equals(true)).count() + " entity type "
+    			+ "permission(s) out of " + deleted.size() + " requested permissions for user " + userId 
+    			+ " in entity type " + type.getName() + ".");
+	    if (deleted.contains(false)) {
+	    	// There were errors --> partial success
+	    	return responseService.partialContent(responseContentType, result);
+	    } else {
+	    	// All requested permissions were deleted
+	    	return responseService.noContent(responseContentType);
+	    }
+    }
+
+    /**
+     * Resolves an active project-specific entity type from its project abbreviation and name.
+     * 
+     * @param projectAbbreviation the abbreviation of the project in which the entity type lives
+     * @param entityTypeName the entity type's unique name
+     * @return the entity type DTO when successfully retrieved, or {@code null} otherwise
+     */
+    private EntityTypeDTO resolveEntityType(String projectAbbreviation, String entityTypeName) {
+        ProjectDTO project = projectDBService.getProjectByAbbreviation(projectAbbreviation);
+        return project == null ? null : entityTypeDBService.getEntityTypeByName(entityTypeName, project.getId());
     }
 }

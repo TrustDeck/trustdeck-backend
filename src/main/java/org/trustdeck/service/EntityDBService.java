@@ -203,6 +203,27 @@ public class EntityDBService {
         }
     }
 
+    @Transactional(readOnly = true)
+    public EntityDTO getEntity(String trustDeckID, int projectID, int entityTypeID) {
+        if (Assertion.isNullOrEmpty(trustDeckID)) {
+            return null;
+        }
+
+        try {
+            UUID tdid = UUID.fromString(trustDeckID);
+            Entity entity = dsl.selectFrom(ENTITY)
+                    .where(ENTITY.TRUSTDECK_ID.equal(tdid))
+                    .and(ENTITY.PROJECT_ID.equal(projectID))
+                    .and(ENTITY.ENTITY_TYPE_ID.equal(entityTypeID))
+                    .and(ENTITY.IS_DELETED.equal(false))
+                    .fetchOneInto(Entity.class);
+            return entity == null ? null : new EntityDTO().assignPojoValues(entity);
+        } catch (IllegalArgumentException | DataAccessException e) {
+            log.debug("Could not retrieve the entity for the requested type.", e);
+            return null;
+        }
+    }
+
     /**
      * Method to retrieve an entity from the database by providing the data JSON.
      * 
@@ -368,6 +389,15 @@ public class EntityDBService {
     	// If we reach this point, the deletion was successful
     	return true;
     }
+
+    @Transactional
+    public boolean deleteEntity(UUID trustDeckID, int projectID, int entityTypeID) throws UnexpectedResultSizeException {
+        int deleted = dsl.update(ENTITY).set(ENTITY.IS_DELETED, true).set(ENTITY.UPDATED_AT, OffsetDateTime.now())
+                .where(ENTITY.TRUSTDECK_ID.eq(trustDeckID)).and(ENTITY.PROJECT_ID.eq(projectID))
+                .and(ENTITY.ENTITY_TYPE_ID.eq(entityTypeID)).and(ENTITY.IS_DELETED.eq(false)).execute();
+        if (deleted != 1) throw new UnexpectedResultSizeException(1, deleted);
+        return true;
+    }
     
     /**
      * Method to update an entity.
@@ -391,6 +421,7 @@ public class EntityDBService {
 	                .set(ENTITY.UPDATED_AT, OffsetDateTime.now())
                 .where(ENTITY.ID.eq(oldEntityID))
 	                .and(ENTITY.PROJECT_ID.eq(projectID))
+	                .and(ENTITY.ENTITY_TYPE_ID.eq(newEntityDTO.getEntityTypeID()))
                 .and(ENTITY.IS_DELETED.ne(true))
 	                .returning()
 	                .fetchOne();
@@ -409,6 +440,13 @@ public class EntityDBService {
 	    // Return the updated entity
         log.debug("Updating the entity \"" + newEntityDTO.getTrustdeckID() + "\" was successful.");
 	    return dto;
+    }
+
+    @Transactional
+    public EntityDTO updateEntity(long oldEntityID, int projectID, int entityTypeID, EntityDTO newEntityDTO) {
+        if (newEntityDTO.getEntityTypeID() != entityTypeID) return null;
+        EntityDTO old = getEntity(newEntityDTO.getTrustdeckID().toString(), projectID, entityTypeID);
+        return old == null ? null : updateEntity(oldEntityID, projectID, newEntityDTO);
     }
     
     /**

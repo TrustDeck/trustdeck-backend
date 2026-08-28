@@ -168,6 +168,7 @@ public class AssertWebRequestService {
 	        // i.e. those roles that do not have a domain in the database anymore)
 	        permissionDBService.removeDomainPermissions();
 	        permissionDBService.removeProjectPermissions();
+	        permissionDBService.removeEntityTypePermissions();
 
             // Create the project required by all test domains
             ProjectDTO projectDTO = new ProjectDTO();

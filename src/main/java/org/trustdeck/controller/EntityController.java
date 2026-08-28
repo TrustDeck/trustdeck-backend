@@ -149,7 +149,8 @@ public class EntityController {
      *         the record linkage tokens could not be created/stored in the database</li>
 	 */
 	@PostMapping("/projects/{projectAbbreviation}/entities/{entityTypeName}")
-	@PreAuthorize("isAuthenticated() and @auth.hasProjectPermission(#root, #projectAbbreviation, 'entity:create') and (#recordLinkageResolution != 'CREATE_ORIGINAL' or @auth.hasProjectPermission(#root, #projectAbbreviation, 'entity:resolve-linkage'))")
+	@PreAuthorize("isAuthenticated() and @auth.hasEntityTypePermission(#root, #projectAbbreviation, #entityTypeName, 'entity:create') "
+			+ "and (#recordLinkageResolution != 'CREATE_ORIGINAL' or @auth.hasEntityTypePermission(#root, #projectAbbreviation, #entityTypeName, 'entity:resolve-linkage'))")
 	@Audit
 	public ResponseEntity<?> createEntity(@PathVariable("projectAbbreviation") String projectAbbreviation,
 										  @PathVariable("entityTypeName") String entityTypeName,
@@ -316,7 +317,7 @@ public class EntityController {
      *         is marked as deprecated, or the entity is marked as deleted</li>
 	 */
 	@GetMapping("/projects/{projectAbbreviation}/entities/{entityTypeName}/{trustDeckId}")
-	@PreAuthorize("isAuthenticated() and @auth.hasProjectPermission(#root, #projectAbbreviation, 'entity:read')")
+	@PreAuthorize("isAuthenticated() and @auth.hasEntityTypePermission(#root, #projectAbbreviation, #entityTypeName, 'entity:read')")
 	@Audit
 	public ResponseEntity<?> getEntity(@PathVariable("projectAbbreviation") String projectAbbreviation,
 											   @PathVariable("entityTypeName") String entityTypeName,
@@ -345,7 +346,7 @@ public class EntityController {
 		}
 		
 		// Retrieve entity
-		EntityDTO entity = entityDBService.getEntity(trustDeckId, project.getId());
+		EntityDTO entity = entityDBService.getEntity(trustDeckId, project.getId(), entityType.getId());
 		
 		// Check result
 		if (entity == null) {
@@ -379,7 +380,7 @@ public class EntityController {
      *         <li>a <b>422-UNPROCESSABLE_ENTITY</b> status when the update failed</li>
 	 */
 	@PutMapping("/projects/{projectAbbreviation}/entities/{entityTypeName}/{trustDeckId}")
-	@PreAuthorize("isAuthenticated() and @auth.hasProjectPermission(#root, #projectAbbreviation, 'entity:update')")
+	@PreAuthorize("isAuthenticated() and @auth.hasEntityTypePermission(#root, #projectAbbreviation, #entityTypeName, 'entity:update')")
 	@Audit
 	public ResponseEntity<?> updateEntity(@PathVariable("projectAbbreviation") String projectAbbreviation,
 												  @PathVariable("entityTypeName") String entityTypeName,
@@ -439,7 +440,7 @@ public class EntityController {
 	    }
 	    
 	    // Retrieve the old entity
-	    EntityDTO oldEntity = entityDBService.getEntity(trustDeckId, project.getId());
+	    EntityDTO oldEntity = entityDBService.getEntity(trustDeckId, project.getId(), entityType.getId());
 	    
 	    if (oldEntity == null) {
 	    	log.debug("Could not find the entity that should be updated.");
@@ -454,7 +455,7 @@ public class EntityController {
 	    newEntity.setData(entityDTO.getData() != null ? entityDTO.getData() : oldEntity.getData());
 	    
 		// Update the entity
-		EntityDTO updated = entityDBService.updateEntity(oldEntity.getId(), project.getId(), newEntity);
+		EntityDTO updated = entityDBService.updateEntity(oldEntity.getId(), project.getId(), entityType.getId(), newEntity);
 		
 		// Evaluate the update success
 		if (updated == null) {
@@ -485,7 +486,7 @@ public class EntityController {
      *         <li>a <b>422-UNPROCESSABLE_ENTITY</b> status when the deletion failed</li>
 	 */
 	@DeleteMapping("/projects/{projectAbbreviation}/entities/{entityTypeName}/{trustDeckId}")
-	@PreAuthorize("isAuthenticated() and @auth.hasProjectPermission(#root, #projectAbbreviation, 'entity:delete')")
+	@PreAuthorize("isAuthenticated() and @auth.hasEntityTypePermission(#root, #projectAbbreviation, #entityTypeName, 'entity:delete')")
 	@Audit
 	public ResponseEntity<?> deleteEntity(@PathVariable("projectAbbreviation") String projectAbbreviation,
 												  @PathVariable("entityTypeName") String entityTypeName,
@@ -524,7 +525,7 @@ public class EntityController {
 		// Delete the entity and evaluate the result
 		boolean deleted = false;
 		try {
-			deleted = entityDBService.deleteEntity(tdid, project.getId());
+			deleted = entityDBService.deleteEntity(tdid, project.getId(), entityType.getId());
 		} catch (UnexpectedResultSizeException e) {
 			if (e.getActual() == 0) {
 				log.debug("Could not find the entity that should be deleted.");
@@ -559,7 +560,7 @@ public class EntityController {
      *         is marked as deprecated</li>
 	 */
 	@GetMapping(value = "/projects/{projectAbbreviation}/entities/{entityTypeName}", params = {"query"})
-	@PreAuthorize("isAuthenticated() and @auth.hasProjectPermission(#root, #projectAbbreviation, 'entity:search')")
+	@PreAuthorize("isAuthenticated() and @auth.hasEntityTypePermission(#root, #projectAbbreviation, #entityTypeName, 'entity:search')")
 	@Audit
 	public ResponseEntity<?> searchEntity(@PathVariable("projectAbbreviation") String projectAbbreviation,
 												  @PathVariable("entityTypeName") String entityTypeName,
@@ -624,7 +625,7 @@ public class EntityController {
      *         associated with the entity type</li>
 	 */
 	@GetMapping("/projects/{projectAbbreviation}/entities/{entityTypeName}/{trustDeckId}/pseudonyms")
-	@PreAuthorize("isAuthenticated() and @auth.hasProjectPermission(#root, #projectAbbreviation, 'entity:list-pseudonyms')")
+	@PreAuthorize("isAuthenticated() and @auth.hasEntityTypePermission(#root, #projectAbbreviation, #entityTypeName, 'entity:list-pseudonyms')")
 	@Audit
 	public ResponseEntity<?> getAllPseudonymsForEntity(@PathVariable("projectAbbreviation") String projectAbbreviation,
 												  			   @PathVariable("entityTypeName") String entityTypeName,
@@ -653,7 +654,7 @@ public class EntityController {
 		}
 		
 		// Check if entity exists and is still active
-		EntityDTO entity = entityDBService.getEntity(trustDeckId, project.getId());
+		EntityDTO entity = entityDBService.getEntity(trustDeckId, project.getId(), entityType.getId());
 		if (entity == null) {
 			log.debug("Entity with TrustDeckID\"" + trustDeckId + "\" was not found.");
 			return responseService.notFound(responseContentType);
@@ -744,7 +745,7 @@ public class EntityController {
      *         <li>a <b>422-UNPROCESSABLE_ENTITY</b> status when the record-linkage search fails</li>
 	 */
 	@PostMapping("/projects/{projectAbbreviation}/entities/{entityTypeName}/record-linkage")
-	@PreAuthorize("isAuthenticated() and @auth.hasProjectPermission(#root, #projectAbbreviation, 'entity:record-linkage')")
+	@PreAuthorize("isAuthenticated() and @auth.hasEntityTypePermission(#root, #projectAbbreviation, #entityTypeName, 'entity:record-linkage')")
 	@Audit
 	public ResponseEntity<?> recordLinkage(@PathVariable("projectAbbreviation") String projectAbbreviation,
 			   							   @PathVariable("entityTypeName") String entityTypeName,

@@ -109,7 +109,7 @@ public class EntityDTO implements IObjectDTO<Entity, EntityDTO> {
 	    }
 		
 		ProjectDTO project = pojo.getProjectId() == null ? null : pdbs.getProjectByID(pojo.getProjectId());
-	    EntityTypeDTO type = pojo.getEntityTypeId() == null ? null : etdbs.getEntityTypeById(pojo.getEntityTypeId(), pojo.getProjectId());
+	    EntityTypeDTO type = pojo.getEntityTypeId() == null ? null : etdbs.getEntityTypeByID(pojo.getEntityTypeId());
 		
 	    this.setId(pojo.getId());
 	    this.setTrustdeckID(pojo.getTrustdeckId());
