@@ -16,9 +16,9 @@ Usage:
                          [--created-by <marker>] [--dry-run]
 
 Description:
-  Resolves a Keycloak user by username, reads the ACE/KING/global permission
-  lists from application.yml, and inserts all currently defined permissions
-  for that user into the TrustDeck PostgreSQL database.
+  Resolves a Keycloak user by username, reads the domain, project,
+  entity-type, and global permission lists from application.yml, and inserts
+  all currently defined permissions for that user into TrustDeck PostgreSQL.
 
 The script is independent of the current working directory. It locates the
 repository root by walking upwards from the script file itself.
@@ -219,8 +219,9 @@ if [[ -f "$ENV_FILE" ]]; then
   info "Loading environment from $ENV_FILE"
 
   set -a
+  # Environment files may use CRLF line endings when shared from Windows.
   # shellcheck disable=SC1090
-  source "$ENV_FILE"
+  source <(tr -d '\r' < "$ENV_FILE")
   set +a
 else
   err "Environment file not found: $ENV_FILE"
@@ -499,7 +500,7 @@ parse_actions() {
       next
     }
 
-    in_roles && /^[[:space:]]{4}[A-Za-z0-9_]+:[[:space:]]*$/ {
+    in_roles && /^[[:space:]]{4}[A-Za-z0-9_-]+:[[:space:]]*$/ {
       line=$0
       sub(/^[[:space:]]+/, "", line)
       sub(/:.*/, "", line)
@@ -528,18 +529,24 @@ parse_actions() {
   ' "$APPLICATION_YML"
 }
 
-mapfile -t ACE_ACTIONS < <(parse_actions "ACE")
-mapfile -t KING_ACTIONS < <(parse_actions "KING")
+mapfile -t DOMAIN_ACTIONS < <(parse_actions "domain")
+mapfile -t PROJECT_ACTIONS < <(parse_actions "project")
+mapfile -t ENTITY_TYPE_ACTIONS < <(parse_actions "entity-type")
 mapfile -t GLOBAL_ACTIONS < <(parse_actions "global")
 
-[[ ${#ACE_ACTIONS[@]} -gt 0 ]] || {
-  err "No ACE actions could be parsed from app.roles in $APPLICATION_YML"
-  exit 1
+[[ ${#DOMAIN_ACTIONS[@]} -gt 0 ]] || {
+	 err "No domain actions could be parsed from app.roles in $APPLICATION_YML"
+	 exit 1
 }
 
-[[ ${#KING_ACTIONS[@]} -gt 0 ]] || {
-  err "No KING actions could be parsed from app.roles in $APPLICATION_YML"
-  exit 1
+[[ ${#PROJECT_ACTIONS[@]} -gt 0 ]] || {
+	 err "No project actions could be parsed from app.roles in $APPLICATION_YML"
+	 exit 1
+}
+
+[[ ${#ENTITY_TYPE_ACTIONS[@]} -gt 0 ]] || {
+	 err "No entity-type actions could be parsed from app.roles in $APPLICATION_YML"
+	 exit 1
 }
 
 [[ ${#GLOBAL_ACTIONS[@]} -gt 0 ]] || {
@@ -547,7 +554,7 @@ mapfile -t GLOBAL_ACTIONS < <(parse_actions "global")
   exit 1
 }
 
-info "Parsed ${#ACE_ACTIONS[@]} ACE actions, ${#KING_ACTIONS[@]} KING actions, ${#GLOBAL_ACTIONS[@]} global actions from application.yml"
+info "Parsed ${#DOMAIN_ACTIONS[@]} domain actions, ${#PROJECT_ACTIONS[@]} project actions, ${#ENTITY_TYPE_ACTIONS[@]} entity-type actions, and ${#GLOBAL_ACTIONS[@]} global actions from application.yml"
 
 kc_curl() {
   local description="$1"
@@ -770,8 +777,9 @@ build_values_cte() {
 }
 
 GLOBAL_VALUES="$(build_values_cte GLOBAL_ACTIONS)"
-ACE_VALUES="$(build_values_cte ACE_ACTIONS)"
-KING_VALUES="$(build_values_cte KING_ACTIONS)"
+DOMAIN_VALUES="$(build_values_cte DOMAIN_ACTIONS)"
+PROJECT_VALUES="$(build_values_cte PROJECT_ACTIONS)"
+ENTITY_TYPE_VALUES="$(build_values_cte ENTITY_TYPE_ACTIONS)"
 SUBJECT_ID_SQL="$(sq "$SUBJECT_ID")"
 CREATED_BY_SQL="$(sq "$CREATED_BY")"
 
@@ -830,7 +838,7 @@ WHERE NOT EXISTS (
 -- Domain permissions for all existing domains
 WITH actions(action) AS (
     VALUES
-        $ACE_VALUES
+        $DOMAIN_VALUES
 ),
 domains(id) AS (
     SELECT id
@@ -876,7 +884,7 @@ WHERE NOT EXISTS (
 -- Project permissions for all existing projects
 WITH actions(action) AS (
     VALUES
-        $KING_VALUES
+        $PROJECT_VALUES
 ),
 projects(id) AS (
     SELECT id
@@ -916,6 +924,53 @@ WHERE NOT EXISTS (
     WHERE pg.subject_id = '$SUBJECT_ID_SQL'
       AND pg.resource_type = 'PROJECT'
       AND pg.resource_id = p.id
+       AND pg.action = a.action
+);
+
+-- Entity-type permissions for all existing project-specific entity types
+WITH actions(action) AS (
+    VALUES
+        $ENTITY_TYPE_VALUES
+),
+entity_types(id) AS (
+    SELECT id
+    FROM entity_type
+    WHERE project_id IS NOT NULL
+)
+INSERT INTO permission_grant
+(
+    subject_id,
+    resource_type,
+    resource_id,
+    action,
+    decision,
+    valid_from,
+    valid_to,
+    created_at,
+    created_by,
+    updated_at,
+    updated_by
+)
+SELECT
+    '$SUBJECT_ID_SQL',
+    'ENTITY_TYPE',
+    et.id,
+    a.action,
+    'ALLOW',
+    NOW(),
+    NOW() + INTERVAL '3650 days',
+    NOW(),
+    '$CREATED_BY_SQL',
+    NOW(),
+    '$CREATED_BY_SQL'
+FROM entity_types et
+CROSS JOIN actions a
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM permission_grant pg
+    WHERE pg.subject_id = '$SUBJECT_ID_SQL'
+      AND pg.resource_type = 'ENTITY_TYPE'
+      AND pg.resource_id = et.id
       AND pg.action = a.action
 );
 
@@ -961,4 +1016,3 @@ else
 fi
 
 info "Bootstrap permissions inserted successfully for user '$USERNAME' (subject ID: $SUBJECT_ID)."
-
