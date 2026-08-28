@@ -18,10 +18,8 @@
 package org.trustdeck.algorithms;
 
 import org.trustdeck.jooq.generated.tables.pojos.Algorithm;
-import org.trustdeck.jooq.generated.tables.pojos.Domain;
+import org.trustdeck.configuration.DefaultProperties;
 import org.trustdeck.service.AlgorithmDBService;
-import org.trustdeck.service.DomainDBAccessService;
-import org.trustdeck.utils.SpringBeanLocator;
 
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -56,27 +54,8 @@ public abstract class Pseudonymizer {
 	@Getter(AccessLevel.NONE)
 	private Long currentValue;
 	
-	/** The database controller used to retrieve and store the counter. */
-	@Setter(AccessLevel.NONE)
-	private DomainDBAccessService ddba;
-	
-	/** The standard length for the generated pseudonyms. */
-	public static final int DEFAULT_VALUE_LENGTH = 16;
-	
-	/** The default character used for the padding of the generated pseudonyms. */
-	public static final char DEFAULT_PADDING_CHAR = '0';
-	
-	/** Determines the default number of retries when a generated random number is already in use. */
-	public static final int DEFAULT_NUMBER_OF_RETRIES = 3;
-	
 	/** String to determine that a domain reaches its filling point at which new pseudonyms are not reasonably probable generated anymore. */
 	public static final String DOMAIN_FULL = "The domain reached its filling point.";
-	
-	/** The name of the domain where the counter belongs to. */
-	private String domainName;
-	
-	/** Flag that indicates if the pseudonymizer is used with an algorithm object instead of a domain. */
-	private boolean isAlgorithmObjectBased;
 	
 	/** Indicates whether the domain allows multiple pseudonyms for each identifier. */
 	private boolean multiplePsnAllowed;
@@ -95,89 +74,7 @@ public abstract class Pseudonymizer {
 
 	/** String to determine that a pseudonymization process failed. */
 	public static final String PSEUDONYMIZATION_FAILED = "Pseudonymization failed.";
-	
-	/**
-	 * Basic constructor. Initializes the values used for pseudonymization.
-	 * Padding is turned off.
-	 * (The pseudonym value length is automatically set to the default, as well as the padding character.)
-	 */
-	public Pseudonymizer() {
-		this.alphabet = null;
-		this.currentValue = null;
-		this.ddba = SpringBeanLocator.getBean(DomainDBAccessService.class);
-		this.domainName = null;
-		this.isAlgorithmObjectBased = false;
-		this.multiplePsnAllowed = false;
-		this.numberOfRetries = DEFAULT_NUMBER_OF_RETRIES;
-		this.paddingChar = DEFAULT_PADDING_CHAR;
-		this.paddingWanted = false;
-		this.pseudonymValueLength = DEFAULT_VALUE_LENGTH;
-	}
-	
-	/**
-	 * Basic constructor. Initializes the values used for pseudonymization.
-	 * Padding is turned off.
-	 * (The pseudonym value length is automatically set to the default, as well as the padding character.)
-	 * 
-	 * @param domainName the name of the domain to which the record belongs to
-	 */
-	public Pseudonymizer(String domainName) {
-		this.ddba = SpringBeanLocator.getBean(DomainDBAccessService.class);
-		Domain d = ddba.getDomainByName(domainName);
-		this.alphabet = d.getAlphabet();
-		this.currentValue = null;
-		this.domainName = domainName;
-		this.isAlgorithmObjectBased = false;
-		this.multiplePsnAllowed = d.getMultiplepsnallowed();
-		this.numberOfRetries = DEFAULT_NUMBER_OF_RETRIES;
-		this.paddingChar = DEFAULT_PADDING_CHAR;
-		this.paddingWanted = false;
-		this.pseudonymValueLength = DEFAULT_VALUE_LENGTH;
-	}
-	
-	/**
-	 * A constructor that allows to set whether or not the created pseudonyms should be padded 
-	 * as well as the desired pseudonym value length and the character used for padding.
-	 * 
-	 * @param paddingWanted whether or not the pseudonyms should be padded to a certain length
-	 * @param pseudonymValueLength the desired length of the pseudonym value
-	 * @param paddingChar the character that should be used for padding
-	 * @param domainName the name of the domain to which the record belongs to
-	 */
-	public Pseudonymizer(boolean paddingWanted, int pseudonymValueLength, char paddingChar, String domainName) {
-		this.ddba = SpringBeanLocator.getBean(DomainDBAccessService.class);
-		Domain d = ddba.getDomainByName(domainName);
-		this.alphabet = d.getAlphabet();
-		this.currentValue = null;
-		this.domainName = domainName;
-		this.isAlgorithmObjectBased = false;
-		this.multiplePsnAllowed = d.getMultiplepsnallowed();
-		this.numberOfRetries = DEFAULT_NUMBER_OF_RETRIES;
-		this.paddingChar = paddingChar;
-		this.paddingWanted = paddingWanted;
-		this.pseudonymValueLength = pseudonymValueLength;
-	}
-	
-	/**
-	 * A constructor that allows to set whether or not the created pseudonyms should be padded.
-	 * All other information will be directly retrieved from the provided domain object.
-	 * 
-	 * @param paddingWanted whether or not the pseudonyms should be padded to a certain length
-	 * @param domain the domain object containing the necessary configuration information
-	 */
-	public Pseudonymizer(boolean paddingWanted, Domain domain) {
-		this.alphabet = domain.getAlphabet();
-		this.currentValue = null;
-		this.ddba = SpringBeanLocator.getBean(DomainDBAccessService.class);
-		this.domainName = domain.getName();
-		this.isAlgorithmObjectBased = false;
-		this.multiplePsnAllowed = domain.getMultiplepsnallowed();
-		this.numberOfRetries = DEFAULT_NUMBER_OF_RETRIES;
-		this.paddingChar = domain.getPaddingcharacter().charAt(0);
-		this.paddingWanted = paddingWanted;
-		this.pseudonymValueLength = domain.getPseudonymlength();
-	}
-	
+
 	/**
 	 * A constructor that allows to set whether or not the created pseudonyms should be padded.
 	 * All other information will be directly retrieved from the provided domain object.
@@ -185,18 +82,17 @@ public abstract class Pseudonymizer {
 	 * @param paddingWanted whether or not the pseudonyms should be padded to a certain length
 	 * @param algorithm the algorithm object containing the necessary configuration information
 	 */
-	public Pseudonymizer(boolean paddingWanted, Algorithm algorithm) {
-		this.adbs = SpringBeanLocator.getBean(AlgorithmDBService.class);
+	public Pseudonymizer(boolean paddingWanted, Algorithm algorithm, DefaultProperties defaults, AlgorithmDBService algorithmDBService) {
+		this.adbs = algorithmDBService;
 		this.algorithmID = algorithm.getId();
 		this.algorithmName = algorithm.getName();
 		this.alphabet = algorithm.getAlphabet();
-		this.currentValue = algorithm.getConsecutivevaluecounter();
-		this.isAlgorithmObjectBased = true;
+		this.currentValue = algorithm.getConsecutiveValueCounter();
 		this.multiplePsnAllowed = false;
-		this.numberOfRetries = DEFAULT_NUMBER_OF_RETRIES;
-		this.paddingChar = algorithm.getPaddingcharacter().charAt(0);
+		this.numberOfRetries = defaults.getAlgorithm().getNumberOfRetries();
+		this.paddingChar = algorithm.getPaddingCharacter().charAt(0);
 		this.paddingWanted = paddingWanted;
-		this.pseudonymValueLength = algorithm.getPseudonymlength();
+		this.pseudonymValueLength = algorithm.getPseudonymLength();
 	}
 	
 	/**
@@ -246,21 +142,7 @@ public abstract class Pseudonymizer {
 	 * @return the pseudonym including the checksum
 	 */
 	public String addCheckDigit(String pseudonym, boolean addInsteadOfLastChar, String domainName, String domainPrefix) {
-		// Get used algorithm nameString algo
-		String algo;
-		if (isAlgorithmObjectBased) {
-			// Use algorithm object
-			algo = algorithmName.toUpperCase();
-		} else {
-			// Use domain
-			Domain domain = ddba.getDomainByName(domainName);
-		
-			if (domain == null) {
-				return pseudonym;
-			}
-			
-			algo = domain.getAlgorithm().toUpperCase();
-		}
+		String algo = algorithmName.toUpperCase();
 		
 		// Shorten pseudonym when the last character should be overwritten. Exception: For
 		// the consecutive numbering, we don't want to cut anything from the pseudonym away.
@@ -348,18 +230,6 @@ public abstract class Pseudonymizer {
 	 * @return {@code true} if the counter was successfully stored, {@code false} otherwise
 	 */
 	public boolean persist() {
-		if (!isAlgorithmObjectBased) {
-			if (domainName == null) {
-				return false;
-			}
-			
-			return ddba.updateCounter(currentValue, domainName);
-		} else {
-			if (algorithmID == null) {
-				return false;
-			}
-			
-			return adbs.updateCounter(currentValue, algorithmID);
-		}
+		return algorithmID != null && adbs.updateCounter(currentValue, algorithmID);
 	}
 }

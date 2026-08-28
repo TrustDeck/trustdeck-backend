@@ -25,7 +25,8 @@ import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.trustdeck.dto.EntityInstanceDTO;
+import org.trustdeck.configuration.DefaultProperties;
+import org.trustdeck.dto.EntityDTO;
 import org.trustdeck.dto.EntityTypeDTO;
 import org.trustdeck.dto.RecordLinkageCandidateDTO;
 import org.trustdeck.linkage.LinkageTokenService;
@@ -67,26 +68,26 @@ public class RecordLinkageService {
     @Autowired
     private PPRLEncodingService pprlService;
 
-    /** Used to retrieve candidate entity instances from the database. */
+    /** Used to retrieve candidate entities from the database. */
     @Autowired
-    private EntityInstanceDBService entityInstanceService;
+    private EntityDBService entityService;
     
-    /** A factor to adjust the weight of a phonetic match. As it is less accurate than an exact match on a normalized string, the factor is usually < 1.0. */
-    private static final double PHONETIC_MATCH_WEIGHT_FACTOR = 0.75;
+    /** Enables access to default values. */
+    @Autowired
+    private DefaultProperties defaults;
 
     /**
      * Finds record-linkage candidates using the effective entity-level linkage
      * configuration of the given entity type.
      *
-     * @param projectId the project containing the entity instances
+     * @param projectId the project containing the entities
      * @param entityType the entity type for which candidates should be found
      * @param payload the entity payload to compare
-     * @param limit the maximum number of candidates to return
-     * @param includeDeleted whether deleted entity instances should be included
+     * @param includeDeleted whether deleted entities should be included
      * @return the matching candidates ordered by score, an empty list if no
      *         candidates exist, or {@code null} if linkage cannot be performed
      */
-    public List<RecordLinkageCandidateDTO> findCandidates(int projectId, EntityTypeDTO entityType, JsonNode payload, int limit, boolean includeDeleted) {
+    public List<RecordLinkageCandidateDTO> findCandidates(int projectId, EntityTypeDTO entityType, JsonNode payload, boolean includeDeleted) {
     	// Get the corresponding base type, if available
     	EntityTypeDTO baseType = entityType.getBaseTypeName() == null ? null : entityTypeService.getEntityTypeByName(entityType.getBaseTypeName(), null);
     	JsonNode baseDefinition = baseType == null ? null : baseType.getTypeDefinition();
@@ -112,37 +113,37 @@ public class RecordLinkageService {
     		return null;
     	}
 
-    	// Find candidate instances using the generated blocking tokens
-    	List<Long> candidateIds = entityInstanceService.findCandidateIdsByBlockingTokens(projectId, entityType.getId(), payloadTokens, entityConfig.getCandidateLimit(), includeDeleted);
+    	// Find candidate entities using the generated blocking tokens
+    	List<Long> candidateIds = entityService.findCandidateIdsByBlockingTokens(projectId, entityType.getId(), payloadTokens, entityConfig.getCandidateLimit(), includeDeleted);
     	if (candidateIds.isEmpty()) {
     		return List.of();
     	}
 
-    	// Load the matching entity instances
-    	List<EntityInstanceDTO> instances = entityInstanceService.getEntityInstancesByIDs(candidateIds, entityType.getId(), includeDeleted);
-    	if (instances == null) {
+    	// Load the matching entities
+    	List<EntityDTO> entities = entityService.getEntitiesByIDs(candidateIds, entityType.getId(), includeDeleted);
+    	if (entities == null) {
     		return null;
     	}
     	
-    	if (instances.isEmpty()) {
+    	if (entities.isEmpty()) {
     		return List.of();
     	}
 
-    	// Load the stored linkage tokens for all candidate instances
-    	Map<Long, List<LinkageToken>> tokensByInstance = entityInstanceService.getLinkageTokensForInstances(candidateIds, entityType.getId());
+    	// Load the stored linkage tokens for all candidate entities
+    	Map<Long, List<LinkageToken>> tokensByEntity = entityService.getLinkageTokensForEntities(candidateIds, entityType.getId());
 
-    	// Score and filter the candidate instances
+    	// Score and filter the candidate entities
     	List<RecordLinkageCandidateDTO> candidates = new ArrayList<>();
-    	for (EntityInstanceDTO instance : instances) {
-    		LinkageScoreResult score = score(payloadTokens, tokensByInstance.getOrDefault(instance.getId(), List.of()), entityConfig.getBloomMinSimilarity());
+    	for (EntityDTO entity : entities) {
+    		LinkageScoreResult score = score(payloadTokens, tokensByEntity.getOrDefault(entity.getId(), List.of()), entityConfig.getBloomMinSimilarity());
     		double normalizedScore = score.score() / maxPossibleScore;
 
     		// Only include candidates that satisfy both score thresholds
     		if (score.score() >= entityConfig.getMinScore() && normalizedScore >= entityConfig.getMinNormalizedScore()) {
-    			boolean deleted = Boolean.TRUE.equals(instance.getIsDeleted());
+    			boolean deleted = Boolean.TRUE.equals(entity.getIsDeleted());
 
     			candidates.add(RecordLinkageCandidateDTO.builder()
-    					.entityInstance(instance)
+    					.entity(entity)
     					.score(score.score())
     					.normalizedScore(normalizedScore)
     					.matchedOn(score.matchedOn())
@@ -156,7 +157,6 @@ public class RecordLinkageService {
     			.sorted(Comparator.comparingDouble(RecordLinkageCandidateDTO::getNormalizedScore)
     					.reversed()
     					.thenComparing(Comparator.comparingDouble(RecordLinkageCandidateDTO::getScore).reversed()))
-    			.limit(limit)
     			.toList();
     }
 
@@ -164,14 +164,13 @@ public class RecordLinkageService {
      * Finds active record-linkage candidates using the effective entity-level
      * linkage configuration of the given entity type.
      *
-     * @param projectId the project containing the entity instances
+     * @param projectId the project containing the entities
      * @param entityType the entity type for which candidates should be found
      * @param payload the entity payload to compare
-     * @param limit the maximum number of candidates to return
      * @return the matching active candidates ordered by score
      */
-    public List<RecordLinkageCandidateDTO> findCandidates(int projectId, EntityTypeDTO entityType, JsonNode payload, int limit) {
-    	return findCandidates(projectId, entityType, payload, limit, false);
+    public List<RecordLinkageCandidateDTO> findCandidates(int projectId, EntityTypeDTO entityType, JsonNode payload) {
+    	return findCandidates(projectId, entityType, payload, false);
     }
 
     /**
@@ -180,7 +179,7 @@ public class RecordLinkageService {
      * contribution of each attribute is added to the entity score.
      *
      * @param payloadTokens the linkage tokens generated for the query payload
-     * @param candidateTokens the stored linkage tokens of the candidate instance
+     * @param candidateTokens the stored linkage tokens of the candidate entity
      * @param bloomMinSimilarity the minimum accepted Bloom-filter similarity
      * @return the calculated score and descriptions of the contributing matches
      */
@@ -233,7 +232,7 @@ public class RecordLinkageService {
      * tokens of a candidate.
      *
      * @param payloadToken the token generated for the query payload
-     * @param candidateTokens the comparable tokens of the candidate instance
+     * @param candidateTokens the comparable tokens of the candidate entity
      * @param bloomMinSimilarity the minimum accepted Bloom-filter similarity
      * @return the resulting score contribution and its explanation
      */
@@ -257,7 +256,7 @@ public class RecordLinkageService {
     	// Apply the score factor associated with the token type
     	double contribution = switch (payloadToken.getTokenType()) {
     		case NORM, PPRL_EXACT -> payloadToken.getWeight();
-    		case PHONETIC -> payloadToken.getWeight() * PHONETIC_MATCH_WEIGHT_FACTOR;
+            case PHONETIC -> payloadToken.getWeight() * defaults.getLinkage().getPhoneticMatchWeightFactor();
     		case BLOCK, PPRL_BLOCK, PPRL_BLOOM -> 0.0;
     	};
 

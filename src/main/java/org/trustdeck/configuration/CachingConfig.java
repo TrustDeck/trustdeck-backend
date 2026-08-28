@@ -23,6 +23,7 @@ import com.hazelcast.config.EvictionPolicy;
 import com.hazelcast.config.InMemoryFormat;
 import com.hazelcast.config.MapConfig;
 import com.hazelcast.config.MaxSizePolicy;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -33,7 +34,11 @@ import org.springframework.context.annotation.Configuration;
  *
  */
 @Configuration
+@RequiredArgsConstructor
 public class CachingConfig {
+
+    /** Configurable defaults used for cache initialization. */
+    private final DefaultProperties defaults;
 
 	/**
 	 * This method is used to initialize the hazelcast cache configuration object.
@@ -43,7 +48,7 @@ public class CachingConfig {
     @Bean
     public Config hazelcastConfig() {
         Config config = new Config();
-        config.setInstanceName("trustdeck-hazelcast");
+        config.setInstanceName(defaults.getCache().getInstanceName());
         
         // Disable network discovery for hazelcast instances as we are only using the cache locally and 
         // discovery can lead to exceptions if the port is already in use
@@ -59,13 +64,13 @@ public class CachingConfig {
                 .setName("permission-actions-by-context")
                 .setInMemoryFormat(InMemoryFormat.BINARY)
                 .setEvictionConfig(eviction)
-                .setTimeToLiveSeconds(15 * 60));
+                .setTimeToLiveSeconds(Math.toIntExact(defaults.getCache().getTtlMinutes() * 60)));
 
         config.addMapConfig(new MapConfig()
                 .setName("effective-permissions-by-subject")
                 .setInMemoryFormat(InMemoryFormat.BINARY)
                 .setEvictionConfig(eviction)
-                .setTimeToLiveSeconds(15 * 60));
+                .setTimeToLiveSeconds(Math.toIntExact(defaults.getCache().getTtlMinutes() * 60)));
 
         return config;
     }

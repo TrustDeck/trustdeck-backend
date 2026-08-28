@@ -54,9 +54,9 @@ public class LinkageToken extends TableImpl<LinkageTokenRecord> {
     }
 
     /**
-     * The column <code>public.linkage_token.entity_instance_id</code>.
+     * The column <code>public.linkage_token.entity_id</code>.
      */
-    public final TableField<LinkageTokenRecord, Long> ENTITY_INSTANCE_ID = createField(DSL.name("entity_instance_id"), SQLDataType.BIGINT.nullable(false), this, "");
+    public final TableField<LinkageTokenRecord, Long> ENTITY_ID = createField(DSL.name("entity_id"), SQLDataType.BIGINT.nullable(false), this, "");
 
     /**
      * The column <code>public.linkage_token.entity_type_id</code>.
@@ -138,7 +138,7 @@ public class LinkageToken extends TableImpl<LinkageTokenRecord> {
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.LINKAGE_TOKEN_BLOCK_IDX, Indexes.LINKAGE_TOKEN_ENTITY_INSTANCE_IDX, Indexes.LINKAGE_TOKEN_LOOKUP_IDX);
+        return Arrays.asList(Indexes.LINKAGE_TOKEN_BLOCK_IDX, Indexes.LINKAGE_TOKEN_ENTITY_IDX, Indexes.LINKAGE_TOKEN_LOOKUP_IDX);
     }
 
     @Override

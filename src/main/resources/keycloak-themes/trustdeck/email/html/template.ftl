@@ -1,0 +1,31 @@
+<#macro emailLayout>
+<!doctype html>
+<html lang="${locale.currentLanguageTag}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TrustDeck</title>
+</head>
+<body style="margin:0;padding:0;background:#e0ecf1;color:#002552;font-family:Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#e0ecf1;">
+    <tr>
+      <td align="center" style="padding:32px 16px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;background:#ffffff;border:1px solid #cbcfd2;border-radius:12px;">
+          <tr>
+            <td style="padding:28px 32px 18px;border-bottom:4px solid #007bc3;color:#002552;font-size:26px;font-weight:700;">TrustDeck</td>
+          </tr>
+          <tr>
+            <td style="padding:30px 32px;color:#002552;font-size:16px;line-height:1.55;">
+              <#nested>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:18px 32px;background:#f7fafc;border-top:1px solid #cbcfd2;color:#5e676c;font-size:13px;line-height:1.45;">TrustDeck identity and access management</td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+</#macro>

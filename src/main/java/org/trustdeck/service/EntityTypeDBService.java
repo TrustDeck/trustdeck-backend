@@ -28,7 +28,6 @@ import org.jooq.JSONB;
 import org.jooq.exception.DataAccessException;
 import org.jooq.exception.MappingException;
 import org.jooq.impl.DSL;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.trustdeck.dto.EntityTypeDTO;
@@ -44,10 +43,11 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import static org.trustdeck.jooq.generated.Tables.ENTITY_TYPE;
-import static org.trustdeck.jooq.generated.Tables.ENTITY_INSTANCE;
+import static org.trustdeck.jooq.generated.Tables.ENTITY;
 
 /**
  * This class encapsulates the database access for entity types.
@@ -56,23 +56,20 @@ import static org.trustdeck.jooq.generated.Tables.ENTITY_INSTANCE;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class EntityTypeDBService {
     
 	/** References a jOOQ configuration object that configures jOOQ's behavior when executing queries. */
-    @Autowired
-	private DSLContext dsl;
+	private final DSLContext dsl;
     
     /** Enables access to the data base interaction methods for project objects. */
-    @Autowired
-    private ProjectDBService projectDBService;
+    private final ProjectDBService projectDBService;
 	
 	/** Enables access to domain database functions. */
-	@Autowired
-	private DomainDBAccessService ddba;
+	private final DomainDBAccessService ddba;
 	
 	/** Enables access to the mapper to transform JsonNode into JSONB and back. */
-	@Autowired
-	private ObjectMapper objectMapper;
+	private final ObjectMapper objectMapper;
 	
 	/**
      * Method to insert a new entity type into the database.
@@ -109,8 +106,8 @@ public class EntityTypeDBService {
 	    	// Create a new partition in the database for this type
 	    	// jOOQ doesn't model "PARTITION OF" yet, so use plain SQL
 	        dsl.query("CREATE TABLE {0} PARTITION OF {1} FOR VALUES IN ({2})", 
-	        		DSL.name("entityinstance_t" + createdEntityType.getId()), 
-	        		DSL.name("entity_instance"), 
+	        		DSL.name("entity_t" + createdEntityType.getId()), 
+	        		DSL.name("entity"), 
 	        		DSL.inline(createdEntityType.getId()))
 	        .execute();
 	    } catch (DataAccessException e) {
@@ -188,16 +185,13 @@ public class EntityTypeDBService {
     }
 
 	/**
-     * Method to retrieve an entity type from the database by explicitly providing the two variables
-     * name and projectID. Tuples of these are unique in the database.
-     * Base types will have no projectID, so it can be null.
+     * Method to retrieve an entity type from the database.
      * 
-     * @param entityTypeId the entity type's ID
-     * @param projectID the project to which the entity type is assigned to
+     * @param entityTypeId the entity type's (internal) ID
      * @return the retrieved entity type when successfully found, or {@code null} when nothing was found.
      */
     @Transactional
-    public EntityTypeDTO getEntityTypeById(int entityTypeId, Integer projectID) {
+    public EntityTypeDTO getEntityTypeByID(int entityTypeId) {
     	// Check if all the necessary arguments are available
     	if (entityTypeId <= 0) {
     		log.debug("For retrieving the entity type, there is an argument missing or empty.");
@@ -207,20 +201,9 @@ public class EntityTypeDBService {
     	// Build and execute the query
     	List<EntityType> entityTypes = null;
     	try {
-    		Condition cond = DSL.trueCondition()
-			        .and(ENTITY_TYPE.ID.equal(entityTypeId))
-			        .and(ENTITY_TYPE.IS_DEPRECATED.eq(false));
-
-			// Add the projectID as a condition, if available
-			if (projectID != null) {
-				cond = cond.and(ENTITY_TYPE.PROJECT_ID.eq(projectID));
-			} else {
-				// If the projectID is null, assume we are searching for a base type (which has no associated project)
-				cond = cond.and(ENTITY_TYPE.IS_BASE_TYPE.eq(true));
-			}
-
-			entityTypes = dsl.selectFrom(ENTITY_TYPE)
-					.where(cond)
+    		entityTypes = dsl.selectFrom(ENTITY_TYPE)
+					.where(ENTITY_TYPE.ID.equal(entityTypeId))
+					.and(ENTITY_TYPE.IS_DEPRECATED.eq(false))
 					.fetchInto(EntityType.class);
         } catch (MappingException e) {
         	log.debug("Could not map the entity type search result into the EntityType-POJO.", e);
@@ -262,7 +245,7 @@ public class EntityTypeDBService {
     	}
     	
     	if (entityTypeDTO.getId() != null) {
-    		return getEntityTypeById(entityTypeDTO.getId(), entityTypeDTO.getProjectId());
+    		return getEntityTypeByID(entityTypeDTO.getId());
     	} else if (entityTypeDTO.getName() != null) {
     		return getEntityTypeByName(entityTypeDTO.getName(), entityTypeDTO.getProjectId());
     	} else {
@@ -302,8 +285,8 @@ public class EntityTypeDBService {
     	int usedBy = 0;
     	try {
     		usedBy = dsl.selectCount()
-    				.from(ENTITY_INSTANCE)
-    				.where(ENTITY_INSTANCE.ENTITY_TYPE_ID.equal(type.getId()))
+    				.from(ENTITY)
+    				.where(ENTITY.ENTITY_TYPE_ID.equal(type.getId()))
     				.fetchOne(0, int.class);
     	} catch (DataAccessException e) {
     		log.debug("Searching for entity type refrences in the database failed.", e);
@@ -367,8 +350,8 @@ public class EntityTypeDBService {
     	int usedBy = 0;
     	try {
     		usedBy = dsl.selectCount()
-    				.from(ENTITY_INSTANCE)
-    				.where(ENTITY_INSTANCE.ENTITY_TYPE_ID.equal(oldType.getId()))
+    				.from(ENTITY)
+    				.where(ENTITY.ENTITY_TYPE_ID.equal(oldType.getId()))
     				.fetchOne(0, int.class);
     	} catch (DataAccessException e) {
     		log.debug("Searching for entity type references in the database failed.", e);

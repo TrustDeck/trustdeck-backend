@@ -23,6 +23,7 @@ import org.jooq.exception.IntegrityConstraintViolationException;
 import org.jooq.exception.MappingException;
 import org.jooq.impl.DSL;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.trustdeck.dto.ProjectDTO;
@@ -38,8 +39,9 @@ import lombok.extern.slf4j.Slf4j;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import static org.trustdeck.jooq.generated.Tables.ENTITY_INSTANCE;
+import static org.trustdeck.jooq.generated.Tables.ENTITY;
 import static org.trustdeck.jooq.generated.Tables.ENTITY_TYPE;
+import static org.trustdeck.jooq.generated.Tables.DOMAIN;
 import static org.trustdeck.jooq.generated.Tables.PROJECT;
 
 /**
@@ -57,6 +59,7 @@ public class ProjectDBService {
     
     /** Enables access to the permission grants database methods. */
     @Autowired
+    @Lazy
     private PermissionDBService permissionDBService;
 
     /**
@@ -221,7 +224,7 @@ public class ProjectDBService {
      * @throws UnexpectedResultSizeException whenever the deletion would not exactly affect one project entry
      */
     @Transactional
-    // TODO: When deleting a project, should the types defined in it also be considered deleted? What about the instances using the type?
+    // TODO: When deleting a project, should the types defined in it also be considered deleted? What about the entities using the type?
     public boolean deleteProject(ProjectDTO project, OffsetDateTime deleteDate) throws UnexpectedResultSizeException {
     	// Check if the given project is valid
     	if (project != null && project.getId() != null && project.getId() > 0) {
@@ -287,16 +290,19 @@ public class ProjectDBService {
 			return null;
 		}
 		
-		// Check if the project is in use (find project_id mentions in the type table and in the instance table)
+		// Check if the project is in use (find project_id mentions in the type, entity, and domain tables)
 		int usedBy = 0;
     	try {
     		usedBy = dsl.select(
-    				DSL.field(dsl.selectCount()
+			DSL.field(dsl.selectCount()
     	                     .from(ENTITY_TYPE)
     	                     .where(ENTITY_TYPE.PROJECT_ID.eq(oldProject.getId())))
-    				.add(DSL.field(dsl.selectCount()
-    	                     .from(ENTITY_INSTANCE)
-    	                     .where(ENTITY_INSTANCE.PROJECT_ID.eq(oldProject.getId()))))
+			.add(DSL.field(dsl.selectCount()
+    	                     .from(ENTITY)
+	                     .where(ENTITY.PROJECT_ID.eq(oldProject.getId())))
+                    .add(DSL.field(dsl.selectCount()
+                            .from(DOMAIN)
+                            .where(DOMAIN.PROJECT_ID.eq(oldProject.getId())))))
     				).fetchOne(0, int.class);
     	} catch (DataAccessException e) {
     		log.debug("Searching for entity type references in the database failed.", e);

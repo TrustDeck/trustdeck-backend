@@ -122,7 +122,7 @@ public class JsonSchemaService {
 
 	/**
 	 * Build an instance JSON schema from a validated definition in JsonNode form 
-	 * that can be used for validating entity instances.
+	 * that can be used for validating entities.
 	 * 
 	 * @param definition the validated schema definition
 	 * @return an instance JSON schema
@@ -136,7 +136,7 @@ public class JsonSchemaService {
 	
 	/**
 	 * Build an instance JSON schema from a validated definition in JSONB form 
-	 * that can be used for validating entity instances.
+	 * that can be used for validating entities.
 	 * 
 	 * @param definition the validated schema definition
 	 * @return an instance JSON schema

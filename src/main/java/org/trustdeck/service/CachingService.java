@@ -22,6 +22,7 @@ import com.hazelcast.map.IMap;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.trustdeck.configuration.DefaultProperties;
 import org.trustdeck.dto.EffectivePermissionDTO;
 
 import java.util.List;
@@ -49,8 +50,9 @@ public class CachingService {
     /** Name of the Hazelcast cache for caching effective permissions by subject (subjectId). */
     private static final String MAP_EFFECTIVE_PERMISSIONS_BY_SUBJECT = "effective-permissions-by-subject";
 
-    /** The cache's time-to-live (after how many minutes the entries will get invalidated). */
-    private static final long TTL_MINUTES = 15;
+    /** Enables access to default values. */
+    @Autowired
+    private DefaultProperties defaults;
 
     /**
      * Helper method to generate a context-key-String.
@@ -107,7 +109,7 @@ public class CachingService {
             }
 
             // Add data to cache and return to user
-            map.put(key, loaded, TTL_MINUTES, TimeUnit.MINUTES);
+            map.put(key, loaded, defaults.getCache().getTtlMinutes(), TimeUnit.MINUTES);
             return loaded;
         } finally {
             map.unlock(key);
@@ -152,7 +154,7 @@ public class CachingService {
             }
 
             // Add data to cache and return to user
-			map.put(subjectId, loaded, TTL_MINUTES, TimeUnit.MINUTES);
+			map.put(subjectId, loaded, defaults.getCache().getTtlMinutes(), TimeUnit.MINUTES);
 			return loaded;
 		} finally {
 			map.unlock(subjectId);

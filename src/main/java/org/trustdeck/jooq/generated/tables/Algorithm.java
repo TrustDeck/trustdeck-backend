@@ -69,40 +69,40 @@ public class Algorithm extends TableImpl<AlgorithmRecord> {
     public final TableField<AlgorithmRecord, String> ALPHABET = createField(DSL.name("alphabet"), SQLDataType.CLOB.nullable(false), this, "");
 
     /**
-     * The column <code>public.algorithm.randomalgorithmdesiredsize</code>.
+     * The column <code>public.algorithm.random_algorithm_desired_size</code>.
      */
-    public final TableField<AlgorithmRecord, Long> RANDOMALGORITHMDESIREDSIZE = createField(DSL.name("randomalgorithmdesiredsize"), SQLDataType.BIGINT.nullable(false), this, "");
+    public final TableField<AlgorithmRecord, Long> RANDOM_ALGORITHM_DESIRED_SIZE = createField(DSL.name("random_algorithm_desired_size"), SQLDataType.BIGINT.nullable(false), this, "");
 
     /**
      * The column
-     * <code>public.algorithm.randomalgorithmdesiredsuccessprobability</code>.
+     * <code>public.algorithm.random_algorithm_desired_success_probability</code>.
      */
-    public final TableField<AlgorithmRecord, Double> RANDOMALGORITHMDESIREDSUCCESSPROBABILITY = createField(DSL.name("randomalgorithmdesiredsuccessprobability"), SQLDataType.DOUBLE.nullable(false), this, "");
+    public final TableField<AlgorithmRecord, Double> RANDOM_ALGORITHM_DESIRED_SUCCESS_PROBABILITY = createField(DSL.name("random_algorithm_desired_success_probability"), SQLDataType.DOUBLE.nullable(false), this, "");
 
     /**
-     * The column <code>public.algorithm.consecutivevaluecounter</code>.
+     * The column <code>public.algorithm.consecutive_value_counter</code>.
      */
-    public final TableField<AlgorithmRecord, Long> CONSECUTIVEVALUECOUNTER = createField(DSL.name("consecutivevaluecounter"), SQLDataType.BIGINT.nullable(false), this, "");
+    public final TableField<AlgorithmRecord, Long> CONSECUTIVE_VALUE_COUNTER = createField(DSL.name("consecutive_value_counter"), SQLDataType.BIGINT.nullable(false), this, "");
 
     /**
-     * The column <code>public.algorithm.pseudonymlength</code>.
+     * The column <code>public.algorithm.pseudonym_length</code>.
      */
-    public final TableField<AlgorithmRecord, Integer> PSEUDONYMLENGTH = createField(DSL.name("pseudonymlength"), SQLDataType.INTEGER.nullable(false), this, "");
+    public final TableField<AlgorithmRecord, Integer> PSEUDONYM_LENGTH = createField(DSL.name("pseudonym_length"), SQLDataType.INTEGER.nullable(false), this, "");
 
     /**
-     * The column <code>public.algorithm.paddingcharacter</code>.
+     * The column <code>public.algorithm.padding_character</code>.
      */
-    public final TableField<AlgorithmRecord, String> PADDINGCHARACTER = createField(DSL.name("paddingcharacter"), SQLDataType.CHAR(1).nullable(false), this, "");
+    public final TableField<AlgorithmRecord, String> PADDING_CHARACTER = createField(DSL.name("padding_character"), SQLDataType.CHAR(1).nullable(false), this, "");
 
     /**
-     * The column <code>public.algorithm.addcheckdigit</code>.
+     * The column <code>public.algorithm.add_check_digit</code>.
      */
-    public final TableField<AlgorithmRecord, Boolean> ADDCHECKDIGIT = createField(DSL.name("addcheckdigit"), SQLDataType.BOOLEAN.nullable(false), this, "");
+    public final TableField<AlgorithmRecord, Boolean> ADD_CHECK_DIGIT = createField(DSL.name("add_check_digit"), SQLDataType.BOOLEAN.nullable(false), this, "");
 
     /**
-     * The column <code>public.algorithm.lengthincludescheckdigit</code>.
+     * The column <code>public.algorithm.length_includes_check_digit</code>.
      */
-    public final TableField<AlgorithmRecord, Boolean> LENGTHINCLUDESCHECKDIGIT = createField(DSL.name("lengthincludescheckdigit"), SQLDataType.BOOLEAN.nullable(false), this, "");
+    public final TableField<AlgorithmRecord, Boolean> LENGTH_INCLUDES_CHECK_DIGIT = createField(DSL.name("length_includes_check_digit"), SQLDataType.BOOLEAN.nullable(false), this, "");
 
     /**
      * The column <code>public.algorithm.salt</code>.
@@ -110,9 +110,9 @@ public class Algorithm extends TableImpl<AlgorithmRecord> {
     public final TableField<AlgorithmRecord, String> SALT = createField(DSL.name("salt"), SQLDataType.CLOB.nullable(false), this, "");
 
     /**
-     * The column <code>public.algorithm.saltlength</code>.
+     * The column <code>public.algorithm.salt_length</code>.
      */
-    public final TableField<AlgorithmRecord, Integer> SALTLENGTH = createField(DSL.name("saltlength"), SQLDataType.INTEGER.nullable(false), this, "");
+    public final TableField<AlgorithmRecord, Integer> SALT_LENGTH = createField(DSL.name("salt_length"), SQLDataType.INTEGER.nullable(false), this, "");
 
     private Algorithm(Name alias, Table<AlgorithmRecord> aliased) {
         this(alias, aliased, null);
@@ -169,7 +169,7 @@ public class Algorithm extends TableImpl<AlgorithmRecord> {
 
     @Override
     public List<UniqueKey<AlgorithmRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.ALGORITHM_NAME_ALPHABET_RANDOMALGORITHMDESIREDSIZE_RANDOMAL_KEY);
+        return Arrays.asList(Keys.ALGORITHM_CONFIGURATION_KEY);
     }
 
     @Override

@@ -21,15 +21,15 @@ public class Algorithm implements IAlgorithm {
     private Integer id;
     private String name;
     private String alphabet;
-    private Long randomalgorithmdesiredsize;
-    private Double randomalgorithmdesiredsuccessprobability;
-    private Long consecutivevaluecounter;
-    private Integer pseudonymlength;
-    private String paddingcharacter;
-    private Boolean addcheckdigit;
-    private Boolean lengthincludescheckdigit;
+    private Long randomAlgorithmDesiredSize;
+    private Double randomAlgorithmDesiredSuccessProbability;
+    private Long consecutiveValueCounter;
+    private Integer pseudonymLength;
+    private String paddingCharacter;
+    private Boolean addCheckDigit;
+    private Boolean lengthIncludesCheckDigit;
     private String salt;
-    private Integer saltlength;
+    private Integer saltLength;
 
     public Algorithm() {}
 
@@ -37,43 +37,43 @@ public class Algorithm implements IAlgorithm {
         this.id = value.getId();
         this.name = value.getName();
         this.alphabet = value.getAlphabet();
-        this.randomalgorithmdesiredsize = value.getRandomalgorithmdesiredsize();
-        this.randomalgorithmdesiredsuccessprobability = value.getRandomalgorithmdesiredsuccessprobability();
-        this.consecutivevaluecounter = value.getConsecutivevaluecounter();
-        this.pseudonymlength = value.getPseudonymlength();
-        this.paddingcharacter = value.getPaddingcharacter();
-        this.addcheckdigit = value.getAddcheckdigit();
-        this.lengthincludescheckdigit = value.getLengthincludescheckdigit();
+        this.randomAlgorithmDesiredSize = value.getRandomAlgorithmDesiredSize();
+        this.randomAlgorithmDesiredSuccessProbability = value.getRandomAlgorithmDesiredSuccessProbability();
+        this.consecutiveValueCounter = value.getConsecutiveValueCounter();
+        this.pseudonymLength = value.getPseudonymLength();
+        this.paddingCharacter = value.getPaddingCharacter();
+        this.addCheckDigit = value.getAddCheckDigit();
+        this.lengthIncludesCheckDigit = value.getLengthIncludesCheckDigit();
         this.salt = value.getSalt();
-        this.saltlength = value.getSaltlength();
+        this.saltLength = value.getSaltLength();
     }
 
     public Algorithm(
         Integer id,
         String name,
         String alphabet,
-        Long randomalgorithmdesiredsize,
-        Double randomalgorithmdesiredsuccessprobability,
-        Long consecutivevaluecounter,
-        Integer pseudonymlength,
-        String paddingcharacter,
-        Boolean addcheckdigit,
-        Boolean lengthincludescheckdigit,
+        Long randomAlgorithmDesiredSize,
+        Double randomAlgorithmDesiredSuccessProbability,
+        Long consecutiveValueCounter,
+        Integer pseudonymLength,
+        String paddingCharacter,
+        Boolean addCheckDigit,
+        Boolean lengthIncludesCheckDigit,
         String salt,
-        Integer saltlength
+        Integer saltLength
     ) {
         this.id = id;
         this.name = name;
         this.alphabet = alphabet;
-        this.randomalgorithmdesiredsize = randomalgorithmdesiredsize;
-        this.randomalgorithmdesiredsuccessprobability = randomalgorithmdesiredsuccessprobability;
-        this.consecutivevaluecounter = consecutivevaluecounter;
-        this.pseudonymlength = pseudonymlength;
-        this.paddingcharacter = paddingcharacter;
-        this.addcheckdigit = addcheckdigit;
-        this.lengthincludescheckdigit = lengthincludescheckdigit;
+        this.randomAlgorithmDesiredSize = randomAlgorithmDesiredSize;
+        this.randomAlgorithmDesiredSuccessProbability = randomAlgorithmDesiredSuccessProbability;
+        this.consecutiveValueCounter = consecutiveValueCounter;
+        this.pseudonymLength = pseudonymLength;
+        this.paddingCharacter = paddingCharacter;
+        this.addCheckDigit = addCheckDigit;
+        this.lengthIncludesCheckDigit = lengthIncludesCheckDigit;
         this.salt = salt;
-        this.saltlength = saltlength;
+        this.saltLength = saltLength;
     }
 
     /**
@@ -130,131 +130,131 @@ public class Algorithm implements IAlgorithm {
     }
 
     /**
-     * Getter for <code>public.algorithm.randomalgorithmdesiredsize</code>.
+     * Getter for <code>public.algorithm.random_algorithm_desired_size</code>.
      */
     @NotNull
     @Override
-    public Long getRandomalgorithmdesiredsize() {
-        return this.randomalgorithmdesiredsize;
+    public Long getRandomAlgorithmDesiredSize() {
+        return this.randomAlgorithmDesiredSize;
     }
 
     /**
-     * Setter for <code>public.algorithm.randomalgorithmdesiredsize</code>.
+     * Setter for <code>public.algorithm.random_algorithm_desired_size</code>.
      */
     @Override
-    public Algorithm setRandomalgorithmdesiredsize(Long randomalgorithmdesiredsize) {
-        this.randomalgorithmdesiredsize = randomalgorithmdesiredsize;
+    public Algorithm setRandomAlgorithmDesiredSize(Long randomAlgorithmDesiredSize) {
+        this.randomAlgorithmDesiredSize = randomAlgorithmDesiredSize;
         return this;
     }
 
     /**
      * Getter for
-     * <code>public.algorithm.randomalgorithmdesiredsuccessprobability</code>.
+     * <code>public.algorithm.random_algorithm_desired_success_probability</code>.
      */
     @NotNull
     @Override
-    public Double getRandomalgorithmdesiredsuccessprobability() {
-        return this.randomalgorithmdesiredsuccessprobability;
+    public Double getRandomAlgorithmDesiredSuccessProbability() {
+        return this.randomAlgorithmDesiredSuccessProbability;
     }
 
     /**
      * Setter for
-     * <code>public.algorithm.randomalgorithmdesiredsuccessprobability</code>.
+     * <code>public.algorithm.random_algorithm_desired_success_probability</code>.
      */
     @Override
-    public Algorithm setRandomalgorithmdesiredsuccessprobability(Double randomalgorithmdesiredsuccessprobability) {
-        this.randomalgorithmdesiredsuccessprobability = randomalgorithmdesiredsuccessprobability;
+    public Algorithm setRandomAlgorithmDesiredSuccessProbability(Double randomAlgorithmDesiredSuccessProbability) {
+        this.randomAlgorithmDesiredSuccessProbability = randomAlgorithmDesiredSuccessProbability;
         return this;
     }
 
     /**
-     * Getter for <code>public.algorithm.consecutivevaluecounter</code>.
+     * Getter for <code>public.algorithm.consecutive_value_counter</code>.
      */
     @NotNull
     @Override
-    public Long getConsecutivevaluecounter() {
-        return this.consecutivevaluecounter;
+    public Long getConsecutiveValueCounter() {
+        return this.consecutiveValueCounter;
     }
 
     /**
-     * Setter for <code>public.algorithm.consecutivevaluecounter</code>.
+     * Setter for <code>public.algorithm.consecutive_value_counter</code>.
      */
     @Override
-    public Algorithm setConsecutivevaluecounter(Long consecutivevaluecounter) {
-        this.consecutivevaluecounter = consecutivevaluecounter;
+    public Algorithm setConsecutiveValueCounter(Long consecutiveValueCounter) {
+        this.consecutiveValueCounter = consecutiveValueCounter;
         return this;
     }
 
     /**
-     * Getter for <code>public.algorithm.pseudonymlength</code>.
+     * Getter for <code>public.algorithm.pseudonym_length</code>.
      */
     @NotNull
     @Override
-    public Integer getPseudonymlength() {
-        return this.pseudonymlength;
+    public Integer getPseudonymLength() {
+        return this.pseudonymLength;
     }
 
     /**
-     * Setter for <code>public.algorithm.pseudonymlength</code>.
+     * Setter for <code>public.algorithm.pseudonym_length</code>.
      */
     @Override
-    public Algorithm setPseudonymlength(Integer pseudonymlength) {
-        this.pseudonymlength = pseudonymlength;
+    public Algorithm setPseudonymLength(Integer pseudonymLength) {
+        this.pseudonymLength = pseudonymLength;
         return this;
     }
 
     /**
-     * Getter for <code>public.algorithm.paddingcharacter</code>.
+     * Getter for <code>public.algorithm.padding_character</code>.
      */
     @NotNull
     @Size(max = 1)
     @Override
-    public String getPaddingcharacter() {
-        return this.paddingcharacter;
+    public String getPaddingCharacter() {
+        return this.paddingCharacter;
     }
 
     /**
-     * Setter for <code>public.algorithm.paddingcharacter</code>.
+     * Setter for <code>public.algorithm.padding_character</code>.
      */
     @Override
-    public Algorithm setPaddingcharacter(String paddingcharacter) {
-        this.paddingcharacter = paddingcharacter;
+    public Algorithm setPaddingCharacter(String paddingCharacter) {
+        this.paddingCharacter = paddingCharacter;
         return this;
     }
 
     /**
-     * Getter for <code>public.algorithm.addcheckdigit</code>.
+     * Getter for <code>public.algorithm.add_check_digit</code>.
      */
     @NotNull
     @Override
-    public Boolean getAddcheckdigit() {
-        return this.addcheckdigit;
+    public Boolean getAddCheckDigit() {
+        return this.addCheckDigit;
     }
 
     /**
-     * Setter for <code>public.algorithm.addcheckdigit</code>.
+     * Setter for <code>public.algorithm.add_check_digit</code>.
      */
     @Override
-    public Algorithm setAddcheckdigit(Boolean addcheckdigit) {
-        this.addcheckdigit = addcheckdigit;
+    public Algorithm setAddCheckDigit(Boolean addCheckDigit) {
+        this.addCheckDigit = addCheckDigit;
         return this;
     }
 
     /**
-     * Getter for <code>public.algorithm.lengthincludescheckdigit</code>.
+     * Getter for <code>public.algorithm.length_includes_check_digit</code>.
      */
     @NotNull
     @Override
-    public Boolean getLengthincludescheckdigit() {
-        return this.lengthincludescheckdigit;
+    public Boolean getLengthIncludesCheckDigit() {
+        return this.lengthIncludesCheckDigit;
     }
 
     /**
-     * Setter for <code>public.algorithm.lengthincludescheckdigit</code>.
+     * Setter for <code>public.algorithm.length_includes_check_digit</code>.
      */
     @Override
-    public Algorithm setLengthincludescheckdigit(Boolean lengthincludescheckdigit) {
-        this.lengthincludescheckdigit = lengthincludescheckdigit;
+    public Algorithm setLengthIncludesCheckDigit(Boolean lengthIncludesCheckDigit) {
+        this.lengthIncludesCheckDigit = lengthIncludesCheckDigit;
         return this;
     }
 
@@ -277,20 +277,20 @@ public class Algorithm implements IAlgorithm {
     }
 
     /**
-     * Getter for <code>public.algorithm.saltlength</code>.
+     * Getter for <code>public.algorithm.salt_length</code>.
      */
     @NotNull
     @Override
-    public Integer getSaltlength() {
-        return this.saltlength;
+    public Integer getSaltLength() {
+        return this.saltLength;
     }
 
     /**
-     * Setter for <code>public.algorithm.saltlength</code>.
+     * Setter for <code>public.algorithm.salt_length</code>.
      */
     @Override
-    public Algorithm setSaltlength(Integer saltlength) {
-        this.saltlength = saltlength;
+    public Algorithm setSaltLength(Integer saltLength) {
+        this.saltLength = saltLength;
         return this;
     }
 
@@ -321,47 +321,47 @@ public class Algorithm implements IAlgorithm {
         }
         else if (!this.alphabet.equals(other.alphabet))
             return false;
-        if (this.randomalgorithmdesiredsize == null) {
-            if (other.randomalgorithmdesiredsize != null)
+        if (this.randomAlgorithmDesiredSize == null) {
+            if (other.randomAlgorithmDesiredSize != null)
                 return false;
         }
-        else if (!this.randomalgorithmdesiredsize.equals(other.randomalgorithmdesiredsize))
+        else if (!this.randomAlgorithmDesiredSize.equals(other.randomAlgorithmDesiredSize))
             return false;
-        if (this.randomalgorithmdesiredsuccessprobability == null) {
-            if (other.randomalgorithmdesiredsuccessprobability != null)
+        if (this.randomAlgorithmDesiredSuccessProbability == null) {
+            if (other.randomAlgorithmDesiredSuccessProbability != null)
                 return false;
         }
-        else if (!this.randomalgorithmdesiredsuccessprobability.equals(other.randomalgorithmdesiredsuccessprobability))
+        else if (!this.randomAlgorithmDesiredSuccessProbability.equals(other.randomAlgorithmDesiredSuccessProbability))
             return false;
-        if (this.consecutivevaluecounter == null) {
-            if (other.consecutivevaluecounter != null)
+        if (this.consecutiveValueCounter == null) {
+            if (other.consecutiveValueCounter != null)
                 return false;
         }
-        else if (!this.consecutivevaluecounter.equals(other.consecutivevaluecounter))
+        else if (!this.consecutiveValueCounter.equals(other.consecutiveValueCounter))
             return false;
-        if (this.pseudonymlength == null) {
-            if (other.pseudonymlength != null)
+        if (this.pseudonymLength == null) {
+            if (other.pseudonymLength != null)
                 return false;
         }
-        else if (!this.pseudonymlength.equals(other.pseudonymlength))
+        else if (!this.pseudonymLength.equals(other.pseudonymLength))
             return false;
-        if (this.paddingcharacter == null) {
-            if (other.paddingcharacter != null)
+        if (this.paddingCharacter == null) {
+            if (other.paddingCharacter != null)
                 return false;
         }
-        else if (!this.paddingcharacter.equals(other.paddingcharacter))
+        else if (!this.paddingCharacter.equals(other.paddingCharacter))
             return false;
-        if (this.addcheckdigit == null) {
-            if (other.addcheckdigit != null)
+        if (this.addCheckDigit == null) {
+            if (other.addCheckDigit != null)
                 return false;
         }
-        else if (!this.addcheckdigit.equals(other.addcheckdigit))
+        else if (!this.addCheckDigit.equals(other.addCheckDigit))
             return false;
-        if (this.lengthincludescheckdigit == null) {
-            if (other.lengthincludescheckdigit != null)
+        if (this.lengthIncludesCheckDigit == null) {
+            if (other.lengthIncludesCheckDigit != null)
                 return false;
         }
-        else if (!this.lengthincludescheckdigit.equals(other.lengthincludescheckdigit))
+        else if (!this.lengthIncludesCheckDigit.equals(other.lengthIncludesCheckDigit))
             return false;
         if (this.salt == null) {
             if (other.salt != null)
@@ -369,11 +369,11 @@ public class Algorithm implements IAlgorithm {
         }
         else if (!this.salt.equals(other.salt))
             return false;
-        if (this.saltlength == null) {
-            if (other.saltlength != null)
+        if (this.saltLength == null) {
+            if (other.saltLength != null)
                 return false;
         }
-        else if (!this.saltlength.equals(other.saltlength))
+        else if (!this.saltLength.equals(other.saltLength))
             return false;
         return true;
     }
@@ -385,15 +385,15 @@ public class Algorithm implements IAlgorithm {
         result = prime * result + ((this.id == null) ? 0 : this.id.hashCode());
         result = prime * result + ((this.name == null) ? 0 : this.name.hashCode());
         result = prime * result + ((this.alphabet == null) ? 0 : this.alphabet.hashCode());
-        result = prime * result + ((this.randomalgorithmdesiredsize == null) ? 0 : this.randomalgorithmdesiredsize.hashCode());
-        result = prime * result + ((this.randomalgorithmdesiredsuccessprobability == null) ? 0 : this.randomalgorithmdesiredsuccessprobability.hashCode());
-        result = prime * result + ((this.consecutivevaluecounter == null) ? 0 : this.consecutivevaluecounter.hashCode());
-        result = prime * result + ((this.pseudonymlength == null) ? 0 : this.pseudonymlength.hashCode());
-        result = prime * result + ((this.paddingcharacter == null) ? 0 : this.paddingcharacter.hashCode());
-        result = prime * result + ((this.addcheckdigit == null) ? 0 : this.addcheckdigit.hashCode());
-        result = prime * result + ((this.lengthincludescheckdigit == null) ? 0 : this.lengthincludescheckdigit.hashCode());
+        result = prime * result + ((this.randomAlgorithmDesiredSize == null) ? 0 : this.randomAlgorithmDesiredSize.hashCode());
+        result = prime * result + ((this.randomAlgorithmDesiredSuccessProbability == null) ? 0 : this.randomAlgorithmDesiredSuccessProbability.hashCode());
+        result = prime * result + ((this.consecutiveValueCounter == null) ? 0 : this.consecutiveValueCounter.hashCode());
+        result = prime * result + ((this.pseudonymLength == null) ? 0 : this.pseudonymLength.hashCode());
+        result = prime * result + ((this.paddingCharacter == null) ? 0 : this.paddingCharacter.hashCode());
+        result = prime * result + ((this.addCheckDigit == null) ? 0 : this.addCheckDigit.hashCode());
+        result = prime * result + ((this.lengthIncludesCheckDigit == null) ? 0 : this.lengthIncludesCheckDigit.hashCode());
         result = prime * result + ((this.salt == null) ? 0 : this.salt.hashCode());
-        result = prime * result + ((this.saltlength == null) ? 0 : this.saltlength.hashCode());
+        result = prime * result + ((this.saltLength == null) ? 0 : this.saltLength.hashCode());
         return result;
     }
 
@@ -404,15 +404,15 @@ public class Algorithm implements IAlgorithm {
         sb.append(id);
         sb.append(", ").append(name);
         sb.append(", ").append(alphabet);
-        sb.append(", ").append(randomalgorithmdesiredsize);
-        sb.append(", ").append(randomalgorithmdesiredsuccessprobability);
-        sb.append(", ").append(consecutivevaluecounter);
-        sb.append(", ").append(pseudonymlength);
-        sb.append(", ").append(paddingcharacter);
-        sb.append(", ").append(addcheckdigit);
-        sb.append(", ").append(lengthincludescheckdigit);
+        sb.append(", ").append(randomAlgorithmDesiredSize);
+        sb.append(", ").append(randomAlgorithmDesiredSuccessProbability);
+        sb.append(", ").append(consecutiveValueCounter);
+        sb.append(", ").append(pseudonymLength);
+        sb.append(", ").append(paddingCharacter);
+        sb.append(", ").append(addCheckDigit);
+        sb.append(", ").append(lengthIncludesCheckDigit);
         sb.append(", ").append(salt);
-        sb.append(", ").append(saltlength);
+        sb.append(", ").append(saltLength);
 
         sb.append(")");
         return sb.toString();
@@ -427,15 +427,15 @@ public class Algorithm implements IAlgorithm {
         setId(from.getId());
         setName(from.getName());
         setAlphabet(from.getAlphabet());
-        setRandomalgorithmdesiredsize(from.getRandomalgorithmdesiredsize());
-        setRandomalgorithmdesiredsuccessprobability(from.getRandomalgorithmdesiredsuccessprobability());
-        setConsecutivevaluecounter(from.getConsecutivevaluecounter());
-        setPseudonymlength(from.getPseudonymlength());
-        setPaddingcharacter(from.getPaddingcharacter());
-        setAddcheckdigit(from.getAddcheckdigit());
-        setLengthincludescheckdigit(from.getLengthincludescheckdigit());
+        setRandomAlgorithmDesiredSize(from.getRandomAlgorithmDesiredSize());
+        setRandomAlgorithmDesiredSuccessProbability(from.getRandomAlgorithmDesiredSuccessProbability());
+        setConsecutiveValueCounter(from.getConsecutiveValueCounter());
+        setPseudonymLength(from.getPseudonymLength());
+        setPaddingCharacter(from.getPaddingCharacter());
+        setAddCheckDigit(from.getAddCheckDigit());
+        setLengthIncludesCheckDigit(from.getLengthIncludesCheckDigit());
         setSalt(from.getSalt());
-        setSaltlength(from.getSaltlength());
+        setSaltLength(from.getSaltLength());
     }
 
     @Override

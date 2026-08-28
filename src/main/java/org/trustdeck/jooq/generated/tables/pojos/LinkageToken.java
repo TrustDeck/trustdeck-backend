@@ -19,7 +19,7 @@ public class LinkageToken implements ILinkageToken {
 
     private static final long serialVersionUID = 1L;
 
-    private Long entityInstanceId;
+    private Long entityId;
     private Integer entityTypeId;
     private Integer projectId;
     private String fieldPath;
@@ -32,7 +32,7 @@ public class LinkageToken implements ILinkageToken {
     public LinkageToken() {}
 
     public LinkageToken(ILinkageToken value) {
-        this.entityInstanceId = value.getEntityInstanceId();
+        this.entityId = value.getEntityId();
         this.entityTypeId = value.getEntityTypeId();
         this.projectId = value.getProjectId();
         this.fieldPath = value.getFieldPath();
@@ -44,7 +44,7 @@ public class LinkageToken implements ILinkageToken {
     }
 
     public LinkageToken(
-        Long entityInstanceId,
+        Long entityId,
         Integer entityTypeId,
         Integer projectId,
         String fieldPath,
@@ -54,7 +54,7 @@ public class LinkageToken implements ILinkageToken {
         Double weight,
         OffsetDateTime createdAt
     ) {
-        this.entityInstanceId = entityInstanceId;
+        this.entityId = entityId;
         this.entityTypeId = entityTypeId;
         this.projectId = projectId;
         this.fieldPath = fieldPath;
@@ -66,20 +66,20 @@ public class LinkageToken implements ILinkageToken {
     }
 
     /**
-     * Getter for <code>public.linkage_token.entity_instance_id</code>.
+     * Getter for <code>public.linkage_token.entity_id</code>.
      */
     @NotNull
     @Override
-    public Long getEntityInstanceId() {
-        return this.entityInstanceId;
+    public Long getEntityId() {
+        return this.entityId;
     }
 
     /**
-     * Setter for <code>public.linkage_token.entity_instance_id</code>.
+     * Setter for <code>public.linkage_token.entity_id</code>.
      */
     @Override
-    public LinkageToken setEntityInstanceId(Long entityInstanceId) {
-        this.entityInstanceId = entityInstanceId;
+    public LinkageToken setEntityId(Long entityId) {
+        this.entityId = entityId;
         return this;
     }
 
@@ -234,11 +234,11 @@ public class LinkageToken implements ILinkageToken {
         if (getClass() != obj.getClass())
             return false;
         final LinkageToken other = (LinkageToken) obj;
-        if (this.entityInstanceId == null) {
-            if (other.entityInstanceId != null)
+        if (this.entityId == null) {
+            if (other.entityId != null)
                 return false;
         }
-        else if (!this.entityInstanceId.equals(other.entityInstanceId))
+        else if (!this.entityId.equals(other.entityId))
             return false;
         if (this.entityTypeId == null) {
             if (other.entityTypeId != null)
@@ -295,7 +295,7 @@ public class LinkageToken implements ILinkageToken {
     public int hashCode() {
         final int prime = 31;
         int result = 1;
-        result = prime * result + ((this.entityInstanceId == null) ? 0 : this.entityInstanceId.hashCode());
+        result = prime * result + ((this.entityId == null) ? 0 : this.entityId.hashCode());
         result = prime * result + ((this.entityTypeId == null) ? 0 : this.entityTypeId.hashCode());
         result = prime * result + ((this.projectId == null) ? 0 : this.projectId.hashCode());
         result = prime * result + ((this.fieldPath == null) ? 0 : this.fieldPath.hashCode());
@@ -311,7 +311,7 @@ public class LinkageToken implements ILinkageToken {
     public String toString() {
         StringBuilder sb = new StringBuilder("LinkageToken (");
 
-        sb.append(entityInstanceId);
+        sb.append(entityId);
         sb.append(", ").append(entityTypeId);
         sb.append(", ").append(projectId);
         sb.append(", ").append(fieldPath);
@@ -331,7 +331,7 @@ public class LinkageToken implements ILinkageToken {
 
     @Override
     public void from(ILinkageToken from) {
-        setEntityInstanceId(from.getEntityInstanceId());
+        setEntityId(from.getEntityId());
         setEntityTypeId(from.getEntityTypeId());
         setProjectId(from.getProjectId());
         setFieldPath(from.getFieldPath());

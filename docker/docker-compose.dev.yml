@@ -10,6 +10,7 @@ services:
   trustdeck-postgresql:
     image: postgres:latest
     container_name: trustdeck-postgresql
+    restart: unless-stopped
     networks:
       - trustdeck
     healthcheck:
@@ -33,6 +34,7 @@ services:
 
   trustdeck-keycloak:
     container_name: trustdeck-keycloak
+    restart: unless-stopped
     build:
       context: ..
       dockerfile: docker/Dockerfile_Keycloak_dev

@@ -17,15 +17,15 @@ import java.time.OffsetDateTime;
 public interface ILinkageToken extends Serializable {
 
     /**
-     * Setter for <code>public.linkage_token.entity_instance_id</code>.
+     * Setter for <code>public.linkage_token.entity_id</code>.
      */
-    public ILinkageToken setEntityInstanceId(Long value);
+    public ILinkageToken setEntityId(Long value);
 
     /**
-     * Getter for <code>public.linkage_token.entity_instance_id</code>.
+     * Getter for <code>public.linkage_token.entity_id</code>.
      */
     @NotNull
-    public Long getEntityInstanceId();
+    public Long getEntityId();
 
     /**
      * Setter for <code>public.linkage_token.entity_type_id</code>.

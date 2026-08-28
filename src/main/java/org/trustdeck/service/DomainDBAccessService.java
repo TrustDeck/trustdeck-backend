@@ -30,11 +30,13 @@ import org.jooq.SelectQuery;
 import org.jooq.exception.DataAccessException;
 import org.jooq.exception.MappingException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.trustdeck.algorithms.PathFinder;
 import org.trustdeck.dto.DomainDTO;
+import org.trustdeck.dto.ProjectDomainDTO;
 import org.trustdeck.dto.PseudonymDTO;
 import org.trustdeck.dto.PseudonymUpdateDTO;
 import org.trustdeck.exception.DomainNotFoundException;
@@ -57,7 +59,9 @@ import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.name;
 import static org.jooq.impl.DSL.select;
 import static org.trustdeck.jooq.generated.Tables.DOMAIN;
+import static org.trustdeck.jooq.generated.Tables.ALGORITHM;
 import static org.trustdeck.jooq.generated.Tables.PSEUDONYM;
+import static org.trustdeck.jooq.generated.Tables.PROJECT;
 
 /**
  * This class is used to encapsulate all methods needed to access the database for handling domains.
@@ -77,10 +81,12 @@ public class DomainDBAccessService {
 
     /** Enables the access to the domain specific database access methods. */
     @Autowired
+    @Lazy
     private PseudonymDBAccessService pseudonymDBAccessService;
     
     /** Enables access to the permission grants database methods. */
     @Autowired
+    @Lazy
     private PermissionDBService permissionDBService;
 
     /** Represents the duplication status of a requested insertion of a domain into the database. */
@@ -701,28 +707,16 @@ public class DomainDBAccessService {
                         .insertInto(DOMAIN, DOMAIN.NAME, DOMAIN.PREFIX, DOMAIN.VALIDFROM, DOMAIN.VALIDFROMINHERITED,
                                 DOMAIN.VALIDTO, DOMAIN.VALIDTOINHERITED, DOMAIN.ENFORCESTARTDATEVALIDITY,
                                 DOMAIN.ENFORCESTARTDATEVALIDITYINHERITED, DOMAIN.ENFORCEENDDATEVALIDITY,
-                                DOMAIN.ENFORCEENDDATEVALIDITYINHERITED, DOMAIN.ALGORITHM, DOMAIN.ALGORITHMINHERITED,
-                                DOMAIN.ALPHABET, DOMAIN.ALPHABETINHERITED, DOMAIN.RANDOMALGORITHMDESIREDSIZE,
-                                DOMAIN.RANDOMALGORITHMDESIREDSIZEINHERITED, DOMAIN.RANDOMALGORITHMDESIREDSUCCESSPROBABILITY,
-                                DOMAIN.RANDOMALGORITHMDESIREDSUCCESSPROBABILITYINHERITED, DOMAIN.MULTIPLEPSNALLOWED, 
-                                DOMAIN.MULTIPLEPSNALLOWEDINHERITED, DOMAIN.CONSECUTIVEVALUECOUNTER, DOMAIN.PSEUDONYMLENGTH, 
-                                DOMAIN.PSEUDONYMLENGTHINHERITED, DOMAIN.PADDINGCHARACTER, DOMAIN.PADDINGCHARACTERINHERITED, 
-                                DOMAIN.ADDCHECKDIGIT, DOMAIN.ADDCHECKDIGITINHERITED, DOMAIN.LENGTHINCLUDESCHECKDIGIT,
-                                DOMAIN.LENGTHINCLUDESCHECKDIGITINHERITED, DOMAIN.DESCRIPTION, DOMAIN.SALT, 
-                                DOMAIN.SALTLENGTH, DOMAIN.SUPERDOMAINID)
+                                  DOMAIN.ENFORCEENDDATEVALIDITYINHERITED, DOMAIN.MULTIPLEPSNALLOWED,
+                                  DOMAIN.MULTIPLEPSNALLOWEDINHERITED, DOMAIN.DESCRIPTION, DOMAIN.SUPERDOMAINID,
+                                  DOMAIN.ALGORITHM_ID, DOMAIN.ALGORITHM_INHERITED, DOMAIN.PROJECT_ID)
                         .values(domain.getName(), domain.getPrefix(), domain.getValidfrom(), domain.getValidfrominherited(),
                                 domain.getValidto(), domain.getValidtoinherited(), domain.getEnforcestartdatevalidity(),
                                 domain.getEnforcestartdatevalidityinherited(), domain.getEnforceenddatevalidity(),
-                                domain.getEnforceenddatevalidityinherited(), domain.getAlgorithm(), domain.getAlgorithminherited(),
-                                domain.getAlphabet(), domain.getAlphabetinherited(), domain.getRandomalgorithmdesiredsize(),
-                                domain.getRandomalgorithmdesiredsizeinherited(), domain.getRandomalgorithmdesiredsuccessprobability(),
-                                domain.getRandomalgorithmdesiredsuccessprobabilityinherited(), domain.getMultiplepsnallowed(),
-                                domain.getMultiplepsnallowedinherited(), domain.getConsecutivevaluecounter(), domain.getPseudonymlength(), 
-                                domain.getPseudonymlengthinherited(), domain.getPaddingcharacter(), domain.getPaddingcharacterinherited(), 
-                                domain.getAddcheckdigit(), domain.getAddcheckdigitinherited(), domain.getLengthincludescheckdigit(), 
-                                domain.getLengthincludescheckdigitinherited(), domain.getDescription(), domain.getSalt(), 
-                                domain.getSaltlength(), 
-                                (domain.getSuperdomainid() == null || domain.getSuperdomainid() == 0) ? null : domain.getSuperdomainid())
+                                domain.getEnforceenddatevalidityinherited(), domain.getMultiplepsnallowed(),
+                                 domain.getMultiplepsnallowedinherited(), domain.getDescription(),
+                                 (domain.getSuperdomainid() == null || domain.getSuperdomainid() == 0) ? null : domain.getSuperdomainid(),
+                                 domain.getAlgorithmId(), domain.getAlgorithmInherited(), domain.getProjectId())
                         .returning(DOMAIN.ID)
                         .fetchOne(DOMAIN.ID);
 
@@ -781,6 +775,31 @@ public class DomainDBAccessService {
             return null;
         }
     }
+
+    /**
+     * Returns every domain owned by a project, including all nested domains.
+     * Domain hierarchies cannot cross project boundaries, so filtering by project
+     * ownership includes every descendant without recursive traversal.
+     *
+     * @param projectId the owning project's ID
+     * @return domains ordered by name
+     */
+    @Transactional(readOnly = true)
+    public List<ProjectDomainDTO> listDomainsByProjectId(int projectId) {
+        var superDomain = DOMAIN.as("super_domain");
+
+        return dsl.select(DOMAIN.NAME, DOMAIN.PREFIX, PROJECT.ABBREVIATION, superDomain.NAME)
+                .from(DOMAIN)
+                .join(PROJECT).on(DOMAIN.PROJECT_ID.eq(PROJECT.ID))
+                .leftJoin(superDomain).on(DOMAIN.SUPERDOMAINID.eq(superDomain.ID))
+                .where(DOMAIN.PROJECT_ID.eq(projectId))
+                .orderBy(DOMAIN.NAME.asc())
+                .fetch(record -> new ProjectDomainDTO(
+                        record.get(DOMAIN.NAME),
+                        record.get(DOMAIN.PREFIX),
+                        record.get(PROJECT.ABBREVIATION),
+                        record.get(superDomain.NAME)));
+    }
     
     /**
      * Searches domains by a free-text query.
@@ -837,10 +856,13 @@ public class DomainDBAccessService {
     	try {
             this.dsl.transaction(configuration -> {
                 // Create and execute the update query
-                int updatedDomain = DSL.using(configuration).update(DOMAIN)
-                        .set(DOMAIN.CONSECUTIVEVALUECOUNTER, counter)
-                        .where(DOMAIN.NAME.equal(domainName))
-                        .execute();
+                Domain domain = DSL.using(configuration).selectFrom(DOMAIN)
+                        .where(DOMAIN.NAME.equal(domainName)).fetchOneInto(Domain.class);
+                int updatedDomain = domain == null || domain.getAlgorithmId() == null ? 0
+                        : DSL.using(configuration).update(ALGORITHM)
+                                .set(ALGORITHM.CONSECUTIVE_VALUE_COUNTER, counter)
+                                .where(ALGORITHM.ID.eq(domain.getAlgorithmId()))
+                                .execute();
                 
                 // Determine success
                 if (updatedDomain != 1) {
@@ -896,28 +918,11 @@ public class DomainDBAccessService {
                         .set(DOMAIN.ENFORCESTARTDATEVALIDITYINHERITED, (newDomain.getEnforcestartdatevalidityinherited() != null) ? newDomain.getEnforcestartdatevalidityinherited() : oldDomain.getEnforcestartdatevalidityinherited())
                         .set(DOMAIN.ENFORCEENDDATEVALIDITY, (newDomain.getEnforceenddatevalidity() != null) ? newDomain.getEnforceenddatevalidity() : oldDomain.getEnforceenddatevalidity())
                         .set(DOMAIN.ENFORCEENDDATEVALIDITYINHERITED, (newDomain.getEnforceenddatevalidityinherited() != null) ? newDomain.getEnforceenddatevalidityinherited() : oldDomain.getEnforceenddatevalidityinherited())
-                        .set(DOMAIN.ALGORITHM, (newDomain.getAlgorithm() != null && !newDomain.getAlgorithm().trim().equals("")) ? newDomain.getAlgorithm() : oldDomain.getAlgorithm())
-                        .set(DOMAIN.ALGORITHMINHERITED, (newDomain.getAlgorithminherited() != null) ? newDomain.getAlgorithminherited() : oldDomain.getAlgorithminherited())
-                        .set(DOMAIN.ALPHABET, (newDomain.getAlphabet() != null && !newDomain.getAlphabet().trim().equals("")) ? newDomain.getAlphabet() : oldDomain.getAlphabet())
-                        .set(DOMAIN.ALPHABETINHERITED, (newDomain.getAlphabetinherited() != null) ? newDomain.getAlphabetinherited() : oldDomain.getAlphabetinherited())
-                        .set(DOMAIN.RANDOMALGORITHMDESIREDSIZE, (newDomain.getRandomalgorithmdesiredsize() != null) ? newDomain.getRandomalgorithmdesiredsize() : oldDomain.getRandomalgorithmdesiredsize())
-                        .set(DOMAIN.RANDOMALGORITHMDESIREDSIZEINHERITED, (newDomain.getRandomalgorithmdesiredsizeinherited() != null) ? newDomain.getRandomalgorithmdesiredsizeinherited() : oldDomain.getRandomalgorithmdesiredsizeinherited())
-                        .set(DOMAIN.RANDOMALGORITHMDESIREDSUCCESSPROBABILITY, (newDomain.getRandomalgorithmdesiredsuccessprobability() != null) ? newDomain.getRandomalgorithmdesiredsuccessprobability() : oldDomain.getRandomalgorithmdesiredsuccessprobability())
-                        .set(DOMAIN.RANDOMALGORITHMDESIREDSUCCESSPROBABILITYINHERITED, (newDomain.getRandomalgorithmdesiredsuccessprobabilityinherited() != null) ? newDomain.getRandomalgorithmdesiredsuccessprobabilityinherited() : oldDomain.getRandomalgorithmdesiredsuccessprobabilityinherited())
+                        .set(DOMAIN.ALGORITHM_ID, newDomain.getAlgorithmId() != null ? newDomain.getAlgorithmId() : oldDomain.getAlgorithmId())
+                        .set(DOMAIN.ALGORITHM_INHERITED, newDomain.getAlgorithmInherited() != null ? newDomain.getAlgorithmInherited() : oldDomain.getAlgorithmInherited())
                         .set(DOMAIN.MULTIPLEPSNALLOWED, (newDomain.getMultiplepsnallowed() != null) ? newDomain.getMultiplepsnallowed() : oldDomain.getMultiplepsnallowed())
                         .set(DOMAIN.MULTIPLEPSNALLOWEDINHERITED, (newDomain.getMultiplepsnallowedinherited() != null) ? newDomain.getMultiplepsnallowedinherited() : oldDomain.getMultiplepsnallowedinherited())
-                        .set(DOMAIN.CONSECUTIVEVALUECOUNTER, (newDomain.getConsecutivevaluecounter() != null) ? newDomain.getConsecutivevaluecounter() : oldDomain.getConsecutivevaluecounter())
-                        .set(DOMAIN.PSEUDONYMLENGTH, (newDomain.getPseudonymlength() != null) ? newDomain.getPseudonymlength() : oldDomain.getPseudonymlength())
-                        .set(DOMAIN.PSEUDONYMLENGTHINHERITED, (newDomain.getPseudonymlengthinherited() != null) ? newDomain.getPseudonymlengthinherited() : oldDomain.getPseudonymlengthinherited())
-                        .set(DOMAIN.PADDINGCHARACTER, (newDomain.getPaddingcharacter() != null && !newDomain.getPaddingcharacter().trim().equals("")) ? newDomain.getPaddingcharacter() : oldDomain.getPaddingcharacter())
-                        .set(DOMAIN.PADDINGCHARACTERINHERITED, (newDomain.getPaddingcharacterinherited() != null) ? newDomain.getPaddingcharacterinherited() : oldDomain.getPaddingcharacterinherited())
-                        .set(DOMAIN.ADDCHECKDIGIT, (newDomain.getAddcheckdigit() != null) ? newDomain.getAddcheckdigit() : oldDomain.getAddcheckdigit())
-                        .set(DOMAIN.ADDCHECKDIGITINHERITED, (newDomain.getAddcheckdigitinherited() != null) ? newDomain.getAddcheckdigitinherited() : oldDomain.getAddcheckdigitinherited())
-                        .set(DOMAIN.LENGTHINCLUDESCHECKDIGIT, (newDomain.getLengthincludescheckdigit() != null) ? newDomain.getLengthincludescheckdigit() : oldDomain.getLengthincludescheckdigit())
-                        .set(DOMAIN.LENGTHINCLUDESCHECKDIGITINHERITED, (newDomain.getLengthincludescheckdigitinherited() != null) ? newDomain.getLengthincludescheckdigitinherited() : oldDomain.getLengthincludescheckdigitinherited())
                         .set(DOMAIN.DESCRIPTION, (newDomain.getDescription() != null) ? newDomain.getDescription() : oldDomain.getDescription())
-                        .set(DOMAIN.SALT, (newDomain.getSalt() != null) ? newDomain.getSalt() : oldDomain.getSalt())
-                        .set(DOMAIN.SALTLENGTH, (newDomain.getSaltlength() != null) ? newDomain.getSaltlength() : oldDomain.getSaltlength())
                         .where(DOMAIN.ID.equal(oldDomain.getId()))
                         .execute();
 
@@ -945,7 +950,8 @@ public class DomainDBAccessService {
                     update.setOldDomain(oldDomain);
                     update.setNewIdentifierItem(oldIdItem);
                     update.setNewPsn(old.getPseudonym());
-                    update.setNewDomain(newDomain);
+                    // A domain update changes its configuration, not its database identity.
+                    update.setNewDomain(oldDomain);
                     update.setNewDomainName(newDomain.getName());
                     update.setValidFrom(old.getValidfrominherited() ? newDomain.getValidfrom() : oldDomain.getValidfrom());
                     update.setValidFromInherited(old.getValidfrominherited());
@@ -957,9 +963,9 @@ public class DomainDBAccessService {
                 
                 // Update the inheritable variables
                 List<Boolean> results = pseudonymDBAccessService.updatePseudonyms(updates);
-                if (!updates.isEmpty() && results.contains(false)) {
+                if (!updates.isEmpty() && (results == null || results.contains(false))) {
                     // Failed update of a pseudonym-record: use exception to break the transaction
-                	IdentifierItem ii = updates.get(results.indexOf(false)).getNewIdentifierItem();
+                    IdentifierItem ii = updates.get(results == null ? 0 : results.indexOf(false)).getNewIdentifierItem();
                     throw new FailedPseudonymUpdateException((newDomain.getName() != null) ? newDomain.getName() : oldDomain.getName(), ii.getIdentifier(), ii.getIdType());
                 }
 
@@ -983,22 +989,8 @@ public class DomainDBAccessService {
                         updateDomain.setEnforcestartdatevalidityinherited(oldChild.getEnforcestartdatevalidityinherited());
                         updateDomain.setEnforceenddatevalidity(oldChild.getEnforceenddatevalidityinherited() ? newDomain.getEnforceenddatevalidity() : oldChild.getEnforceenddatevalidity());
                         updateDomain.setEnforceenddatevalidityinherited(oldChild.getEnforceenddatevalidityinherited());
-                        updateDomain.setAlgorithm(oldChild.getAlgorithminherited() ? newDomain.getAlgorithm() : oldChild.getAlgorithm());
-                        updateDomain.setAlgorithminherited(oldChild.getAlgorithminherited());
-                        updateDomain.setAlphabet(oldChild.getAlphabetinherited() ? newDomain.getAlphabet() : oldDomain.getAlphabet());
-                        updateDomain.setAlphabetinherited(oldChild.getAlphabetinherited());
-                        updateDomain.setRandomalgorithmdesiredsize(oldChild.getRandomalgorithmdesiredsizeinherited() ? newDomain.getRandomalgorithmdesiredsize() : oldDomain.getRandomalgorithmdesiredsize());
-                        updateDomain.setRandomalgorithmdesiredsizeinherited(oldChild.getRandomalgorithmdesiredsizeinherited());
-                        updateDomain.setRandomalgorithmdesiredsuccessprobability(oldChild.getRandomalgorithmdesiredsuccessprobabilityinherited() ? newDomain.getRandomalgorithmdesiredsuccessprobability() : oldDomain.getRandomalgorithmdesiredsuccessprobability());
-                        updateDomain.setRandomalgorithmdesiredsuccessprobabilityinherited(oldChild.getRandomalgorithmdesiredsuccessprobabilityinherited());
-                        updateDomain.setPseudonymlength(oldChild.getPseudonymlengthinherited() ? newDomain.getPseudonymlength() : oldChild.getPseudonymlength());
-                        updateDomain.setPseudonymlengthinherited(oldChild.getPseudonymlengthinherited());
-                        updateDomain.setPaddingcharacter(oldChild.getPaddingcharacterinherited() ? newDomain.getPaddingcharacter() : oldChild.getPaddingcharacter());
-                        updateDomain.setPaddingcharacterinherited(oldChild.getPaddingcharacterinherited());
-                        updateDomain.setAddcheckdigit(oldChild.getAddcheckdigitinherited() ? newDomain.getAddcheckdigit() : oldDomain.getAddcheckdigit());
-                        updateDomain.setAddcheckdigitinherited(oldChild.getAddcheckdigitinherited());
-                        updateDomain.setLengthincludescheckdigit(oldChild.getLengthincludescheckdigitinherited() ? newDomain.getLengthincludescheckdigit() : oldDomain.getLengthincludescheckdigit());
-                        updateDomain.setLengthincludescheckdigitinherited(oldChild.getLengthincludescheckdigitinherited());
+                        updateDomain.setAlgorithmId(oldChild.getAlgorithmInherited() ? newDomain.getAlgorithmId() : oldChild.getAlgorithmId());
+                        updateDomain.setAlgorithmInherited(oldChild.getAlgorithmInherited());
 
                         // Recursive call of the update method
                         if (updateDomain(oldChild, updateDomain, recursiveChanges) != null) {

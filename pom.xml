@@ -21,7 +21,7 @@
 
     <groupId>org.trustdeck</groupId>
     <artifactId>trustdeck</artifactId>
-    <version>v2.1.0</version>
+    <version>v2.2.0</version>
     <packaging>jar</packaging>
     <name>trustdeck</name>
 
@@ -234,7 +234,7 @@
                             <name>org.jooq.meta.postgres.PostgresDatabase</name>
                             <includes>.*</includes>
 							<!-- Exclude two matching functions and all tables for partition children -->
-							<excludes>public\.regexp_matches|public\.regexp_split_to_table | (?i:(?:public\.)?entityinstance_t\d+)</excludes>
+							<excludes>public\.regexp_matches|public\.regexp_split_to_table | (?i:(?:public\.)?entity_t\d+)</excludes>
                             <inputSchema>public</inputSchema>
                         </database>
                         <target>

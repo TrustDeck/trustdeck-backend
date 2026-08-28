@@ -18,7 +18,8 @@
 package org.trustdeck.algorithms;
 
 import org.trustdeck.jooq.generated.tables.pojos.Algorithm;
-import org.trustdeck.jooq.generated.tables.pojos.Domain;
+import org.trustdeck.configuration.DefaultProperties;
+import org.trustdeck.service.AlgorithmDBService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -36,68 +37,14 @@ public class ConsecutivePseudonymizer extends Pseudonymizer {
 	private Long startValue;
 	
 	/**
-	 * Basic constructor. Initializes the values needed for pseudonymization.
-	 * The consecutive value used for pseudonymization is retrieved from the domain in the database.
-	 * Padding is turned <b>off</b>.
-	 * (The pseudonym value length is automatically set to the default, as well as the padding character.)
-	 * 
-	 * @param domainName the name of the domain to which the record belongs to
-	 */
-	public ConsecutivePseudonymizer(String domainName) {
-		super(false, Pseudonymizer.DEFAULT_VALUE_LENGTH, Pseudonymizer.DEFAULT_PADDING_CHAR, domainName);
-		this.startValue = null;
-	}
-	
-	/**
-	 * A constructor where everything padding-related can be set manually.
-	 * The consecutive value used for pseudonymization is retrieved from the domain in the database.
-	 * 
-	 * @param paddingWanted whether or not the pseudonyms should be padded to a certain length
-	 * @param pseudonymValueLength the desired length of the pseudonym value
-	 * @param paddingChar the character that should be used for padding
-	 * @param domainName the name of the domain to which the record belongs to
-	 */
-	public ConsecutivePseudonymizer(boolean paddingWanted, int pseudonymValueLength, char paddingChar, String domainName) {
-		super(paddingWanted, pseudonymValueLength, paddingChar, domainName);
-		this.startValue = null;
-	}
-	
-	/**
-	 * A constructor where everything padding-related as well as the start value 
-	 * for the consecutive numbering can be set manually. <b>USE WITH CAUTION.</b>
-	 * 
-	 * @param paddingWanted whether or not the pseudonyms should be padded to a certain length
-	 * @param pseudonymValueLength the desired length of the pseudonym value
-	 * @param paddingChar the character that should be used for padding
-	 * @param startValue the value for the first pseudonym
-	 * @param domainName the name of the domain to which the record belongs to
-	 */
-	public ConsecutivePseudonymizer(boolean paddingWanted, int pseudonymValueLength, char paddingChar, long startValue, String domainName) {
-		super(paddingWanted, pseudonymValueLength, paddingChar, domainName);
-		this.startValue = startValue;
-	}
-	
-	/**
-	 * Basic constructor.
-	 * All necessary variables are directly retrieved from the domain object.
-	 * 
-	 * @param paddingWanted whether or not the pseudonyms should be padded to a certain length
-	 * @param domain the domain object
-	 */
-	public ConsecutivePseudonymizer(boolean paddingWanted, Domain domain) {
-		super(paddingWanted, domain);
-		this.startValue = null;
-	}
-	
-	/**
 	 * Basic constructor.
 	 * All necessary variables are directly retrieved from the algorithm object.
 	 * 
 	 * @param paddingWanted whether or not the pseudonyms should be padded to a certain length
 	 * @param algorithm the algorithm object
 	 */
-	public ConsecutivePseudonymizer(boolean paddingWanted, Algorithm algorithm) {
-		super(paddingWanted, algorithm);
+	public ConsecutivePseudonymizer(boolean paddingWanted, Algorithm algorithm, DefaultProperties defaults, AlgorithmDBService algorithmDBService) {
+		super(paddingWanted, algorithm, defaults, algorithmDBService);
 		this.startValue = null;
 	}
 
@@ -111,7 +58,7 @@ public class ConsecutivePseudonymizer extends Pseudonymizer {
 		if (startValue != null && startValue > 0) {
 			counter = startValue;
 		} else {
-			counter = isAlgorithmObjectBased() ? getAdbs().getAlgorithmByID(getAlgorithmID()).getConsecutivevaluecounter() : getDdba().getDomainByName(getDomainName()).getConsecutivevaluecounter();
+			counter = getAdbs().getAlgorithmByID(getAlgorithmID()).getConsecutiveValueCounter();
 		}
 		
 		setCurrentValue(counter == null ? 1L : counter + 1L);
