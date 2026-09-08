@@ -89,12 +89,12 @@ public class DomainDTO implements IObjectDTO<IDomain, DomainDTO> {
     @Getter(value=AccessLevel.NONE)
     @Setter(value=AccessLevel.NONE)
     private LocalDateTime validTo;
-    
-    /** An amount of time a domain should be valid for. (Only needed for the creation.) */
-    private String validityTime;
 
     /** Determines if the validTo value was inherited from the super domain. */
     private Boolean validToInherited;
+    
+    /** An amount of time a domain should be valid for. (Only needed for the creation.) */
+    private String validityTime;
 
     /** An option to ensure that the valid-from date of entries is always after or equal to the domain one. */
     private Boolean enforceStartDateValidity;

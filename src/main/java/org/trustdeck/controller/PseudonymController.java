@@ -1399,7 +1399,11 @@ public class PseudonymController {
 		
 		switch (a.getName().toUpperCase()) {
 	        case "CONSECUTIVE":
-	        case "RANDOM":
+	        case "RANDOM": {
+	        	// Used alphabet: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	        	luhn = new LuhnMod36CheckDigit();
+	        	break;
+	        }
 	        case "RANDOM_NUM": {
 	        	// Used alphabet: "0123456789"
 	        	luhn = new LuhnMod10CheckDigit();
