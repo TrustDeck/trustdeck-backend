@@ -8,6 +8,7 @@ Usage:
                          [--env-file <path/to/trustdeck.env>]
                          [--application-yml <path/to/application.yml>]
                          [--docker-container <postgres_container_name>]
+                         [--backend-container <backend_container_name>]
                          [--keycloak-container <keycloak_container_name>]
                          [--db-host <host>] [--db-port <port>] [--db-name <db>]
                          [--db-user <user>] [--db-password <password>]
@@ -26,6 +27,7 @@ repository root by walking upwards from the script file itself.
 Defaults:
   --db-mode docker
   --docker-container trustdeck-postgresql
+  --backend-container trustdeck-backend
   --keycloak-container trustdeck-keycloak
   --db-name trustdeck
   --created-by bootstrap-script
@@ -98,6 +100,7 @@ DB_MODE="docker"
 ENV_FILE_ARG=""
 APPLICATION_YML_ARG=""
 DOCKER_CONTAINER="trustdeck-postgresql"
+BACKEND_CONTAINER="trustdeck-backend"
 KEYCLOAK_CONTAINER="trustdeck-keycloak"
 DB_HOST_ARG=""
 DB_PORT_ARG=""
@@ -131,6 +134,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --docker-container)
       DOCKER_CONTAINER="${2:-}"
+      shift 2
+      ;;
+    --backend-container)
+      BACKEND_CONTAINER="${2:-}"
       shift 2
       ;;
     --keycloak-container)
@@ -997,6 +1004,8 @@ if [[ "$DB_MODE" == "local" ]]; then
     -d "$DB_NAME" \
     -v ON_ERROR_STOP=1 \
     -f "$SQL_FILE"
+
+  printf '\033[1;33m[HINT] Permissions were inserted successfully. Restart the Maven backend to invalidate its permission cache before testing.\033[0m\n' >&2
 else
   require_cmd docker
 
@@ -1015,6 +1024,15 @@ else
       -d "$DB_NAME" \
       -v ON_ERROR_STOP=1 \
     < "$SQL_FILE"
+
+  if ! docker inspect "$BACKEND_CONTAINER" >/dev/null 2>&1; then
+    err "Backend container not found after successful permission insertion: $BACKEND_CONTAINER"
+    exit 1
+  fi
+
+  info "Restarting backend container '$BACKEND_CONTAINER' to clear cached permissions"
+  docker restart "$BACKEND_CONTAINER" >/dev/null
+  info "Backend container '$BACKEND_CONTAINER' restarted successfully"
 fi
 
 info "Bootstrap permissions inserted successfully for user '$USERNAME' (subject ID: $SUBJECT_ID)."
