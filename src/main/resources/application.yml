@@ -106,6 +106,7 @@ app:
       password: ${DATABASE_TRUSTDECK_PASSWORD}
       configuration:
         maximum-pool-size: 20
+        connection-init-sql: SET TIME ZONE 'UTC'
   cors:
     allowed-origins: "${TRUSTDECK_CORS_ALLOWED_ORIGINS:}"
     allowed-methods: "${TRUSTDECK_CORS_ALLOWED_METHODS:GET,POST,PUT,DELETE}"

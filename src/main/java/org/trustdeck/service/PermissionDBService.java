@@ -56,6 +56,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.security.Principal;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -149,7 +150,7 @@ public class PermissionDBService {
 
     	// Reused variables
     	String requester = subjectIdFromRequest();
-    	OffsetDateTime now = OffsetDateTime.now();
+      OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
     	
 		// Check for duplicates in DB (skip duplicates before inserting)
     	// Create a list of permissions that we can use to query the database
@@ -528,7 +529,7 @@ public class PermissionDBService {
         return cachingService.getEffectivePermissionsForSubject(subjectId, () -> {
 	        // Cache miss: get data from DB
         	// We only want to have non-expired permissions
-	        OffsetDateTime now = OffsetDateTime.now();
+          OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
 	
 	        // Retrieve the permissions from the database
 	        try {
@@ -572,7 +573,7 @@ public class PermissionDBService {
         Set<String> allowedActions = cachingService.getAllowedActionsForContext(subjectId, resourceType, resourceId, () -> {
         	// Cache miss: get data from DB
         	// We only want to have non-expired permissions
-        	OffsetDateTime now = OffsetDateTime.now();
+          OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         	
         	// Retrieve the permissions from the database
             try {
@@ -767,7 +768,7 @@ public class PermissionDBService {
 		}
 
 		String requester = subjectIdFromRequest();
-		OffsetDateTime now = OffsetDateTime.now();
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
 
 		List<UpdateConditionStep<PermissionGrantRecord>> updates = new ArrayList<>();
 		List<Integer> originalIndex = new ArrayList<>();

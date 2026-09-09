@@ -794,6 +794,9 @@ trap cleanup EXIT
 cat > "$SQL_FILE" <<SQL
 BEGIN;
 
+-- Keep timestamp handling consistent with the backend and timestamptz columns.
+SET TIME ZONE 'UTC';
+
 -- Global permissions
 WITH actions(action) AS (
     VALUES
