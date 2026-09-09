@@ -294,7 +294,7 @@ public class EntityTypeDBService {
     	}
     	
     	if (usedBy != 0) {
-    		log.debug("The entity type was referenced by " + usedBy + "entit" + (usedBy == 1 ? "y" : "ies") + " and can therefore not be deleted.");
+    		log.debug("The entity type was referenced by " + usedBy + " entit" + (usedBy == 1 ? "y" : "ies") + " and can therefore not be deleted.");
     		return false;
     	}
     	
