@@ -280,6 +280,18 @@
                 </configuration>
                 <executions>
                     <execution>
+                        <!-- Provides application meta info to the application; used in statistics. -->
+                        <id>build-info</id>
+                        <goals>
+                            <goal>build-info</goal>
+                        </goals>
+                        <configuration>
+                            <excludeInfoProperties>
+                                <excludeInfoProperty>time</excludeInfoProperty>
+                            </excludeInfoProperties>
+                        </configuration>
+                    </execution>
+                    <execution>
                         <goals>
                             <goal>repackage</goal>
                         </goals>
@@ -290,6 +302,29 @@
                         </configuration>
                     </execution>
                 </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>io.github.git-commit-id</groupId>
+                <artifactId>git-commit-id-maven-plugin</artifactId>
+                <version>9.0.1</version>
+                <executions>
+                    <execution>
+                        <id>git-properties</id>
+                        <phase>initialize</phase>
+                        <goals>
+                            <goal>revision</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <generateGitPropertiesFile>true</generateGitPropertiesFile>
+                    <generateGitPropertiesFilename>${project.build.outputDirectory}/git.properties</generateGitPropertiesFilename>
+                    <failOnNoGitDirectory>false</failOnNoGitDirectory>
+                    <includeOnlyProperties>
+                        <includeOnlyProperty>^git.commit.id$</includeOnlyProperty>
+                    </includeOnlyProperties>
+                </configuration>
             </plugin>
             
             <plugin>
