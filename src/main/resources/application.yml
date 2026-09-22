@@ -122,6 +122,7 @@ app:
       - project:update
       - project:delete
       - project:manage-permissions
+      - project:statistics
       - image:create
       - image:read
       - image:update
@@ -174,7 +175,7 @@ app:
       - base-type:search
       - roles:delete
       - table:delete
-      - table:read-storage
+      - system:statistics
       - global:manage-permissions
   kafka:
     enabled: ${KAFKA_ENABLED:false}

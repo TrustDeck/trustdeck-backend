@@ -25,7 +25,6 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -45,6 +44,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.trustdeck.dto.PermissionDTO;
 import org.trustdeck.dto.ProjectDomainDTO;
 import org.trustdeck.dto.ProjectDTO;
+import org.trustdeck.dto.ProjectStatisticsDTO;
 import org.trustdeck.configuration.DefaultProperties;
 import org.trustdeck.exception.DuplicateProjectException;
 import org.trustdeck.exception.UnexpectedResultSizeException;
@@ -52,6 +52,7 @@ import org.trustdeck.security.audittrail.annotation.Audit;
 import org.trustdeck.service.PermissionDBService;
 import org.trustdeck.service.DomainDBAccessService;
 import org.trustdeck.service.ProjectDBService;
+import org.trustdeck.service.ProjectStatisticsService;
 import org.trustdeck.service.ResponseService;
 import org.trustdeck.utils.Assertion;
 import org.trustdeck.utils.Utility;
@@ -76,6 +77,10 @@ public class ProjectController {
     /** Enables access to the data base interaction methods. */
     @Autowired
     private ProjectDBService projectDBService;
+
+    /** Enables access to project statistics. */
+    @Autowired
+    private ProjectStatisticsService projectStatisticsService;
     
     /** Enables access to the permission grants database methods. */
     @Autowired
@@ -265,9 +270,8 @@ public class ProjectController {
     @GetMapping("/projects/{projectAbbreviation}/domains")
     @PreAuthorize("isAuthenticated() and @auth.hasProjectPermission(#root, #projectAbbreviation, 'project:read')")
     @Audit
-    public ResponseEntity<?> getProjectDomains(
-            @PathVariable String projectAbbreviation,
-            @RequestHeader(name = "accept", required = false) String responseContentType) {
+    public ResponseEntity<?> getProjectDomains(@PathVariable String projectAbbreviation,
+            								   @RequestHeader(name = "accept", required = false) String responseContentType) {
         if (Assertion.isNullOrEmpty(projectAbbreviation)) {
             return responseService.badRequest(responseContentType);
         }
@@ -282,20 +286,38 @@ public class ProjectController {
     }
 	
 	/**
-	 * Method to retrieve statistics about a certain project
-	 * identified by it's abbreviation.
+	 * Method to retrieve statistics about a certain project identified by it's abbreviation.
 	 * 
 	 * @param projectAbbreviation the project's abbreviation
 	 * @param responseContentType (optional) the response content type
-     * @return <li>a <b>501-NOT_IMPLEMENTED</b> status (endpoint not implemented yet)</li>
+     * @return <li>a <b>200-OK</b> status with the project statistics</li>
+     * 		   <li>a <b>400-BAD_REQUEST</b> status when the given abbreviation was null or empty
+     *         <li>a <b>404-NOT_FOUND</b> status when no project exists for the abbreviation</li>
 	 */
-	@GetMapping("projects/{projectAbbreviation}/statistics")
+	@GetMapping("/projects/{projectAbbreviation}/statistics")
     @PreAuthorize("isAuthenticated() and @auth.hasProjectPermission(#root, #projectAbbreviation, 'project:statistics')")
     @Audit
     public ResponseEntity<?> getProjectStatistics(@PathVariable("projectAbbreviation") String projectAbbreviation,
                                 				  @RequestHeader(name = "accept", required = false) String responseContentType) {
 		
-		return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+		if (Assertion.isNullOrEmpty(projectAbbreviation)) {
+			return responseService.badRequest(responseContentType);
+		}
+
+		ProjectStatisticsDTO statistics;
+		try {
+			statistics = projectStatisticsService.getStatistics(projectAbbreviation);
+		} catch (Exception e) {
+			log.error("Retrieving project statistics failed.", e);
+			return responseService.internalServerError(responseContentType);
+		}
+		
+		if (statistics == null) {
+			log.debug("No project found for the given abbreviation.");
+			return responseService.notFound(responseContentType);
+		}
+
+		return responseService.ok(responseContentType, statistics);
 	}
 
 	/**
