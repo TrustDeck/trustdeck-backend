@@ -659,4 +659,52 @@ public class TestsRecordServiceIT extends AssertWebRequestService {
         assertNotEquals("", linkedRecord.getIdentifierItem().getIdentifier());
         assertEquals(r.getPsn(), linkedRecord.getIdentifierItem().getIdentifier());
     }
+
+    /**
+     * Verifies that supplied pseudonyms are trimmed but not prefixed for single and batch creation.
+     *
+     * @throws Exception forwards any internally thrown exceptions
+     */
+    @Test
+    @DisplayName("preserveSuppliedPseudonymTest")
+    public void preserveSuppliedPseudonymTest() throws Exception {
+        String domainName = "TestStudie";
+        String singlePsn = "supplied-single-psn";
+        String batchPsn = "supplied-batch-psn";
+
+        PseudonymDTO single = new PseudonymDTO();
+        single.setIdentifierItem(IdentifierItem.builder().identifier("preserve-single-psn-id").idType("ANY-ID").build());
+        single.setPsn("  " + singlePsn + "  ");
+
+        MockHttpServletResponse singleResponse = this.assertCreatedRequest(
+                "preserveSuppliedSinglePseudonym",
+                post("/api/domains/" + domainName + "/pseudonyms"),
+                null,
+                single,
+                this.getAccessToken());
+        assertEquals(singlePsn, this.mapJsonObjectsInStringToList(singleResponse.getContentAsString(), PseudonymDTO.class).getFirst().getPsn());
+
+        PseudonymDTO batch = new PseudonymDTO();
+        batch.setIdentifierItem(IdentifierItem.builder().identifier("preserve-batch-psn-id").idType("ANY-ID").build());
+        batch.setPsn("  " + batchPsn + "  ");
+
+        MockHttpServletResponse batchResponse = this.assertCreatedRequest(
+                "preserveSuppliedBatchPseudonym",
+                post("/api/domains/" + domainName + "/pseudonyms/batch"),
+                null,
+                List.of(batch),
+                this.getAccessToken());
+        assertEquals(batchPsn, this.mapJsonObjectsInStringToList(batchResponse.getContentAsString(), PseudonymDTO.class).getFirst().getPsn());
+
+        this.assertNoContent("deletePreservedSinglePseudonym",
+                delete("/api/domains/" + domainName + "/pseudonyms"),
+                Map.of("id", "preserve-single-psn-id", "idType", "ANY-ID"),
+                null,
+                this.getAccessToken());
+        this.assertNoContent("deletePreservedBatchPseudonym",
+                delete("/api/domains/" + domainName + "/pseudonyms"),
+                Map.of("id", "preserve-batch-psn-id", "idType", "ANY-ID"),
+                null,
+                this.getAccessToken());
+    }
 }
