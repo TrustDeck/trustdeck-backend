@@ -144,11 +144,12 @@ public class PseudonymController {
 
     /**
      * This method creates new pseudonymization-pseudonyms in batches.
-     * When an external created pseudonym is given, no new pseudonym
-     * is created but the given one is stored.
+     * When a nonblank pseudonym is supplied, it is trimmed and stored as given.
+     * Otherwise, TrustDeck generates a pseudonym and {@code omitPrefix} controls
+     * whether the generated pseudonym includes the domain prefix.
      *
      * @param domainName (required) the name of the domain the pseudonyms should be in
-     * @param omitPrefix (optional) determines whether or not the prefix should be added to the pseudonym
+     * @param omitPrefix (optional) determines whether or not the prefix should be added to a generated pseudonym; it has no effect on a supplied pseudonym
      * @param pseudonymDtoList (required) the list of necessary information, formatted as a JSON to match the pseudonymDto
      * @param responseContentType (optional) the response content type
      * @return	<li>a <b>201-CREATED</b> status and a list of the created
@@ -203,13 +204,8 @@ public class PseudonymController {
             // Pseudonymize the identifier and store it in the object
             String pseudonym = null;
             if (pseudonymDTO.getPsn() != null && !pseudonymDTO.getPsn().trim().equals("")) {
-                // A pseudonym was already given --> store it instead of creating a new one if it's in the correct format
-                String psn = pseudonymDTO.getPsn().trim();
-                if (omitPrefix != null && omitPrefix) {
-                    pseudonym = psn;
-                } else {
-                    pseudonym = psn.startsWith(domain.getPrefix()) ? psn : domain.getPrefix() + psn;
-                }
+                // A pseudonym was supplied; store its trimmed value without changing it.
+                pseudonym = pseudonymDTO.getPsn().trim();
             } else {
                 // Generate a new pseudonym
                 String prefix = (omitPrefix != null && omitPrefix) ? "" : domain.getPrefix(); // Omitting the prefix here shouldn't be the norm
@@ -357,13 +353,14 @@ public class PseudonymController {
 
     /**
      * This method creates a new pseudonym.
-     * When an external created pseudonym is given, no new pseudonym
-     * is created but the given one is stored.
+     * When a nonblank pseudonym is supplied, it is trimmed and stored as given.
+     * Otherwise, TrustDeck generates a pseudonym and {@code omitPrefix} controls
+     * whether the generated pseudonym includes the domain prefix.
      * This method functions as a get-method if the pseudonym already exists.
      *
      * @param domainName (required) the name of the domain the pseudonym should be in
      * @param pseudonymDTO (required) the Pseudonym object
-     * @param omitPrefix (optional) determines whether or not the prefix should be added to the pseudonym
+     * @param omitPrefix (optional) determines whether or not the prefix should be added to a generated pseudonym; it has no effect on a supplied pseudonym
      * @param responseContentType (optional) the response content type
      * @return	<li>a <b>200-OK</b> status and the <b>pseudonym</b> when the
      * 				requested insertion would be a duplicate</li>
@@ -481,12 +478,8 @@ public class PseudonymController {
         // Pseudonymize the identifier and store it in the object
         String pseudonym = null;
         if (psn != null && !psn.isBlank()) {
-            // A pseudonym was already given --> store it instead of creating a new one if it's in the correct format
-            if (omitPrefix != null && omitPrefix) {
-                pseudonym = psn.trim();
-            } else {
-                pseudonym = psn.trim().startsWith(domain.getPrefix()) ? psn.trim() : domain.getPrefix() + psn.trim();
-            }
+            // A pseudonym was supplied; store its trimmed value without changing it.
+            pseudonym = psn.trim();
         } else {
         	// Generate a new pseudonym
             pseudonym = pseudonymize(identifier, idType, domain, omitPrefix);
