@@ -19,13 +19,19 @@ package org.trustdeck.service;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import jakarta.ws.rs.NotFoundException;
+
 import org.keycloak.admin.client.Keycloak;
+import org.keycloak.admin.client.resource.ClientResource;
 import org.keycloak.admin.client.resource.RealmResource;
 import org.keycloak.admin.client.resource.UserResource;
+import org.keycloak.representations.idm.ClientRepresentation;
 import org.keycloak.representations.idm.ComponentRepresentation;
 import org.keycloak.representations.idm.RoleRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
@@ -156,13 +162,14 @@ public class KeycloakService {
     }
     
     /**
-     * Searches Keycloak users for the given query string and returns a list of UserDTOs.
+     * Searches normal Keycloak users, LDAP-federated users returned by Keycloak, client
+     * service accounts, and exact Keycloak user IDs for the given query string.
      *
      * Note: Keycloak search behavior is not guaranteed to be an exact match.
      *
      * @param query the search term, e.g. username, name, email
      * @param maxResults maximum number of results to return (must be > 0)
-     * @return a list of users found in Keycloak, or an empty list on error or when nothing was found
+     * @return a list of users found in Keycloak, or an empty list when nothing was found
      */
     public List<UserDTO> searchUsers(String query, int maxResults) {
         if (!Assertion.isNotNullOrEmpty(query) || maxResults <= 0) {
@@ -170,13 +177,39 @@ public class KeycloakService {
             return Collections.emptyList();
         }
 
-        // Search in Keycloak for users, limit to maxResults
-        List<UserRepresentation> userReps = keycloakAdminClient.realm(realmName).users().search(query, 0, maxResults, true);
-        
+        RealmResource realm = keycloakAdminClient.realm(realmName);
+        List<UserRepresentation> userReps = new ArrayList<>();
+
+        // Search in Keycloak for normal and LDAP-federated users, limit to maxResults 
+        List<UserRepresentation> genericUsers = realm.users().search(query, 0, maxResults, true);
+        if (genericUsers != null) {
+            userReps.addAll(genericUsers);
+        }
+
         // Also search in the IDs
-        userReps.addAll(keycloakAdminClient.realm(realmName).users().search("id:" + query, 0, maxResults, true));
+        List<UserRepresentation> usersById = realm.users().search("id:" + query, 0, maxResults, true);
+        if (usersById != null) {
+            userReps.addAll(usersById);
+        }
+
+        // Also search for matching client service accounts
+        userReps.addAll(searchServiceAccountUsers(realm, query, maxResults));
+
+        // Ensure uniqueness for each Keycloak user ID and retain Keycloak's order
+        Map<String, UserRepresentation> uniqueUsers = new LinkedHashMap<>();
+        for (UserRepresentation user : userReps) {
+            if (user != null && user.getId() != null) {
+                uniqueUsers.putIfAbsent(user.getId(), user);
+            }
+        }
+
+        List<UserRepresentation> orderedUsers = new ArrayList<>(uniqueUsers.values());
+        orderedUsers.sort(Comparator.comparingInt(user -> isExactUserMatch(user, query) ? 0 : 1));
+        if (orderedUsers.size() > maxResults) {
+            orderedUsers = orderedUsers.subList(0, maxResults);
+        }
         
-        if (userReps == null || userReps.isEmpty()) {
+        if (orderedUsers.isEmpty()) {
             return Collections.emptyList();
         }
 
@@ -184,8 +217,8 @@ public class KeycloakService {
         Map<String, String> federationProviderMap = getFederationProviderMap();
 
         // Transform into DTOs and add user federation info
-        List<UserDTO> users = new ArrayList<>(userReps.size());
-        for (UserRepresentation u : userReps) {
+        List<UserDTO> users = new ArrayList<>(orderedUsers.size());
+        for (UserRepresentation u : orderedUsers) {
             if (u == null) {
             	continue;
             }
@@ -206,6 +239,76 @@ public class KeycloakService {
         }
 
         return users;
+    }
+
+    /**
+     * Finds service-account users through the client service-account endpoint. The client
+     * search is bounded and only clients with service accounts enabled are inspected.
+     *
+     * @param realm the Keycloak realm resource
+     * @param query the user search query
+     * @param maxResults maximum number of candidate clients to request
+     * @return matching service-account user representations
+     */
+    private List<UserRepresentation> searchServiceAccountUsers(RealmResource realm, String query, int maxResults) {
+    	// Strip the service-account prefix so Keycloak can search by the client ID
+    	String clientSearchTerm = query.regionMatches(true, 0, "service-account-", 0, "service-account-".length())
+                ? query.substring("service-account-".length()) : query;
+    	
+    	// Get a list of all clients matching the search term
+        List<ClientRepresentation> clients = realm.clients().findAll(clientSearchTerm, true, true, 0, maxResults);
+        if (clients == null || clients.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // Filter to those clients that have active service accounts
+        List<UserRepresentation> matches = new ArrayList<>();
+        for (ClientRepresentation client : clients) {
+            if (client == null || !Boolean.TRUE.equals(client.isServiceAccountsEnabled()) || client.getId() == null) {
+                continue;
+            }
+
+            UserRepresentation serviceAccount;
+            try {
+                ClientResource clientResource = realm.clients().get(client.getId());
+                serviceAccount = clientResource.getServiceAccountUser();
+            } catch (NotFoundException e) {
+                // A client can be service-account-enabled while its account is temporarily absent
+                continue;
+            }
+
+            // Add the user account to the list of matches
+            String username = serviceAccount == null ? null : serviceAccount.getUsername();
+            String clientId = client.getClientId();
+            if (serviceAccount != null && (containsIgnoreCase(username, query) || containsIgnoreCase(clientId, query))) {
+                matches.add(serviceAccount);
+            }
+        }
+
+        matches.sort(Comparator.comparingInt(user -> isExactUserMatch(user, query) ? 0 : 1));
+        return matches;
+    }
+
+    /**
+     * Checks whether a value contains a query without regard to letter case.
+     *
+     * @param value value to inspect
+     * @param query query to find
+     * @return whether the query occurs in the value
+     */
+    private boolean containsIgnoreCase(String value, String query) {
+        return value != null && value.toLowerCase().contains(query.toLowerCase());
+    }
+
+    /**
+     * Checks whether a returned user has the exact requested username.
+     *
+     * @param user user representation returned by Keycloak
+     * @param query requested username
+     * @return whether the username matches exactly, ignoring letter case
+     */
+    private boolean isExactUserMatch(UserRepresentation user, String query) {
+        return user.getUsername() != null && user.getUsername().equalsIgnoreCase(query);
     }
     
     /**

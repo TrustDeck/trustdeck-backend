@@ -101,7 +101,8 @@ public class PermissionController {
     private DefaultProperties defaults;
 
 	/**
-	 * Searches for users based on a search term (e.g. username, email, userId).
+     * Searches normal Keycloak users, LDAP-federated users returned by Keycloak, client
+     * service accounts, and exact Keycloak user IDs based on a search term.
 	 *
 	 * @param query the search term
 	 * @param responseContentType (optional) the response content type
