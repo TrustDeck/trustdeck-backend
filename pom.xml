@@ -21,7 +21,7 @@
 
     <groupId>org.trustdeck</groupId>
     <artifactId>trustdeck</artifactId>
-    <version>v2.3.1</version>
+    <version>v2.3.2</version>
     <packaging>jar</packaging>
     <name>trustdeck</name>
 
