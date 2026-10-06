@@ -52,6 +52,9 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 public class KeycloakService {
 
+	/** Prefix used by Keycloak for generated service-account usernames. */
+	private static final String SERVICE_ACCOUNT_PREFIX = "service-account-";
+
 	/** The Keycloak client object. */
 	private final Keycloak keycloakAdminClient;
 	
@@ -251,11 +254,23 @@ public class KeycloakService {
      * @return matching service-account user representations
      */
     private List<UserRepresentation> searchServiceAccountUsers(RealmResource realm, String query, int maxResults) {
-    	// Strip the service-account prefix so Keycloak can search by the client ID
-    	String clientSearchTerm = query.regionMatches(true, 0, "service-account-", 0, "service-account-".length())
-                ? query.substring("service-account-".length()) : query;
-    	
-    	// Get a list of all clients matching the search term
+		String normalizedQuery = query.trim();
+		boolean hasCompleteServiceAccountPrefix = normalizedQuery.regionMatches(
+				true, 0, SERVICE_ACCOUNT_PREFIX, 0, SERVICE_ACCOUNT_PREFIX.length());
+		boolean isPartialServiceAccountPrefix = !normalizedQuery.isEmpty()
+				&& normalizedQuery.length() < SERVICE_ACCOUNT_PREFIX.length()
+				&& SERVICE_ACCOUNT_PREFIX.regionMatches(true, 0, normalizedQuery, 0, normalizedQuery.length());
+
+		String clientSearchTerm;
+		if (hasCompleteServiceAccountPrefix) {
+			clientSearchTerm = normalizedQuery.substring(SERVICE_ACCOUNT_PREFIX.length());
+		} else if (isPartialServiceAccountPrefix) {
+			clientSearchTerm = "";
+		} else {
+			clientSearchTerm = normalizedQuery;
+		}
+
+		// Get a list of all clients matching the search term
         List<ClientRepresentation> clients = realm.clients().findAll(clientSearchTerm, true, true, 0, maxResults);
         if (clients == null || clients.isEmpty()) {
             return Collections.emptyList();
@@ -280,12 +295,13 @@ public class KeycloakService {
             // Add the user account to the list of matches
             String username = serviceAccount == null ? null : serviceAccount.getUsername();
             String clientId = client.getClientId();
-            if (serviceAccount != null && (containsIgnoreCase(username, query) || containsIgnoreCase(clientId, query))) {
+            if (serviceAccount != null && (containsIgnoreCase(username, normalizedQuery)
+                    || containsIgnoreCase(clientId, normalizedQuery))) {
                 matches.add(serviceAccount);
             }
         }
 
-        matches.sort(Comparator.comparingInt(user -> isExactUserMatch(user, query) ? 0 : 1));
+        matches.sort(Comparator.comparingInt(user -> isExactUserMatch(user, normalizedQuery) ? 0 : 1));
         return matches;
     }
 

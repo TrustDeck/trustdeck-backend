@@ -25,7 +25,9 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 
 import java.util.Collections;
 import java.util.List;
@@ -129,6 +131,70 @@ class KeycloakServiceTest {
 
         assertEquals("real-service-id", result.get(0).getUserId());
         assertEquals("service-account-example-client", result.get(0).getUsername());
+    }
+
+    /**
+     * Verifies that leading parts of Keycloak's generated service-account prefix
+     * search the bounded client page and match the returned username.
+     */
+    @Test
+    void findsPartialServiceAccountPrefixes() {
+        UserRepresentation account = user("real-service-id", "service-account-trustdeck-kafka-connector");
+        when(clients.findAll("", true, true, 0, 10))
+                .thenReturn(List.of(client("client-uuid", "trustdeck-kafka-connector", true)));
+        ClientResource resource = serviceAccountClient(account);
+        when(clients.get("client-uuid")).thenReturn(resource);
+
+        for (String query : List.of("service", "service-acc", "service-acco", "service-account",
+                "service-account-", "SERVICE-ACCOUNT")) {
+            List<UserDTO> result = service.searchUsers(query, 10);
+
+            assertEquals(1, result.size());
+            assertEquals("real-service-id", result.get(0).getUserId());
+            assertEquals("service-account-trustdeck-kafka-connector", result.get(0).getUsername());
+        }
+
+        verify(clients, org.mockito.Mockito.times(6)).findAll("", true, true, 0, 10);
+    }
+
+    /**
+     * Verifies that complete service-account prefixes are removed while direct
+     * client-ID fragments remain unchanged for client searches.
+     */
+    @Test
+    void searchesServiceAccountsByPrefixAndClientFragments() {
+        UserRepresentation account = user("real-service-id", "service-account-trustdeck-kafka-connector");
+        when(clients.findAll(anyString(), eq(true), eq(true), eq(0), eq(10)))
+                .thenReturn(List.of(client("client-uuid", "trustdeck-kafka-connector", true)));
+        ClientResource resource = serviceAccountClient(account);
+        when(clients.get("client-uuid")).thenReturn(resource);
+
+        List<String> queries = List.of("service-account-trustdeck", "service-account-trustdeck-kafka-connector",
+                "trustdeck", "trustdeck-kafka", "trustdeck-kafka-connector", "kafka-connector");
+
+        for (String query : queries) {
+            assertEquals(1, service.searchUsers(query, 10).size());
+        }
+
+        verify(clients, times(2)).findAll("trustdeck", true, true, 0, 10);
+        verify(clients, times(2)).findAll("trustdeck-kafka-connector", true, true, 0, 10);
+        verify(clients).findAll("trustdeck-kafka", true, true, 0, 10);
+        verify(clients).findAll("kafka-connector", true, true, 0, 10);
+    }
+
+    /**
+     * Verifies that a candidate returned by an unfiltered client search still
+     * must match the requested service-account username or client ID.
+     */
+    @Test
+    void excludesNonmatchingServiceAccountFromCandidatePage() {
+        UserRepresentation account = user("real-service-id", "service-account-trustdeck-kafka-connector");
+        when(clients.findAll("other", true, true, 0, 10))
+                .thenReturn(List.of(client("client-uuid", "trustdeck-kafka-connector", true)));
+        ClientResource resource = serviceAccountClient(account);
+        when(clients.get("client-uuid")).thenReturn(resource);
+
+        assertTrue(service.searchUsers("service-account-other", 10).isEmpty());
     }
 
     /**
