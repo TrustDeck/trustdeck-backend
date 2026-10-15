@@ -23,8 +23,10 @@ import org.jooq.Condition;
 import org.jooq.DSLContext;
 import org.jooq.DeleteConditionStep;
 import org.jooq.Field;
-import org.jooq.Insert;
 import org.jooq.Row2;
+import org.jooq.Row4;
+import org.jooq.Row8;
+import org.jooq.Result;
 import org.jooq.UpdateConditionStep;
 import org.jooq.exception.DataAccessException;
 import org.jooq.exception.MappingException;
@@ -33,6 +35,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.interceptor.TransactionAspectSupport;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.trustdeck.dto.PseudonymDTO;
 import org.trustdeck.dto.PseudonymUpdateDTO;
 import org.trustdeck.exception.UnexpectedResultSizeException;
@@ -42,11 +45,13 @@ import org.trustdeck.jooq.generated.tables.records.PseudonymRecord;
 import org.trustdeck.model.IdentifierItem;
 import org.trustdeck.utils.Assertion;
 
+import static org.trustdeck.jooq.generated.Keys.PSEUDONYM_IDENTIFIER_IDTYPE_DOMAINID_PSEUDONYM_KEY;
 import static org.trustdeck.jooq.generated.Tables.PSEUDONYM;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -82,157 +87,191 @@ public class PseudonymDBAccessService {
     /** Represents a successful insertion of a record into the database. */
     public static final String INSERTION_SUCCESS = "success";
 
+    /** Maximum rows per insert statement to stay below PostgreSQL's 65,535 bind-parameter limit. */
+    private static final int INSERT_BATCH_SIZE = 5_000;
+
     /**
-     * Method to insert multiple pseudonyms at once in a batch. Duplicates will be ignored.
+     * Inserts multiple pseudonyms in one conflict-safe PostgreSQL statement.
      *
-     * @param pseudonyms a list of pseudonyms to insert into the database
+     * The pre-insert lookup preserves the established identifier and pseudonym duplicate
+     * precedence. Candidates are deduplicated only for persistence; the returned status list
+     * still has one entry for every input position. The insert targets only the generated
+     * four-column uniqueness constraint, so an unrelated database failure is not silently
+     * treated as an expected duplicate. Rows skipped by a concurrent insert are resolved by
+     * one set-based reload after {@code RETURNING}.
+     *
+     * @param pseudonyms the normalized pseudonyms to insert, in request order
      * @param domainId the ID of the domain in which the pseudonyms should be created
-     * @param multiplePsnAllowed whether or not multiple pseudonyms per id &amp; idType combination are allowed
-     * @return {@code INSERTION_SUCCESS} when the batch insertion was successful, {@code INSERTION_ERROR} otherwise
+     * @param multiplePsnAllowed whether multiple pseudonyms per identifier and type are allowed
+     * @return one explicit insertion status for each input pseudonym; actual database failures
+     *         return {@link #INSERTION_ERROR} for every input position after rollback
      */
     @Transactional
     public List<String> createPseudonyms(List<PseudonymDTO> pseudonyms, int domainId, boolean multiplePsnAllowed) {
-    	// Check if there is something to do
-    	if (pseudonyms == null || pseudonyms.isEmpty()) {
+        if (pseudonyms == null || pseudonyms.isEmpty()) {
             return List.of();
         }
-    	
-    	int n = pseudonyms.size();
-    	List<String> results = new ArrayList<>(n);
-    	
-    	// Prefill the result list with nulls
-    	for (int i = 0; i < n; i++) {
-    		results.add(null);
-    	}
-    	
-    	// Prefill the identifier-idType-duplicate-check list (only used if !multiplePsnAllowed)
-        List<Boolean> idExistsFlags = new ArrayList<>(Collections.nCopies(n, Boolean.FALSE));
-        
-        // Prefill the psn-duplicate-check list
-        List<Boolean> psnExistsFlags = new ArrayList<>(Collections.nCopies(n, Boolean.FALSE));
-    	
-    	try {
-    		// If multiple pseudonyms per id&idType-combination are not allowed, then check 
-        	// if the id&idType-combination is already in the database
-            if (!multiplePsnAllowed) {
-            	// Create a list of identifier-idType-pairs that we can use to query the database
-            	List<Row2<String, String>> idRows = new ArrayList<>(n);
-	            for (PseudonymDTO dto : pseudonyms) {
-	                idRows.add(DSL.row(dto.getIdentifierItem().getIdentifier(), dto.getIdentifierItem().getIdType()));
-	            }
-	            
-	            // Query the database and see if we find any of the user-provided identifier-idType-pairs already in there
-	            Map<Row2<String, String>, Boolean> existingIdMap = dsl.select(PSEUDONYM.IDENTIFIER, PSEUDONYM.IDTYPE)
-	            	       .from(PSEUDONYM)
-	            	       .where(DSL.row(PSEUDONYM.IDENTIFIER, PSEUDONYM.IDTYPE).in(idRows))
-	            	       .and(PSEUDONYM.DOMAINID.eq(domainId))
-	            	       .fetchMap(r -> DSL.row(r.get(PSEUDONYM.IDENTIFIER), r.get(PSEUDONYM.IDTYPE)), r -> Boolean.TRUE);
 
-            	// Build List<Boolean> in the original order and mark duplicates
-	            for (int i = 0; i < n; i++) {
-	                boolean idIsDuplicate = existingIdMap.containsKey(idRows.get(i));
-	                idExistsFlags.set(i, idIsDuplicate);
+        int n = pseudonyms.size();
+        // Every input position gets a deliberate value, this prevents a failed persistence path
+        // from being mistaken for a successful duplicate and keeps callers null-safe
+        List<String> results = new ArrayList<>(Collections.nCopies(n, INSERTION_ERROR));
 
-            		if (idIsDuplicate) {
-            	        results.set(i, INSERTION_DUPLICATE_IDENTIFIER);
-            	    }
-            	}
-            }
-            
-            // Check for duplicated pseudonyms (e.g. when using randomness-based algorithms and only a few unused pseudonyms are left)
-            List<String> psns = new ArrayList<>(n);
+        try {
+        	// Build order-matched identifier and pseudonym lists
+            List<Row2<String, String>> identifierRows = new ArrayList<>(n);
+            List<String> pseudonymValues = new ArrayList<>(n);
             for (PseudonymDTO dto : pseudonyms) {
-                psns.add(dto.getPsn());
+                identifierRows.add(DSL.row(dto.getIdentifierItem().getIdentifier(), dto.getIdentifierItem().getIdType()));
+                pseudonymValues.add(dto.getPsn());
             }
 
-            // Fetch existing pseudonyms in the domain of interest
-            Set<String> existingPsns = new HashSet<>(dsl.select(PSEUDONYM.PSEUDONYM_)
-                      .from(PSEUDONYM)
-                      .where(PSEUDONYM.DOMAINID.eq(domainId))
-                      .and(PSEUDONYM.PSEUDONYM_.in(psns))
-                      .fetch(PSEUDONYM.PSEUDONYM_));
-
-            // Fill psnExistsFlags and mark results
-            for (int i = 0; i < n; i++) {
-                boolean psnIsDuplicate = existingPsns.contains(psns.get(i));
-                psnExistsFlags.set(i, psnIsDuplicate);
-
-                if (psnIsDuplicate && results.get(i) == null) {
-                    results.set(i, INSERTION_DUPLICATE_PSEUDONYM);
-                }
-            }
-            
-            // Try inserting all (non-duplicate) pseudonym records
-            // Prepare the batch insert
-            List<Insert<PseudonymRecord>> inserts = new ArrayList<>(n);
-            List<Integer> insertIndices = new ArrayList<>(n); // For mapping batch result index -> pseudonym index
-            int skippedDuplicates = 0;
-
-            for (int i = 0; i < n; i++) {
-                // Skip if duplicate and duplicates are not allowed
-                if ((!multiplePsnAllowed && idExistsFlags.get(i)) || psnExistsFlags.get(i)) {
-                    skippedDuplicates++;
-                    continue;
-                }
-
-                // Prepare and add the insert query
-                PseudonymDTO dto = pseudonyms.get(i);
-                inserts.add(dsl.insertInto(PSEUDONYM)
-                    .set(PSEUDONYM.IDENTIFIER, dto.getIdentifierItem().getIdentifier())
-                    .set(PSEUDONYM.IDTYPE, dto.getIdentifierItem().getIdType())
-                    .set(PSEUDONYM.PSEUDONYM_, dto.getPsn())
-                    .set(PSEUDONYM.VALIDFROM, dto.getValidFrom())
-                    .set(PSEUDONYM.VALIDFROMINHERITED, dto.getValidFromInherited())
-                    .set(PSEUDONYM.VALIDTO, dto.getValidTo())
-                    .set(PSEUDONYM.VALIDTOINHERITED, dto.getValidToInherited())
-                    .set(PSEUDONYM.DOMAINID, domainId));
+            // Set-based lookups retain the old duplicate precedence without introducing one
+            // query per request element. Chunks keep the identifier and pseudonym predicates
+            // below PostgreSQL's bind-parameter limit for the endpoint's largest batch.
+            List<PseudonymRecord> existingRecords = new ArrayList<>();
+            for (int queryStart = 0; queryStart < n; queryStart += INSERT_BATCH_SIZE) {
+                int queryEnd = Math.min(queryStart + INSERT_BATCH_SIZE, n);
+                Condition existingCondition = PSEUDONYM.PSEUDONYM_.in(pseudonymValues.subList(queryStart, queryEnd));
                 
-                // Track prepared indices
-                insertIndices.add(i);
+                if (!multiplePsnAllowed) {
+                    existingCondition = existingCondition.or(
+                            DSL.row(PSEUDONYM.IDENTIFIER, PSEUDONYM.IDTYPE).in(identifierRows.subList(queryStart, queryEnd)));
+                }
+                
+                existingRecords.addAll(dsl.selectFrom(PSEUDONYM)
+                        .where(PSEUDONYM.DOMAINID.eq(domainId))
+                        .and(existingCondition)
+                        .fetch());
             }
 
-            // If there is nothing to insert, we’re done
-            if (inserts.isEmpty()) {
-                log.trace("No pseudonyms to insert (" + skippedDuplicates + " duplicates skipped).");
+            Set<Row2<String, String>> existingIdentifiers = new HashSet<>();
+            Set<String> existingPsns = new HashSet<>();
+            for (PseudonymRecord record : existingRecords) {
+                existingIdentifiers.add(DSL.row(record.getIdentifier(), record.getIdtype()));
+                existingPsns.add(record.getPseudonym());
+            }
+
+            List<PseudonymDTO> candidates = new ArrayList<>(n);
+            List<Integer> candidateOriginalIndices = new ArrayList<>(n);
+            Map<PseudonymPersistenceKey, Integer> candidatePositions = new HashMap<>();
+
+            // Deduplicate only the persistence candidates. candidateOriginalIndices and the
+            // explicit result list retain a mapping for every original request position.
+            for (int i = 0; i < n; i++) {
+                PseudonymDTO dto = pseudonyms.get(i);
+                Row2<String, String> identifier = DSL.row(dto.getIdentifierItem().getIdentifier(), dto.getIdentifierItem().getIdType());
+                PseudonymPersistenceKey key = new PseudonymPersistenceKey(
+                        dto.getIdentifierItem().getIdentifier(), dto.getIdentifierItem().getIdType(), domainId, dto.getPsn());
+
+                if (!multiplePsnAllowed && existingIdentifiers.contains(identifier)) {
+                    results.set(i, INSERTION_DUPLICATE_IDENTIFIER);
+                } else if (existingPsns.contains(dto.getPsn())) {
+                    results.set(i, INSERTION_DUPLICATE_PSEUDONYM);
+                } else if (candidatePositions.containsKey(key)) {
+                    // A repeated key in one request is handled without sending duplicate rows
+                    // to PostgreSQL. Keep the established identifier-first classification.
+                    results.set(i, multiplePsnAllowed ? INSERTION_DUPLICATE_PSEUDONYM : INSERTION_DUPLICATE_IDENTIFIER);
+                } else {
+                    candidatePositions.put(key, candidates.size());
+                    candidates.add(dto);
+                    candidateOriginalIndices.add(i);
+                }
+            }
+
+            if (candidates.isEmpty()) {
+                log.trace("No pseudonyms to insert (all " + n + " request positions were duplicates).");
                 return results;
             }
-            
-            // Execute the batch 
-            int[] batchResult = dsl.batch(inserts).execute();
-            
-            // Evaluate the results
-            int inserted = 0;
-            int ignored = skippedDuplicates;
 
-            for (int j = 0; j < batchResult.length; j++) {
-                int individualResult = batchResult[j];
-                int originalIndex = insertIndices.get(j);
+            // Build one multi-row INSERT. The targeted ON CONFLICT clause closes the concurrent
+            // check-then-insert race for this exact constraint without suppressing other errors.
+            Set<PseudonymPersistenceKey> insertedKeys = new HashSet<>();
+            for (int chunkStart = 0; chunkStart < candidates.size(); chunkStart += INSERT_BATCH_SIZE) {
+                int chunkEnd = Math.min(chunkStart + INSERT_BATCH_SIZE, candidates.size());
+                List<Row8<String, String, String, LocalDateTime, Boolean, LocalDateTime, Boolean, Integer>> valueRows = new ArrayList<>(chunkEnd - chunkStart);
+                
+                for (int i = chunkStart; i < chunkEnd; i++) {
+                    PseudonymDTO dto = candidates.get(i);
+                    valueRows.add(DSL.row(dto.getIdentifierItem().getIdentifier(), dto.getIdentifierItem().getIdType(),
+                            dto.getPsn(), dto.getValidFrom(), dto.getValidFromInherited(), dto.getValidTo(),
+                            dto.getValidToInherited(), domainId));
+                }
 
-                if (individualResult == 1) {
-                    inserted++;
-                    results.set(originalIndex, INSERTION_SUCCESS);
-                } else if (individualResult == 0) {
-                    ignored++;
-                    if (results.get(originalIndex) == null) {
-                        results.set(originalIndex, INSERTION_ERROR);
+                // Eight bound values per row require chunking for the endpoint's larger
+                // supported batches; each chunk remains one true multi-row statement.
+                Result<PseudonymRecord> returnedRecords = dsl.insertInto(PSEUDONYM, PSEUDONYM.IDENTIFIER, 
+                			PSEUDONYM.IDTYPE, PSEUDONYM.PSEUDONYM_, PSEUDONYM.VALIDFROM, PSEUDONYM.VALIDFROMINHERITED, 
+                			PSEUDONYM.VALIDTO, PSEUDONYM.VALIDTOINHERITED, PSEUDONYM.DOMAINID)
+                        .valuesOfRows(valueRows)
+                        .onConflictOnConstraint(PSEUDONYM_IDENTIFIER_IDTYPE_DOMAINID_PSEUDONYM_KEY)
+                        .doNothing()
+                        .returning(PSEUDONYM.IDENTIFIER, PSEUDONYM.IDTYPE, PSEUDONYM.PSEUDONYM_, PSEUDONYM.DOMAINID)
+                        .fetch();
+
+                for (PseudonymRecord record : returnedRecords) {
+                    PseudonymPersistenceKey key = new PseudonymPersistenceKey(
+                            record.getIdentifier(), record.getIdtype(), record.getDomainid(), record.getPseudonym());
+                    
+                    Integer candidatePosition = candidatePositions.get(key);
+                    if (candidatePosition != null) {
+                        insertedKeys.add(key);
+                        results.set(candidateOriginalIndices.get(candidatePosition), INSERTION_SUCCESS);
                     }
-                } else {
-                    // Unexpected result size: abort
-                    throw new UnexpectedResultSizeException(1, individualResult);
                 }
             }
 
-            log.trace("Inserted " + inserted + " pseudonym(s).");
-            log.trace("Ignored " + ignored + " pseudonym(s) (including " + skippedDuplicates + " duplicates).");
-            log.debug("Successfully inserted " + inserted + " out of " + n + " pseudonym" + (n == 1 ? "" : "s") + " into the database.");
+            List<PseudonymPersistenceKey> unresolvedKeys = new ArrayList<>();
+            for (PseudonymPersistenceKey key : candidatePositions.keySet()) {
+                if (!insertedKeys.contains(key)) {
+                    unresolvedKeys.add(key);
+                }
+            }
 
+            if (!unresolvedKeys.isEmpty()) {
+                // RETURNING omits conflict-skipped rows. Reload all of them in one query so a
+                // concurrent winner is classified as a duplicate rather than an insertion error.
+                List<PseudonymRecord> resolvedRecords = new ArrayList<>();
+                for (int queryStart = 0; queryStart < unresolvedKeys.size(); queryStart += INSERT_BATCH_SIZE) {
+                    int queryEnd = Math.min(queryStart + INSERT_BATCH_SIZE, unresolvedKeys.size());
+                    
+                    List<Row4<String, String, Integer, String>> unresolvedRows = unresolvedKeys.subList(queryStart, queryEnd).stream()
+                            .map(key -> DSL.row(key.identifier(), key.idType(), key.domainId(), key.pseudonym())).toList();
+                    
+                    resolvedRecords.addAll(dsl.selectFrom(PSEUDONYM)
+                            .where(DSL.row(PSEUDONYM.IDENTIFIER, PSEUDONYM.IDTYPE, PSEUDONYM.DOMAINID, PSEUDONYM.PSEUDONYM_).in(unresolvedRows))
+                            .fetch());
+                }
+                
+                Set<PseudonymPersistenceKey> resolvedKeys = new HashSet<>();
+                for (PseudonymRecord record : resolvedRecords) {
+                    resolvedKeys.add(new PseudonymPersistenceKey(
+                            record.getIdentifier(), record.getIdtype(), record.getDomainid(), record.getPseudonym()));
+                }
+
+                // Reconstruct skipped results through the original-index mapping. No result
+                // cardinality or request ordering is changed by persistence deduplication.
+                for (PseudonymPersistenceKey key : unresolvedKeys) {
+                    Integer candidatePosition = candidatePositions.get(key);
+                    if (candidatePosition != null && resolvedKeys.contains(key)) {
+                        results.set(candidateOriginalIndices.get(candidatePosition), multiplePsnAllowed
+                                ? INSERTION_DUPLICATE_PSEUDONYM
+                                : INSERTION_DUPLICATE_IDENTIFIER);
+                    }
+                }
+            }
+
+            log.debug("Successfully inserted " + results.stream().filter(INSERTION_SUCCESS::equals).count()
+                    + " out of " + n + " pseudonym" + (n == 1 ? "" : "s") + " into the database.");
             return results;
         } catch (Exception e) {
-        	// Force the outcome of this method to be a roll-back instead of committing the transaction
-        	TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
-        	
-            log.error("Couldn't insert the batch of " + n + " pseudonyms into the database: " + e.getMessage() + "\n");
-            return null;
+            // Any genuine database failure rolls back the transaction and remains an explicit error
+            if (TransactionSynchronizationManager.isActualTransactionActive()) {
+                TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+            }
+            
+            log.error("Couldn't insert the batch of " + n + " pseudonyms into the database: " + e.getClass() + ": " + e.getMessage());
+            return Collections.nCopies(n, INSERTION_ERROR);
         }
     }
     
@@ -647,5 +686,21 @@ public class PseudonymDBAccessService {
 
         // Return the found types
         return results.stream().map(row -> new PseudonymDTO().assignPojoValues(row)).toList();
+    }
+
+    /**
+     * Identifies one persisted pseudonym row using every column of the targeted unique key.
+     *
+     * @param identifier the identifier value
+     * @param idType the identifier type
+     * @param domainId the domain identifier
+     * @param pseudonym the pseudonym value
+     */
+    private record PseudonymPersistenceKey(String identifier, String idType, int domainId, String pseudonym) {
+        
+    	/**
+         * Creates a key for one row in the pseudonym uniqueness constraint.
+         */
+        private PseudonymPersistenceKey {}
     }
 }

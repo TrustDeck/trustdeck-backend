@@ -1,6 +1,6 @@
 # TrustDeck - Open-Source Tools for Identity Management in Translational Medicine
 
-[![Version](https://img.shields.io/badge/version-v2.3.3-green)](https://github.com/TrustDeck/trustdeck-backend/releases/tag/v2.3.3)
+[![Version](https://img.shields.io/badge/version-v2.3.4-green)](https://github.com/TrustDeck/trustdeck-backend/releases/tag/v2.3.4)
 [![License](https://img.shields.io/badge/License-Apache_2.0-green)](https://github.com/TrustDeck/trustdeck-backend/blob/main/LICENSE)
 [![Ask DeepWiki](https://img.shields.io/badge/Ask-DeepWiki-blue)](https://deepwiki.com/TrustDeck/trustdeck-backend)
 
