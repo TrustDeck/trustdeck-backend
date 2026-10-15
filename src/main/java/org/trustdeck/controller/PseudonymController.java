@@ -297,6 +297,13 @@ public class PseudonymController {
         // Insert the list of pseudonyms in one batch
         List<String> result = pseudonymDBAccessService.createPseudonyms(pseudonyms, domain.getId(), domain.getMultiplepsnallowed());
 
+        // The persistence service returns one status per input position, including controlled failures
+        // Never dereference a null or short result list
+        if (result == null || result.size() != pseudonyms.size()) {
+            log.error("The batch pseudonym persistence service returned an invalid result.");
+            return responseService.unprocessableEntity(responseContentType);
+        }
+
         // Evaluate the result
         List<PseudonymDTO> pseudonymDTOs = new ArrayList<>();
         List<String> pseudonymDtoStrings = new ArrayList<>();
