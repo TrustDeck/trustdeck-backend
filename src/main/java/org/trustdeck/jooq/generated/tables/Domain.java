@@ -6,20 +6,24 @@ package org.trustdeck.jooq.generated.tables;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
-import java.util.function.Function;
 
+import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
-import org.jooq.Function18;
 import org.jooq.Identity;
 import org.jooq.Index;
+import org.jooq.InverseForeignKey;
 import org.jooq.Name;
+import org.jooq.Path;
+import org.jooq.PlainSQL;
+import org.jooq.QueryPart;
 import org.jooq.Record;
-import org.jooq.Records;
-import org.jooq.Row18;
+import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.SelectField;
+import org.jooq.Select;
+import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
 import org.jooq.TableOptions;
@@ -30,6 +34,11 @@ import org.jooq.impl.TableImpl;
 import org.trustdeck.jooq.generated.Indexes;
 import org.trustdeck.jooq.generated.Keys;
 import org.trustdeck.jooq.generated.Public;
+import org.trustdeck.jooq.generated.tables.Algorithm.AlgorithmPath;
+import org.trustdeck.jooq.generated.tables.Domain.DomainPath;
+import org.trustdeck.jooq.generated.tables.EntityType.EntityTypePath;
+import org.trustdeck.jooq.generated.tables.Project.ProjectPath;
+import org.trustdeck.jooq.generated.tables.Pseudonym.PseudonymPath;
 import org.trustdeck.jooq.generated.tables.records.DomainRecord;
 
 
@@ -145,11 +154,11 @@ public class Domain extends TableImpl<DomainRecord> {
     public final TableField<DomainRecord, Integer> PROJECT_ID = createField(DSL.name("project_id"), SQLDataType.INTEGER.nullable(false), this, "");
 
     private Domain(Name alias, Table<DomainRecord> aliased) {
-        this(alias, aliased, null);
+        this(alias, aliased, (Field<?>[]) null, null);
     }
 
-    private Domain(Name alias, Table<DomainRecord> aliased, Field<?>[] parameters) {
-        super(alias, null, aliased, parameters, DSL.comment(""), TableOptions.table());
+    private Domain(Name alias, Table<DomainRecord> aliased, Field<?>[] parameters, Condition where) {
+        super(alias, null, aliased, parameters, DSL.comment(""), TableOptions.table(), where);
     }
 
     /**
@@ -173,8 +182,37 @@ public class Domain extends TableImpl<DomainRecord> {
         this(DSL.name("domain"), null);
     }
 
-    public <O extends Record> Domain(Table<O> child, ForeignKey<O, DomainRecord> key) {
-        super(child, key, DOMAIN);
+    public <O extends Record> Domain(Table<O> path, ForeignKey<O, DomainRecord> childPath, InverseForeignKey<O, DomainRecord> parentPath) {
+        super(path, childPath, parentPath, DOMAIN);
+    }
+
+    /**
+     * A subtype implementing {@link Path} for simplified path-based joins.
+     */
+    public static class DomainPath extends Domain implements Path<DomainRecord> {
+
+        private static final long serialVersionUID = 1L;
+        public <O extends Record> DomainPath(Table<O> path, ForeignKey<O, DomainRecord> childPath, InverseForeignKey<O, DomainRecord> parentPath) {
+            super(path, childPath, parentPath);
+        }
+        private DomainPath(Name alias, Table<DomainRecord> aliased) {
+            super(alias, aliased);
+        }
+
+        @Override
+        public DomainPath as(String alias) {
+            return new DomainPath(DSL.name(alias), this);
+        }
+
+        @Override
+        public DomainPath as(Name alias) {
+            return new DomainPath(alias, this);
+        }
+
+        @Override
+        public DomainPath as(Table<?> alias) {
+            return new DomainPath(alias.getQualifiedName(), this);
+        }
     }
 
     @Override
@@ -204,41 +242,69 @@ public class Domain extends TableImpl<DomainRecord> {
 
     @Override
     public List<ForeignKey<DomainRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.DOMAIN__DOMAIN_SUPERDOMAINID_FKEY, Keys.DOMAIN__DOMAIN_ALGORITHM_ID_FKEY, Keys.DOMAIN__DOMAIN_PROJECT_ID_FKEY);
+        return Arrays.asList(Keys.DOMAIN__DOMAIN_ALGORITHM_ID_FKEY, Keys.DOMAIN__DOMAIN_PROJECT_ID_FKEY, Keys.DOMAIN__DOMAIN_SUPERDOMAINID_FKEY);
     }
 
-    private transient Domain _domain;
-    private transient Algorithm _algorithm;
-    private transient Project _project;
-
-    /**
-     * Get the implicit join path to the <code>public.domain</code> table.
-     */
-    public Domain domain() {
-        if (_domain == null)
-            _domain = new Domain(this, Keys.DOMAIN__DOMAIN_SUPERDOMAINID_FKEY);
-
-        return _domain;
-    }
+    private transient AlgorithmPath _algorithm;
 
     /**
      * Get the implicit join path to the <code>public.algorithm</code> table.
      */
-    public Algorithm algorithm() {
+    public AlgorithmPath algorithm() {
         if (_algorithm == null)
-            _algorithm = new Algorithm(this, Keys.DOMAIN__DOMAIN_ALGORITHM_ID_FKEY);
+            _algorithm = new AlgorithmPath(this, Keys.DOMAIN__DOMAIN_ALGORITHM_ID_FKEY, null);
 
         return _algorithm;
     }
 
+    private transient ProjectPath _project;
+
     /**
      * Get the implicit join path to the <code>public.project</code> table.
      */
-    public Project project() {
+    public ProjectPath project() {
         if (_project == null)
-            _project = new Project(this, Keys.DOMAIN__DOMAIN_PROJECT_ID_FKEY);
+            _project = new ProjectPath(this, Keys.DOMAIN__DOMAIN_PROJECT_ID_FKEY, null);
 
         return _project;
+    }
+
+    private transient DomainPath _domain;
+
+    /**
+     * Get the implicit join path to the <code>public.domain</code> table.
+     */
+    public DomainPath domain() {
+        if (_domain == null)
+            _domain = new DomainPath(this, Keys.DOMAIN__DOMAIN_SUPERDOMAINID_FKEY, null);
+
+        return _domain;
+    }
+
+    private transient EntityTypePath _entityType;
+
+    /**
+     * Get the implicit to-many join path to the <code>public.entity_type</code>
+     * table
+     */
+    public EntityTypePath entityType() {
+        if (_entityType == null)
+            _entityType = new EntityTypePath(this, null, Keys.ENTITY_TYPE__ENTITY_TYPE_ASSOCIATED_DOMAIN_ID_FKEY.getInverseKey());
+
+        return _entityType;
+    }
+
+    private transient PseudonymPath _pseudonym;
+
+    /**
+     * Get the implicit to-many join path to the <code>public.pseudonym</code>
+     * table
+     */
+    public PseudonymPath pseudonym() {
+        if (_pseudonym == null)
+            _pseudonym = new PseudonymPath(this, null, Keys.PSEUDONYM__PSEUDONYM_DOMAINID_FKEY.getInverseKey());
+
+        return _pseudonym;
     }
 
     @Override
@@ -280,27 +346,87 @@ public class Domain extends TableImpl<DomainRecord> {
         return new Domain(name.getQualifiedName(), null);
     }
 
-    // -------------------------------------------------------------------------
-    // Row18 type methods
-    // -------------------------------------------------------------------------
-
+    /**
+     * Create an inline derived table from this table
+     */
     @Override
-    public Row18<Integer, String, String, LocalDateTime, Boolean, LocalDateTime, Boolean, Boolean, Boolean, Boolean, Boolean, Boolean, Boolean, String, Integer, Integer, Boolean, Integer> fieldsRow() {
-        return (Row18) super.fieldsRow();
+    public Domain where(Condition condition) {
+        return new Domain(getQualifiedName(), aliased() ? this : null, null, condition);
     }
 
     /**
-     * Convenience mapping calling {@link SelectField#convertFrom(Function)}.
+     * Create an inline derived table from this table
      */
-    public <U> SelectField<U> mapping(Function18<? super Integer, ? super String, ? super String, ? super LocalDateTime, ? super Boolean, ? super LocalDateTime, ? super Boolean, ? super Boolean, ? super Boolean, ? super Boolean, ? super Boolean, ? super Boolean, ? super Boolean, ? super String, ? super Integer, ? super Integer, ? super Boolean, ? super Integer, ? extends U> from) {
-        return convertFrom(Records.mapping(from));
+    @Override
+    public Domain where(Collection<? extends Condition> conditions) {
+        return where(DSL.and(conditions));
     }
 
     /**
-     * Convenience mapping calling {@link SelectField#convertFrom(Class,
-     * Function)}.
+     * Create an inline derived table from this table
      */
-    public <U> SelectField<U> mapping(Class<U> toType, Function18<? super Integer, ? super String, ? super String, ? super LocalDateTime, ? super Boolean, ? super LocalDateTime, ? super Boolean, ? super Boolean, ? super Boolean, ? super Boolean, ? super Boolean, ? super Boolean, ? super Boolean, ? super String, ? super Integer, ? super Integer, ? super Boolean, ? super Integer, ? extends U> from) {
-        return convertFrom(toType, Records.mapping(from));
+    @Override
+    public Domain where(Condition... conditions) {
+        return where(DSL.and(conditions));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    public Domain where(Field<Boolean> condition) {
+        return where(DSL.condition(condition));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    @PlainSQL
+    public Domain where(SQL condition) {
+        return where(DSL.condition(condition));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    @PlainSQL
+    public Domain where(@Stringly.SQL String condition) {
+        return where(DSL.condition(condition));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    @PlainSQL
+    public Domain where(@Stringly.SQL String condition, Object... binds) {
+        return where(DSL.condition(condition, binds));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    @PlainSQL
+    public Domain where(@Stringly.SQL String condition, QueryPart... parts) {
+        return where(DSL.condition(condition, parts));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    public Domain whereExists(Select<?> select) {
+        return where(DSL.exists(select));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    public Domain whereNotExists(Select<?> select) {
+        return where(DSL.notExists(select));
     }
 }

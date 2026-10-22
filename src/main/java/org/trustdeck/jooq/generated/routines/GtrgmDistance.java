@@ -7,6 +7,7 @@ package org.trustdeck.jooq.generated.routines;
 import org.jooq.Field;
 import org.jooq.Parameter;
 import org.jooq.impl.AbstractRoutine;
+import org.jooq.impl.DefaultDataType;
 import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.trustdeck.jooq.generated.Public;
@@ -34,7 +35,7 @@ public class GtrgmDistance extends AbstractRoutine<Double> {
      * configuration.
      */
     @Deprecated
-    public static final Parameter<Object> _1 = Internal.createParameter("_1", org.jooq.impl.DefaultDataType.getDefaultDataType("\"pg_catalog\".\"internal\""), false, true);
+    public static final Parameter<Object> _1 = Internal.createParameter("_1", DefaultDataType.getDefaultDataType("\"pg_catalog\".\"internal\""), false, true);
 
     /**
      * The parameter <code>public.gtrgm_distance._2</code>.
@@ -60,7 +61,7 @@ public class GtrgmDistance extends AbstractRoutine<Double> {
      * configuration.
      */
     @Deprecated
-    public static final Parameter<Object> _5 = Internal.createParameter("_5", org.jooq.impl.DefaultDataType.getDefaultDataType("\"pg_catalog\".\"internal\""), false, true);
+    public static final Parameter<Object> _5 = Internal.createParameter("_5", DefaultDataType.getDefaultDataType("\"pg_catalog\".\"internal\""), false, true);
 
     /**
      * Create a new routine call instance
@@ -79,8 +80,9 @@ public class GtrgmDistance extends AbstractRoutine<Double> {
     /**
      * Set the <code>_1</code> parameter IN value to the routine
      */
-    public void set__1(Object value) {
+    public GtrgmDistance set__1(Object value) {
         setValue(_1, value);
+        return this;
     }
 
     /**
@@ -95,8 +97,9 @@ public class GtrgmDistance extends AbstractRoutine<Double> {
     /**
      * Set the <code>_2</code> parameter IN value to the routine
      */
-    public void set__2(String value) {
+    public GtrgmDistance set__2(String value) {
         setValue(_2, value);
+        return this;
     }
 
     /**
@@ -111,8 +114,9 @@ public class GtrgmDistance extends AbstractRoutine<Double> {
     /**
      * Set the <code>_3</code> parameter IN value to the routine
      */
-    public void set__3(Short value) {
+    public GtrgmDistance set__3(Short value) {
         setValue(_3, value);
+        return this;
     }
 
     /**
@@ -127,8 +131,9 @@ public class GtrgmDistance extends AbstractRoutine<Double> {
     /**
      * Set the <code>_4</code> parameter IN value to the routine
      */
-    public void set__4(Long value) {
+    public GtrgmDistance set__4(Long value) {
         setValue(_4, value);
+        return this;
     }
 
     /**
@@ -143,8 +148,9 @@ public class GtrgmDistance extends AbstractRoutine<Double> {
     /**
      * Set the <code>_5</code> parameter IN value to the routine
      */
-    public void set__5(Object value) {
+    public GtrgmDistance set__5(Object value) {
         setValue(_5, value);
+        return this;
     }
 
     /**

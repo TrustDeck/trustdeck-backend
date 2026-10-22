@@ -61,8 +61,9 @@ public class EncryptIv extends AbstractRoutine<byte[]> {
     /**
      * Set the <code>_1</code> parameter IN value to the routine
      */
-    public void set__1(byte[] value) {
+    public EncryptIv set__1(byte[] value) {
         setValue(_1, value);
+        return this;
     }
 
     /**
@@ -77,8 +78,9 @@ public class EncryptIv extends AbstractRoutine<byte[]> {
     /**
      * Set the <code>_2</code> parameter IN value to the routine
      */
-    public void set__2(byte[] value) {
+    public EncryptIv set__2(byte[] value) {
         setValue(_2, value);
+        return this;
     }
 
     /**
@@ -93,8 +95,9 @@ public class EncryptIv extends AbstractRoutine<byte[]> {
     /**
      * Set the <code>_3</code> parameter IN value to the routine
      */
-    public void set__3(byte[] value) {
+    public EncryptIv set__3(byte[] value) {
         setValue(_3, value);
+        return this;
     }
 
     /**
@@ -109,8 +112,9 @@ public class EncryptIv extends AbstractRoutine<byte[]> {
     /**
      * Set the <code>_4</code> parameter IN value to the routine
      */
-    public void set__4(String value) {
+    public EncryptIv set__4(String value) {
         setValue(_4, value);
+        return this;
     }
 
     /**

@@ -5,33 +5,42 @@ package org.trustdeck.jooq.generated.tables;
 
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
-import java.util.function.Function;
 
 import org.jooq.Check;
+import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
-import org.jooq.Function10;
 import org.jooq.Identity;
 import org.jooq.Index;
+import org.jooq.InverseForeignKey;
 import org.jooq.JSONB;
 import org.jooq.Name;
+import org.jooq.Path;
+import org.jooq.PlainSQL;
+import org.jooq.QueryPart;
 import org.jooq.Record;
-import org.jooq.Records;
-import org.jooq.Row10;
+import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.SelectField;
+import org.jooq.Select;
+import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.DefaultDataType;
 import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 import org.trustdeck.jooq.generated.Indexes;
 import org.trustdeck.jooq.generated.Keys;
 import org.trustdeck.jooq.generated.Public;
+import org.trustdeck.jooq.generated.tables.Domain.DomainPath;
+import org.trustdeck.jooq.generated.tables.Entity.EntityPath;
+import org.trustdeck.jooq.generated.tables.EntityType.EntityTypePath;
+import org.trustdeck.jooq.generated.tables.Project.ProjectPath;
 import org.trustdeck.jooq.generated.tables.records.EntityTypeRecord;
 
 
@@ -110,14 +119,14 @@ public class EntityType extends TableImpl<EntityTypeRecord> {
      * configuration.
      */
     @Deprecated
-    public final TableField<EntityTypeRecord, Object> FULL_TEXT_SEARCH_VECTOR = createField(DSL.name("full_text_search_vector"), org.jooq.impl.DefaultDataType.getDefaultDataType("\"pg_catalog\".\"tsvector\""), this, "");
+    public final TableField<EntityTypeRecord, Object> FULL_TEXT_SEARCH_VECTOR = createField(DSL.name("full_text_search_vector"), DefaultDataType.getDefaultDataType("\"pg_catalog\".\"tsvector\""), this, "");
 
     private EntityType(Name alias, Table<EntityTypeRecord> aliased) {
-        this(alias, aliased, null);
+        this(alias, aliased, (Field<?>[]) null, null);
     }
 
-    private EntityType(Name alias, Table<EntityTypeRecord> aliased, Field<?>[] parameters) {
-        super(alias, null, aliased, parameters, DSL.comment(""), TableOptions.table());
+    private EntityType(Name alias, Table<EntityTypeRecord> aliased, Field<?>[] parameters, Condition where) {
+        super(alias, null, aliased, parameters, DSL.comment(""), TableOptions.table(), where);
     }
 
     /**
@@ -141,8 +150,37 @@ public class EntityType extends TableImpl<EntityTypeRecord> {
         this(DSL.name("entity_type"), null);
     }
 
-    public <O extends Record> EntityType(Table<O> child, ForeignKey<O, EntityTypeRecord> key) {
-        super(child, key, ENTITY_TYPE);
+    public <O extends Record> EntityType(Table<O> path, ForeignKey<O, EntityTypeRecord> childPath, InverseForeignKey<O, EntityTypeRecord> parentPath) {
+        super(path, childPath, parentPath, ENTITY_TYPE);
+    }
+
+    /**
+     * A subtype implementing {@link Path} for simplified path-based joins.
+     */
+    public static class EntityTypePath extends EntityType implements Path<EntityTypeRecord> {
+
+        private static final long serialVersionUID = 1L;
+        public <O extends Record> EntityTypePath(Table<O> path, ForeignKey<O, EntityTypeRecord> childPath, InverseForeignKey<O, EntityTypeRecord> parentPath) {
+            super(path, childPath, parentPath);
+        }
+        private EntityTypePath(Name alias, Table<EntityTypeRecord> aliased) {
+            super(alias, aliased);
+        }
+
+        @Override
+        public EntityTypePath as(String alias) {
+            return new EntityTypePath(DSL.name(alias), this);
+        }
+
+        @Override
+        public EntityTypePath as(Name alias) {
+            return new EntityTypePath(alias, this);
+        }
+
+        @Override
+        public EntityTypePath as(Table<?> alias) {
+            return new EntityTypePath(alias.getQualifiedName(), this);
+        }
     }
 
     @Override
@@ -167,41 +205,56 @@ public class EntityType extends TableImpl<EntityTypeRecord> {
 
     @Override
     public List<ForeignKey<EntityTypeRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.ENTITY_TYPE__ENTITY_TYPE_BASE_TYPE_ID_FKEY, Keys.ENTITY_TYPE__ENTITY_TYPE_ASSOCIATED_DOMAIN_ID_FKEY, Keys.ENTITY_TYPE__ENTITY_TYPE_PROJECT_ID_FKEY);
+        return Arrays.asList(Keys.ENTITY_TYPE__ENTITY_TYPE_ASSOCIATED_DOMAIN_ID_FKEY, Keys.ENTITY_TYPE__ENTITY_TYPE_BASE_TYPE_ID_FKEY, Keys.ENTITY_TYPE__ENTITY_TYPE_PROJECT_ID_FKEY);
     }
 
-    private transient EntityType _entityType;
-    private transient Domain _domain;
-    private transient Project _project;
-
-    /**
-     * Get the implicit join path to the <code>public.entity_type</code> table.
-     */
-    public EntityType entityType() {
-        if (_entityType == null)
-            _entityType = new EntityType(this, Keys.ENTITY_TYPE__ENTITY_TYPE_BASE_TYPE_ID_FKEY);
-
-        return _entityType;
-    }
+    private transient DomainPath _domain;
 
     /**
      * Get the implicit join path to the <code>public.domain</code> table.
      */
-    public Domain domain() {
+    public DomainPath domain() {
         if (_domain == null)
-            _domain = new Domain(this, Keys.ENTITY_TYPE__ENTITY_TYPE_ASSOCIATED_DOMAIN_ID_FKEY);
+            _domain = new DomainPath(this, Keys.ENTITY_TYPE__ENTITY_TYPE_ASSOCIATED_DOMAIN_ID_FKEY, null);
 
         return _domain;
     }
 
+    private transient EntityTypePath _entityType;
+
+    /**
+     * Get the implicit join path to the <code>public.entity_type</code> table.
+     */
+    public EntityTypePath entityType() {
+        if (_entityType == null)
+            _entityType = new EntityTypePath(this, Keys.ENTITY_TYPE__ENTITY_TYPE_BASE_TYPE_ID_FKEY, null);
+
+        return _entityType;
+    }
+
+    private transient ProjectPath _project;
+
     /**
      * Get the implicit join path to the <code>public.project</code> table.
      */
-    public Project project() {
+    public ProjectPath project() {
         if (_project == null)
-            _project = new Project(this, Keys.ENTITY_TYPE__ENTITY_TYPE_PROJECT_ID_FKEY);
+            _project = new ProjectPath(this, Keys.ENTITY_TYPE__ENTITY_TYPE_PROJECT_ID_FKEY, null);
 
         return _project;
+    }
+
+    private transient EntityPath _entity;
+
+    /**
+     * Get the implicit to-many join path to the <code>public.entity</code>
+     * table
+     */
+    public EntityPath entity() {
+        if (_entity == null)
+            _entity = new EntityPath(this, null, Keys.ENTITY__ENTITY_ENTITY_TYPE_ID_FKEY.getInverseKey());
+
+        return _entity;
     }
 
     @Override
@@ -251,27 +304,87 @@ public class EntityType extends TableImpl<EntityTypeRecord> {
         return new EntityType(name.getQualifiedName(), null);
     }
 
-    // -------------------------------------------------------------------------
-    // Row10 type methods
-    // -------------------------------------------------------------------------
-
+    /**
+     * Create an inline derived table from this table
+     */
     @Override
-    public Row10<Integer, String, String, Boolean, Boolean, JSONB, Integer, Integer, Integer, Object> fieldsRow() {
-        return (Row10) super.fieldsRow();
+    public EntityType where(Condition condition) {
+        return new EntityType(getQualifiedName(), aliased() ? this : null, null, condition);
     }
 
     /**
-     * Convenience mapping calling {@link SelectField#convertFrom(Function)}.
+     * Create an inline derived table from this table
      */
-    public <U> SelectField<U> mapping(Function10<? super Integer, ? super String, ? super String, ? super Boolean, ? super Boolean, ? super JSONB, ? super Integer, ? super Integer, ? super Integer, ? super Object, ? extends U> from) {
-        return convertFrom(Records.mapping(from));
+    @Override
+    public EntityType where(Collection<? extends Condition> conditions) {
+        return where(DSL.and(conditions));
     }
 
     /**
-     * Convenience mapping calling {@link SelectField#convertFrom(Class,
-     * Function)}.
+     * Create an inline derived table from this table
      */
-    public <U> SelectField<U> mapping(Class<U> toType, Function10<? super Integer, ? super String, ? super String, ? super Boolean, ? super Boolean, ? super JSONB, ? super Integer, ? super Integer, ? super Integer, ? super Object, ? extends U> from) {
-        return convertFrom(toType, Records.mapping(from));
+    @Override
+    public EntityType where(Condition... conditions) {
+        return where(DSL.and(conditions));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    public EntityType where(Field<Boolean> condition) {
+        return where(DSL.condition(condition));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    @PlainSQL
+    public EntityType where(SQL condition) {
+        return where(DSL.condition(condition));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    @PlainSQL
+    public EntityType where(@Stringly.SQL String condition) {
+        return where(DSL.condition(condition));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    @PlainSQL
+    public EntityType where(@Stringly.SQL String condition, Object... binds) {
+        return where(DSL.condition(condition, binds));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    @PlainSQL
+    public EntityType where(@Stringly.SQL String condition, QueryPart... parts) {
+        return where(DSL.condition(condition, parts));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    public EntityType whereExists(Select<?> select) {
+        return where(DSL.exists(select));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    public EntityType whereNotExists(Select<?> select) {
+        return where(DSL.notExists(select));
     }
 }

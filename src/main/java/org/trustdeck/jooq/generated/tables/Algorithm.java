@@ -5,20 +5,24 @@ package org.trustdeck.jooq.generated.tables;
 
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
-import java.util.function.Function;
 
+import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
-import org.jooq.Function12;
 import org.jooq.Identity;
 import org.jooq.Index;
+import org.jooq.InverseForeignKey;
 import org.jooq.Name;
+import org.jooq.Path;
+import org.jooq.PlainSQL;
+import org.jooq.QueryPart;
 import org.jooq.Record;
-import org.jooq.Records;
-import org.jooq.Row12;
+import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.SelectField;
+import org.jooq.Select;
+import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
 import org.jooq.TableOptions;
@@ -29,6 +33,7 @@ import org.jooq.impl.TableImpl;
 import org.trustdeck.jooq.generated.Indexes;
 import org.trustdeck.jooq.generated.Keys;
 import org.trustdeck.jooq.generated.Public;
+import org.trustdeck.jooq.generated.tables.Domain.DomainPath;
 import org.trustdeck.jooq.generated.tables.records.AlgorithmRecord;
 
 
@@ -115,11 +120,11 @@ public class Algorithm extends TableImpl<AlgorithmRecord> {
     public final TableField<AlgorithmRecord, Integer> SALT_LENGTH = createField(DSL.name("salt_length"), SQLDataType.INTEGER.nullable(false), this, "");
 
     private Algorithm(Name alias, Table<AlgorithmRecord> aliased) {
-        this(alias, aliased, null);
+        this(alias, aliased, (Field<?>[]) null, null);
     }
 
-    private Algorithm(Name alias, Table<AlgorithmRecord> aliased, Field<?>[] parameters) {
-        super(alias, null, aliased, parameters, DSL.comment(""), TableOptions.table());
+    private Algorithm(Name alias, Table<AlgorithmRecord> aliased, Field<?>[] parameters, Condition where) {
+        super(alias, null, aliased, parameters, DSL.comment(""), TableOptions.table(), where);
     }
 
     /**
@@ -143,8 +148,37 @@ public class Algorithm extends TableImpl<AlgorithmRecord> {
         this(DSL.name("algorithm"), null);
     }
 
-    public <O extends Record> Algorithm(Table<O> child, ForeignKey<O, AlgorithmRecord> key) {
-        super(child, key, ALGORITHM);
+    public <O extends Record> Algorithm(Table<O> path, ForeignKey<O, AlgorithmRecord> childPath, InverseForeignKey<O, AlgorithmRecord> parentPath) {
+        super(path, childPath, parentPath, ALGORITHM);
+    }
+
+    /**
+     * A subtype implementing {@link Path} for simplified path-based joins.
+     */
+    public static class AlgorithmPath extends Algorithm implements Path<AlgorithmRecord> {
+
+        private static final long serialVersionUID = 1L;
+        public <O extends Record> AlgorithmPath(Table<O> path, ForeignKey<O, AlgorithmRecord> childPath, InverseForeignKey<O, AlgorithmRecord> parentPath) {
+            super(path, childPath, parentPath);
+        }
+        private AlgorithmPath(Name alias, Table<AlgorithmRecord> aliased) {
+            super(alias, aliased);
+        }
+
+        @Override
+        public AlgorithmPath as(String alias) {
+            return new AlgorithmPath(DSL.name(alias), this);
+        }
+
+        @Override
+        public AlgorithmPath as(Name alias) {
+            return new AlgorithmPath(alias, this);
+        }
+
+        @Override
+        public AlgorithmPath as(Table<?> alias) {
+            return new AlgorithmPath(alias.getQualifiedName(), this);
+        }
     }
 
     @Override
@@ -170,6 +204,19 @@ public class Algorithm extends TableImpl<AlgorithmRecord> {
     @Override
     public List<UniqueKey<AlgorithmRecord>> getUniqueKeys() {
         return Arrays.asList(Keys.ALGORITHM_CONFIGURATION_KEY);
+    }
+
+    private transient DomainPath _domain;
+
+    /**
+     * Get the implicit to-many join path to the <code>public.domain</code>
+     * table
+     */
+    public DomainPath domain() {
+        if (_domain == null)
+            _domain = new DomainPath(this, null, Keys.DOMAIN__DOMAIN_ALGORITHM_ID_FKEY.getInverseKey());
+
+        return _domain;
     }
 
     @Override
@@ -211,27 +258,87 @@ public class Algorithm extends TableImpl<AlgorithmRecord> {
         return new Algorithm(name.getQualifiedName(), null);
     }
 
-    // -------------------------------------------------------------------------
-    // Row12 type methods
-    // -------------------------------------------------------------------------
-
+    /**
+     * Create an inline derived table from this table
+     */
     @Override
-    public Row12<Integer, String, String, Long, Double, Long, Integer, String, Boolean, Boolean, String, Integer> fieldsRow() {
-        return (Row12) super.fieldsRow();
+    public Algorithm where(Condition condition) {
+        return new Algorithm(getQualifiedName(), aliased() ? this : null, null, condition);
     }
 
     /**
-     * Convenience mapping calling {@link SelectField#convertFrom(Function)}.
+     * Create an inline derived table from this table
      */
-    public <U> SelectField<U> mapping(Function12<? super Integer, ? super String, ? super String, ? super Long, ? super Double, ? super Long, ? super Integer, ? super String, ? super Boolean, ? super Boolean, ? super String, ? super Integer, ? extends U> from) {
-        return convertFrom(Records.mapping(from));
+    @Override
+    public Algorithm where(Collection<? extends Condition> conditions) {
+        return where(DSL.and(conditions));
     }
 
     /**
-     * Convenience mapping calling {@link SelectField#convertFrom(Class,
-     * Function)}.
+     * Create an inline derived table from this table
      */
-    public <U> SelectField<U> mapping(Class<U> toType, Function12<? super Integer, ? super String, ? super String, ? super Long, ? super Double, ? super Long, ? super Integer, ? super String, ? super Boolean, ? super Boolean, ? super String, ? super Integer, ? extends U> from) {
-        return convertFrom(toType, Records.mapping(from));
+    @Override
+    public Algorithm where(Condition... conditions) {
+        return where(DSL.and(conditions));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    public Algorithm where(Field<Boolean> condition) {
+        return where(DSL.condition(condition));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    @PlainSQL
+    public Algorithm where(SQL condition) {
+        return where(DSL.condition(condition));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    @PlainSQL
+    public Algorithm where(@Stringly.SQL String condition) {
+        return where(DSL.condition(condition));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    @PlainSQL
+    public Algorithm where(@Stringly.SQL String condition, Object... binds) {
+        return where(DSL.condition(condition, binds));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    @PlainSQL
+    public Algorithm where(@Stringly.SQL String condition, QueryPart... parts) {
+        return where(DSL.condition(condition, parts));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    public Algorithm whereExists(Select<?> select) {
+        return where(DSL.exists(select));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    public Algorithm whereNotExists(Select<?> select) {
+        return where(DSL.notExists(select));
     }
 }

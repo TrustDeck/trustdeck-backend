@@ -76,7 +76,7 @@ public class Public extends SchemaImpl {
     public final PermissionGrant PERMISSION_GRANT = PermissionGrant.PERMISSION_GRANT;
 
     /**
-     * The table <code>public.pgp_armor_headers</code>.
+     * text, OUT key text, OUT value text
      */
     public final PgpArmorHeaders PGP_ARMOR_HEADERS = PgpArmorHeaders.PGP_ARMOR_HEADERS;
 

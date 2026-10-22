@@ -63,7 +63,7 @@ public class Tables {
     public static final PermissionGrant PERMISSION_GRANT = PermissionGrant.PERMISSION_GRANT;
 
     /**
-     * The table <code>public.pgp_armor_headers</code>.
+     * text, OUT key text, OUT value text
      */
     public static final PgpArmorHeaders PGP_ARMOR_HEADERS = PgpArmorHeaders.PGP_ARMOR_HEADERS;
 
