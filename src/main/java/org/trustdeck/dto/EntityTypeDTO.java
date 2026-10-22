@@ -30,9 +30,9 @@ import org.trustdeck.utils.SpringBeanLocator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import lombok.AccessLevel;
 import lombok.Data;
 import lombok.Getter;
@@ -147,7 +147,7 @@ public class EntityTypeDTO implements IObjectDTO<EntityType, EntityTypeDTO> {
 			ObjectMapper objectMapper = SpringBeanLocator.getBean(ObjectMapper.class);
 			try {
 				node = objectMapper.readTree(jsonb.toString());
-			} catch (JsonProcessingException e) {
+			} catch (JacksonException e) {
 				log.debug("Could not parse JSONB into JsonNode.");
 			}
 		}

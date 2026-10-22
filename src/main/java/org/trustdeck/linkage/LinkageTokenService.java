@@ -30,7 +30,7 @@ import org.trustdeck.linkage.model.LinkageTokenType;
 import org.trustdeck.linkage.model.PPRLConfig;
 import org.trustdeck.utils.Assertion;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -76,7 +76,7 @@ public class LinkageTokenService {
         List<LinkageToken> tokens = new ArrayList<>();
         for (LinkageFieldRule rule : rules) {
             for (JsonNode valueNode : getNodesByPath(payload, rule.getPath())) {
-                String rawValue = valueNode.asText(null);
+                String rawValue = valueNode.asString(null);
                 if (Assertion.isNullOrEmpty(rawValue)) {
                     continue;
                 }

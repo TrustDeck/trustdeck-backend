@@ -66,7 +66,7 @@ import org.trustdeck.service.ResponseService;
 import org.trustdeck.utils.Assertion;
 import org.trustdeck.utils.Utility.Pair;
 
-import com.networknt.schema.JsonSchema;
+import com.networknt.schema.Schema;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -185,7 +185,7 @@ public class EntityController {
 	    }
 	    
 	    // Retrieve or build the compiled type schema
-    	JsonSchema compiledTypeSchema = jsonSchemaService.getCompiledSchemaFromDefinition(entityType.getTypeDefinition());
+    	Schema compiledTypeSchema = jsonSchemaService.getCompiledSchemaFromDefinition(entityType.getTypeDefinition());
     	
     	// Validate the payload data against the type definition
         	List<String> errors = jsonSchemaService.validateInstance(entityDTO.getData(), compiledTypeSchema);
@@ -424,7 +424,7 @@ public class EntityController {
 	    // Validate a possibly updated JSONB data part
 	    if (entityDTO.getData() != null) {
 	    	// Retrieve the compiled type schema
-	    	JsonSchema compiledTypeSchema = jsonSchemaService.getCompiledSchemaFromDefinition(entityType.getTypeDefinition());
+	    	Schema compiledTypeSchema = jsonSchemaService.getCompiledSchemaFromDefinition(entityType.getTypeDefinition());
 	    	
 	    	// Validate the new payload data against the type definition
 	    	List<String> errors = jsonSchemaService.validateInstance(entityDTO.getData(), compiledTypeSchema);
@@ -779,7 +779,7 @@ public class EntityController {
 	    }
 	    
 	    // Retrieve or build the compiled type schema
-    	JsonSchema compiledTypeSchema = jsonSchemaService.getCompiledSchemaFromDefinition(entityType.getTypeDefinition());
+    	Schema compiledTypeSchema = jsonSchemaService.getCompiledSchemaFromDefinition(entityType.getTypeDefinition());
     	
     	// Validate the payload data against the type definition
         	List<String> errors = jsonSchemaService.validateInstance(entityDTO.getData(), compiledTypeSchema);

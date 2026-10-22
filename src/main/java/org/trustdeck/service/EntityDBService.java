@@ -48,9 +48,9 @@ import org.trustdeck.linkage.model.LinkageToken;
 import org.trustdeck.linkage.model.LinkageTokenType;
 import org.trustdeck.utils.Assertion;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -577,7 +577,7 @@ public class EntityDBService {
     	    String fragment = null;
 			try {
 				fragment = objectMapper.writeValueAsString(Map.of(entry.getKey(), entry.getValue()));
-			} catch (JsonProcessingException e) {
+			} catch (JacksonException e) {
 				log.debug("Could not transform an attribute-value-combination into a String.");
 				continue;
 			}
@@ -753,7 +753,7 @@ public class EntityDBService {
     		try {
 				String nodeAsString = objectMapper.writeValueAsString(node);
 				jsonb = JSONB.valueOf(nodeAsString);
-			} catch (JsonProcessingException e) {
+			} catch (JacksonException e) {
 				log.debug("Could not parse JsonNode into JSONB.");
 			}
     	}

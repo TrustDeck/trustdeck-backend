@@ -48,7 +48,7 @@ import org.trustdeck.service.ResponseService;
 import org.trustdeck.service.PermissionDBService;
 import org.trustdeck.utils.Assertion;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import lombok.extern.slf4j.Slf4j;
 
 /**

@@ -37,7 +37,7 @@ import org.trustdeck.linkage.model.LinkageFieldRule;
 import org.trustdeck.linkage.model.LinkageToken;
 import org.trustdeck.linkage.model.LinkageTokenType;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 
 import lombok.extern.slf4j.Slf4j;
 
