@@ -219,7 +219,7 @@ public class AuditEventRecord extends UpdatableRecordImpl<AuditEventRecord> impl
         setTopic(from.getTopic());
         setPartition(from.getPartition());
         setRecordOffset(from.getRecordOffset());
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 
     @Override
@@ -255,13 +255,13 @@ public class AuditEventRecord extends UpdatableRecordImpl<AuditEventRecord> impl
         setTopic(topic);
         setPartition(partition);
         setRecordOffset(recordOffset);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 
     /**
      * Create a detached, initialised AuditEventRecord
      */
-    public AuditEventRecord(org.trustdeck.jooq.generated.tables.pojos.AuditEvent value) {
+    public AuditEventRecord(IAuditEvent value) {
         super(AuditEvent.AUDIT_EVENT);
 
         if (value != null) {
@@ -275,7 +275,7 @@ public class AuditEventRecord extends UpdatableRecordImpl<AuditEventRecord> impl
             setTopic(value.getTopic());
             setPartition(value.getPartition());
             setRecordOffset(value.getRecordOffset());
-            resetChangedOnNotNull();
+            resetTouchedOnNotNull();
         }
     }
 }

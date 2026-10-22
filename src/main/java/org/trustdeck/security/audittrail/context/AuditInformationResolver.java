@@ -106,7 +106,7 @@ public class AuditInformationResolver {
         }
         
         // Wrap request, so we can safely perform the destructive read on the request's input stream
-        ContentCachingRequestWrapper req = new ContentCachingRequestWrapper(request);
+        ContentCachingRequestWrapper req = new ContentCachingRequestWrapper(request, 0); // A cache limit of 0 means no limit
 
         // Extract user information from the request
         JwtAuthenticationToken token = getJwtAuthenticationToken();

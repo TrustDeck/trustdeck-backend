@@ -206,7 +206,7 @@ public class PseudonymRecord extends UpdatableRecordImpl<PseudonymRecord> implem
         setValidto(from.getValidto());
         setValidtoinherited(from.getValidtoinherited());
         setDomainid(from.getDomainid());
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 
     @Override
@@ -241,13 +241,13 @@ public class PseudonymRecord extends UpdatableRecordImpl<PseudonymRecord> implem
         setValidto(validto);
         setValidtoinherited(validtoinherited);
         setDomainid(domainid);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 
     /**
      * Create a detached, initialised PseudonymRecord
      */
-    public PseudonymRecord(org.trustdeck.jooq.generated.tables.pojos.Pseudonym value) {
+    public PseudonymRecord(IPseudonym value) {
         super(Pseudonym.PSEUDONYM);
 
         if (value != null) {
@@ -260,7 +260,7 @@ public class PseudonymRecord extends UpdatableRecordImpl<PseudonymRecord> implem
             setValidto(value.getValidto());
             setValidtoinherited(value.getValidtoinherited());
             setDomainid(value.getDomainid());
-            resetChangedOnNotNull();
+            resetTouchedOnNotNull();
         }
     }
 }

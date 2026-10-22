@@ -7,6 +7,7 @@ package org.trustdeck.jooq.generated.routines;
 import org.jooq.Field;
 import org.jooq.Parameter;
 import org.jooq.impl.AbstractRoutine;
+import org.jooq.impl.DSL;
 import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.trustdeck.jooq.generated.Public;
@@ -23,18 +24,18 @@ public class GenRandomBytes extends AbstractRoutine<byte[]> {
     /**
      * The parameter <code>public.gen_random_bytes.RETURN_VALUE</code>.
      */
-    public static final Parameter<byte[]> RETURN_VALUE = Internal.createParameter("RETURN_VALUE", SQLDataType.BLOB, false, false);
+    public static final Parameter<byte[]> RETURN_VALUE = Internal.createParameter("RETURN_VALUE", SQLDataType.BLOB, false);
 
     /**
      * The parameter <code>public.gen_random_bytes._1</code>.
      */
-    public static final Parameter<Integer> _1 = Internal.createParameter("_1", SQLDataType.INTEGER, false, true);
+    public static final Parameter<Integer> _1 = Internal.createParameter("_1", SQLDataType.INTEGER, true);
 
     /**
      * Create a new routine call instance
      */
     public GenRandomBytes() {
-        super("gen_random_bytes", Public.PUBLIC, SQLDataType.BLOB);
+        super("gen_random_bytes", Public.PUBLIC, DSL.comment(""), SQLDataType.BLOB);
 
         setReturnParameter(RETURN_VALUE);
         addInParameter(_1);

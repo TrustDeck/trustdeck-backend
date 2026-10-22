@@ -7,6 +7,7 @@ package org.trustdeck.jooq.generated.routines;
 import org.jooq.Field;
 import org.jooq.Parameter;
 import org.jooq.impl.AbstractRoutine;
+import org.jooq.impl.DSL;
 import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.trustdeck.jooq.generated.Public;
@@ -24,25 +25,25 @@ public class StrictWordSimilarityCommutatorOp extends AbstractRoutine<Boolean> {
      * The parameter
      * <code>public.strict_word_similarity_commutator_op.RETURN_VALUE</code>.
      */
-    public static final Parameter<Boolean> RETURN_VALUE = Internal.createParameter("RETURN_VALUE", SQLDataType.BOOLEAN, false, false);
+    public static final Parameter<Boolean> RETURN_VALUE = Internal.createParameter("RETURN_VALUE", SQLDataType.BOOLEAN, false);
 
     /**
      * The parameter
      * <code>public.strict_word_similarity_commutator_op._1</code>.
      */
-    public static final Parameter<String> _1 = Internal.createParameter("_1", SQLDataType.CLOB, false, true);
+    public static final Parameter<String> _1 = Internal.createParameter("_1", SQLDataType.CLOB, true);
 
     /**
      * The parameter
      * <code>public.strict_word_similarity_commutator_op._2</code>.
      */
-    public static final Parameter<String> _2 = Internal.createParameter("_2", SQLDataType.CLOB, false, true);
+    public static final Parameter<String> _2 = Internal.createParameter("_2", SQLDataType.CLOB, true);
 
     /**
      * Create a new routine call instance
      */
     public StrictWordSimilarityCommutatorOp() {
-        super("strict_word_similarity_commutator_op", Public.PUBLIC, SQLDataType.BOOLEAN);
+        super("strict_word_similarity_commutator_op", Public.PUBLIC, DSL.comment(""), SQLDataType.BOOLEAN);
 
         setReturnParameter(RETURN_VALUE);
         addInParameter(_1);

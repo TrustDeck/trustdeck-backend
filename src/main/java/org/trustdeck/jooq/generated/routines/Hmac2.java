@@ -7,6 +7,7 @@ package org.trustdeck.jooq.generated.routines;
 import org.jooq.Field;
 import org.jooq.Parameter;
 import org.jooq.impl.AbstractRoutine;
+import org.jooq.impl.DSL;
 import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.trustdeck.jooq.generated.Public;
@@ -23,28 +24,28 @@ public class Hmac2 extends AbstractRoutine<byte[]> {
     /**
      * The parameter <code>public.hmac.RETURN_VALUE</code>.
      */
-    public static final Parameter<byte[]> RETURN_VALUE = Internal.createParameter("RETURN_VALUE", SQLDataType.BLOB, false, false);
+    public static final Parameter<byte[]> RETURN_VALUE = Internal.createParameter("RETURN_VALUE", SQLDataType.BLOB, false);
 
     /**
      * The parameter <code>public.hmac._1</code>.
      */
-    public static final Parameter<byte[]> _1 = Internal.createParameter("_1", SQLDataType.BLOB, false, true);
+    public static final Parameter<byte[]> _1 = Internal.createParameter("_1", SQLDataType.BLOB, true);
 
     /**
      * The parameter <code>public.hmac._2</code>.
      */
-    public static final Parameter<byte[]> _2 = Internal.createParameter("_2", SQLDataType.BLOB, false, true);
+    public static final Parameter<byte[]> _2 = Internal.createParameter("_2", SQLDataType.BLOB, true);
 
     /**
      * The parameter <code>public.hmac._3</code>.
      */
-    public static final Parameter<String> _3 = Internal.createParameter("_3", SQLDataType.CLOB, false, true);
+    public static final Parameter<String> _3 = Internal.createParameter("_3", SQLDataType.CLOB, true);
 
     /**
      * Create a new routine call instance
      */
     public Hmac2() {
-        super("hmac", Public.PUBLIC, SQLDataType.BLOB);
+        super("hmac", Public.PUBLIC, DSL.comment(""), SQLDataType.BLOB);
 
         setReturnParameter(RETURN_VALUE);
         addInParameter(_1);

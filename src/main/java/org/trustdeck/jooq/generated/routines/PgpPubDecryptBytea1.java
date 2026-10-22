@@ -7,6 +7,7 @@ package org.trustdeck.jooq.generated.routines;
 import org.jooq.Field;
 import org.jooq.Parameter;
 import org.jooq.impl.AbstractRoutine;
+import org.jooq.impl.DSL;
 import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.trustdeck.jooq.generated.Public;
@@ -23,23 +24,23 @@ public class PgpPubDecryptBytea1 extends AbstractRoutine<byte[]> {
     /**
      * The parameter <code>public.pgp_pub_decrypt_bytea.RETURN_VALUE</code>.
      */
-    public static final Parameter<byte[]> RETURN_VALUE = Internal.createParameter("RETURN_VALUE", SQLDataType.BLOB, false, false);
+    public static final Parameter<byte[]> RETURN_VALUE = Internal.createParameter("RETURN_VALUE", SQLDataType.BLOB, false);
 
     /**
      * The parameter <code>public.pgp_pub_decrypt_bytea._1</code>.
      */
-    public static final Parameter<byte[]> _1 = Internal.createParameter("_1", SQLDataType.BLOB, false, true);
+    public static final Parameter<byte[]> _1 = Internal.createParameter("_1", SQLDataType.BLOB, true);
 
     /**
      * The parameter <code>public.pgp_pub_decrypt_bytea._2</code>.
      */
-    public static final Parameter<byte[]> _2 = Internal.createParameter("_2", SQLDataType.BLOB, false, true);
+    public static final Parameter<byte[]> _2 = Internal.createParameter("_2", SQLDataType.BLOB, true);
 
     /**
      * Create a new routine call instance
      */
     public PgpPubDecryptBytea1() {
-        super("pgp_pub_decrypt_bytea", Public.PUBLIC, SQLDataType.BLOB);
+        super("pgp_pub_decrypt_bytea", Public.PUBLIC, DSL.comment(""), SQLDataType.BLOB);
 
         setReturnParameter(RETURN_VALUE);
         addInParameter(_1);

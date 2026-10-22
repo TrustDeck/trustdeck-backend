@@ -7,6 +7,7 @@ package org.trustdeck.jooq.generated.routines;
 import org.jooq.Field;
 import org.jooq.Parameter;
 import org.jooq.impl.AbstractRoutine;
+import org.jooq.impl.DSL;
 import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.trustdeck.jooq.generated.Public;
@@ -23,18 +24,18 @@ public class GenSalt1 extends AbstractRoutine<String> {
     /**
      * The parameter <code>public.gen_salt.RETURN_VALUE</code>.
      */
-    public static final Parameter<String> RETURN_VALUE = Internal.createParameter("RETURN_VALUE", SQLDataType.CLOB, false, false);
+    public static final Parameter<String> RETURN_VALUE = Internal.createParameter("RETURN_VALUE", SQLDataType.CLOB, false);
 
     /**
      * The parameter <code>public.gen_salt._1</code>.
      */
-    public static final Parameter<String> _1 = Internal.createParameter("_1", SQLDataType.CLOB, false, true);
+    public static final Parameter<String> _1 = Internal.createParameter("_1", SQLDataType.CLOB, true);
 
     /**
      * Create a new routine call instance
      */
     public GenSalt1() {
-        super("gen_salt", Public.PUBLIC, SQLDataType.CLOB);
+        super("gen_salt", Public.PUBLIC, DSL.comment(""), SQLDataType.CLOB);
 
         setReturnParameter(RETURN_VALUE);
         addInParameter(_1);

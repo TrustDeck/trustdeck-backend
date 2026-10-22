@@ -22,20 +22,20 @@ import org.jooq.QueryPart;
 import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.Select;
 import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
+import org.jooq.TableLike;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 import org.trustdeck.jooq.generated.Indexes;
 import org.trustdeck.jooq.generated.Keys;
 import org.trustdeck.jooq.generated.Public;
 import org.trustdeck.jooq.generated.tables.Algorithm.AlgorithmPath;
-import org.trustdeck.jooq.generated.tables.Domain.DomainPath;
 import org.trustdeck.jooq.generated.tables.EntityType.EntityTypePath;
 import org.trustdeck.jooq.generated.tables.Project.ProjectPath;
 import org.trustdeck.jooq.generated.tables.Pseudonym.PseudonymPath;
@@ -66,7 +66,7 @@ public class Domain extends TableImpl<DomainRecord> {
     /**
      * The column <code>public.domain.id</code>.
      */
-    public final TableField<DomainRecord, Integer> ID = createField(DSL.name("id"), SQLDataType.INTEGER.nullable(false).identity(true), this, "");
+    public final TableField<DomainRecord, Integer> ID = createField(DSL.name("id"), SQLDataType.INTEGER.nullable(false).generatedByDefaultAsIdentity(), this, "");
 
     /**
      * The column <code>public.domain.name</code>.
@@ -351,7 +351,7 @@ public class Domain extends TableImpl<DomainRecord> {
      */
     @Override
     public Domain where(Condition condition) {
-        return new Domain(getQualifiedName(), aliased() ? this : null, null, condition);
+        return new Domain(getQualifiedName(), aliased() ? this : null, null, Internal.condition(this, condition));
     }
 
     /**
@@ -418,7 +418,7 @@ public class Domain extends TableImpl<DomainRecord> {
      * Create an inline derived table from this table
      */
     @Override
-    public Domain whereExists(Select<?> select) {
+    public Domain whereExists(TableLike<?> select) {
         return where(DSL.exists(select));
     }
 
@@ -426,7 +426,7 @@ public class Domain extends TableImpl<DomainRecord> {
      * Create an inline derived table from this table
      */
     @Override
-    public Domain whereNotExists(Select<?> select) {
+    public Domain whereNotExists(TableLike<?> select) {
         return where(DSL.notExists(select));
     }
 }

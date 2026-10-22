@@ -376,7 +376,7 @@ public class DomainRecord extends UpdatableRecordImpl<DomainRecord> implements I
         setAlgorithmId(from.getAlgorithmId());
         setAlgorithmInherited(from.getAlgorithmInherited());
         setProjectId(from.getProjectId());
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 
     @Override
@@ -420,13 +420,13 @@ public class DomainRecord extends UpdatableRecordImpl<DomainRecord> implements I
         setAlgorithmId(algorithmId);
         setAlgorithmInherited(algorithmInherited);
         setProjectId(projectId);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 
     /**
      * Create a detached, initialised DomainRecord
      */
-    public DomainRecord(org.trustdeck.jooq.generated.tables.pojos.Domain value) {
+    public DomainRecord(IDomain value) {
         super(Domain.DOMAIN);
 
         if (value != null) {
@@ -448,7 +448,7 @@ public class DomainRecord extends UpdatableRecordImpl<DomainRecord> implements I
             setAlgorithmId(value.getAlgorithmId());
             setAlgorithmInherited(value.getAlgorithmInherited());
             setProjectId(value.getProjectId());
-            resetChangedOnNotNull();
+            resetTouchedOnNotNull();
         }
     }
 }

@@ -6,6 +6,7 @@ package org.trustdeck.jooq.generated.routines;
 
 import org.jooq.Parameter;
 import org.jooq.impl.AbstractRoutine;
+import org.jooq.impl.DSL;
 import org.jooq.impl.DefaultDataType;
 import org.jooq.impl.Internal;
 import org.trustdeck.jooq.generated.Public;
@@ -28,13 +29,13 @@ public class GtrgmOptions extends AbstractRoutine<java.lang.Void> {
      * configuration.
      */
     @Deprecated
-    public static final Parameter<Object> _1 = Internal.createParameter("_1", DefaultDataType.getDefaultDataType("\"pg_catalog\".\"internal\""), false, true);
+    public static final Parameter<Object> _1 = Internal.createParameter("_1", DefaultDataType.getDefaultDataType("\"pg_catalog\".\"internal\""), true);
 
     /**
      * Create a new routine call instance
      */
     public GtrgmOptions() {
-        super("gtrgm_options", Public.PUBLIC);
+        super("gtrgm_options", Public.PUBLIC, DSL.comment(""));
 
         addInParameter(_1);
     }

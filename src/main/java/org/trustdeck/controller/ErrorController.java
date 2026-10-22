@@ -34,7 +34,7 @@ import java.util.Map;
  */
 @Slf4j
 @RestController
-public class ErrorController implements org.springframework.boot.web.servlet.error.ErrorController {
+public class ErrorController implements org.springframework.boot.webmvc.error.ErrorController {
 
 	/**
 	 * Error handling method.

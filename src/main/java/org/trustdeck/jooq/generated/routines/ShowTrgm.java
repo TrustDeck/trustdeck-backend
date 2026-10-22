@@ -7,6 +7,7 @@ package org.trustdeck.jooq.generated.routines;
 import org.jooq.Field;
 import org.jooq.Parameter;
 import org.jooq.impl.AbstractRoutine;
+import org.jooq.impl.DSL;
 import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.trustdeck.jooq.generated.Public;
@@ -23,18 +24,18 @@ public class ShowTrgm extends AbstractRoutine<String[]> {
     /**
      * The parameter <code>public.show_trgm.RETURN_VALUE</code>.
      */
-    public static final Parameter<String[]> RETURN_VALUE = Internal.createParameter("RETURN_VALUE", SQLDataType.CLOB.array(), false, false);
+    public static final Parameter<String[]> RETURN_VALUE = Internal.createParameter("RETURN_VALUE", SQLDataType.CLOB.array(), false);
 
     /**
      * The parameter <code>public.show_trgm._1</code>.
      */
-    public static final Parameter<String> _1 = Internal.createParameter("_1", SQLDataType.CLOB, false, true);
+    public static final Parameter<String> _1 = Internal.createParameter("_1", SQLDataType.CLOB, true);
 
     /**
      * Create a new routine call instance
      */
     public ShowTrgm() {
-        super("show_trgm", Public.PUBLIC, SQLDataType.CLOB.array());
+        super("show_trgm", Public.PUBLIC, DSL.comment(""), SQLDataType.CLOB.array());
 
         setReturnParameter(RETURN_VALUE);
         addInParameter(_1);

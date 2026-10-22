@@ -266,7 +266,7 @@ public class AlgorithmRecord extends UpdatableRecordImpl<AlgorithmRecord> implem
         setLengthIncludesCheckDigit(from.getLengthIncludesCheckDigit());
         setSalt(from.getSalt());
         setSaltLength(from.getSaltLength());
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 
     @Override
@@ -304,13 +304,13 @@ public class AlgorithmRecord extends UpdatableRecordImpl<AlgorithmRecord> implem
         setLengthIncludesCheckDigit(lengthIncludesCheckDigit);
         setSalt(salt);
         setSaltLength(saltLength);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 
     /**
      * Create a detached, initialised AlgorithmRecord
      */
-    public AlgorithmRecord(org.trustdeck.jooq.generated.tables.pojos.Algorithm value) {
+    public AlgorithmRecord(IAlgorithm value) {
         super(Algorithm.ALGORITHM);
 
         if (value != null) {
@@ -326,7 +326,7 @@ public class AlgorithmRecord extends UpdatableRecordImpl<AlgorithmRecord> implem
             setLengthIncludesCheckDigit(value.getLengthIncludesCheckDigit());
             setSalt(value.getSalt());
             setSaltLength(value.getSaltLength());
-            resetChangedOnNotNull();
+            resetTouchedOnNotNull();
         }
     }
 }

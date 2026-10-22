@@ -21,10 +21,10 @@ import org.jooq.QueryPart;
 import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.Select;
 import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
+import org.jooq.TableLike;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
@@ -61,7 +61,7 @@ public class ProjectImage extends TableImpl<ProjectImageRecord> {
     /**
      * The column <code>public.project_image.id</code>.
      */
-    public final TableField<ProjectImageRecord, Integer> ID = createField(DSL.name("id"), SQLDataType.INTEGER.nullable(false).identity(true), this, "");
+    public final TableField<ProjectImageRecord, Integer> ID = createField(DSL.name("id"), SQLDataType.INTEGER.nullable(false).generatedByDefaultAsIdentity(), this, "");
 
     /**
      * The column <code>public.project_image.project_id</code>.
@@ -235,7 +235,7 @@ public class ProjectImage extends TableImpl<ProjectImageRecord> {
      */
     @Override
     public ProjectImage where(Condition condition) {
-        return new ProjectImage(getQualifiedName(), aliased() ? this : null, null, condition);
+        return new ProjectImage(getQualifiedName(), aliased() ? this : null, null, Internal.condition(this, condition));
     }
 
     /**
@@ -302,7 +302,7 @@ public class ProjectImage extends TableImpl<ProjectImageRecord> {
      * Create an inline derived table from this table
      */
     @Override
-    public ProjectImage whereExists(Select<?> select) {
+    public ProjectImage whereExists(TableLike<?> select) {
         return where(DSL.exists(select));
     }
 
@@ -310,7 +310,7 @@ public class ProjectImage extends TableImpl<ProjectImageRecord> {
      * Create an inline derived table from this table
      */
     @Override
-    public ProjectImage whereNotExists(Select<?> select) {
+    public ProjectImage whereNotExists(TableLike<?> select) {
         return where(DSL.notExists(select));
     }
 }

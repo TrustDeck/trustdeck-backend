@@ -7,6 +7,7 @@ package org.trustdeck.jooq.generated.routines;
 import org.jooq.Field;
 import org.jooq.Parameter;
 import org.jooq.impl.AbstractRoutine;
+import org.jooq.impl.DSL;
 import org.jooq.impl.DefaultDataType;
 import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
@@ -24,7 +25,7 @@ public class GtrgmDistance extends AbstractRoutine<Double> {
     /**
      * The parameter <code>public.gtrgm_distance.RETURN_VALUE</code>.
      */
-    public static final Parameter<Double> RETURN_VALUE = Internal.createParameter("RETURN_VALUE", SQLDataType.DOUBLE, false, false);
+    public static final Parameter<Double> RETURN_VALUE = Internal.createParameter("RETURN_VALUE", SQLDataType.DOUBLE, false);
 
     /**
      * @deprecated Unknown data type. If this is a qualified, user-defined type,
@@ -35,22 +36,22 @@ public class GtrgmDistance extends AbstractRoutine<Double> {
      * configuration.
      */
     @Deprecated
-    public static final Parameter<Object> _1 = Internal.createParameter("_1", DefaultDataType.getDefaultDataType("\"pg_catalog\".\"internal\""), false, true);
+    public static final Parameter<Object> _1 = Internal.createParameter("_1", DefaultDataType.getDefaultDataType("\"pg_catalog\".\"internal\""), true);
 
     /**
      * The parameter <code>public.gtrgm_distance._2</code>.
      */
-    public static final Parameter<String> _2 = Internal.createParameter("_2", SQLDataType.CLOB, false, true);
+    public static final Parameter<String> _2 = Internal.createParameter("_2", SQLDataType.CLOB, true);
 
     /**
      * The parameter <code>public.gtrgm_distance._3</code>.
      */
-    public static final Parameter<Short> _3 = Internal.createParameter("_3", SQLDataType.SMALLINT, false, true);
+    public static final Parameter<Short> _3 = Internal.createParameter("_3", SQLDataType.SMALLINT, true);
 
     /**
      * The parameter <code>public.gtrgm_distance._4</code>.
      */
-    public static final Parameter<Long> _4 = Internal.createParameter("_4", SQLDataType.BIGINT, false, true);
+    public static final Parameter<Long> _4 = Internal.createParameter("_4", SQLDataType.BIGINT, true);
 
     /**
      * @deprecated Unknown data type. If this is a qualified, user-defined type,
@@ -61,13 +62,13 @@ public class GtrgmDistance extends AbstractRoutine<Double> {
      * configuration.
      */
     @Deprecated
-    public static final Parameter<Object> _5 = Internal.createParameter("_5", DefaultDataType.getDefaultDataType("\"pg_catalog\".\"internal\""), false, true);
+    public static final Parameter<Object> _5 = Internal.createParameter("_5", DefaultDataType.getDefaultDataType("\"pg_catalog\".\"internal\""), true);
 
     /**
      * Create a new routine call instance
      */
     public GtrgmDistance() {
-        super("gtrgm_distance", Public.PUBLIC, SQLDataType.DOUBLE);
+        super("gtrgm_distance", Public.PUBLIC, DSL.comment(""), SQLDataType.DOUBLE);
 
         setReturnParameter(RETURN_VALUE);
         addInParameter(_1);

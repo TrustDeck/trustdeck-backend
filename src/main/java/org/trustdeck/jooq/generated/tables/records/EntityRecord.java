@@ -252,7 +252,7 @@ public class EntityRecord extends UpdatableRecordImpl<EntityRecord> implements I
         setIsDeleted(from.getIsDeleted());
         setCreatedAt(from.getCreatedAt());
         setUpdatedAt(from.getUpdatedAt());
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 
     @Override
@@ -289,13 +289,13 @@ public class EntityRecord extends UpdatableRecordImpl<EntityRecord> implements I
         setIsDeleted(isDeleted);
         setCreatedAt(createdAt);
         setUpdatedAt(updatedAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 
     /**
      * Create a detached, initialised EntityRecord
      */
-    public EntityRecord(org.trustdeck.jooq.generated.tables.pojos.Entity value) {
+    public EntityRecord(IEntity value) {
         super(Entity.ENTITY);
 
         if (value != null) {
@@ -310,7 +310,7 @@ public class EntityRecord extends UpdatableRecordImpl<EntityRecord> implements I
             setIsDeleted(value.getIsDeleted());
             setCreatedAt(value.getCreatedAt());
             setUpdatedAt(value.getUpdatedAt());
-            resetChangedOnNotNull();
+            resetTouchedOnNotNull();
         }
     }
 }

@@ -7,6 +7,7 @@ package org.trustdeck.jooq.generated.routines;
 import org.jooq.Field;
 import org.jooq.Parameter;
 import org.jooq.impl.AbstractRoutine;
+import org.jooq.impl.DSL;
 import org.jooq.impl.DefaultDataType;
 import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
@@ -36,12 +37,12 @@ public class GinExtractValueTrgm extends AbstractRoutine<Object> {
      * configuration.
      */
     @Deprecated
-    public static final Parameter<Object> RETURN_VALUE = Internal.createParameter("RETURN_VALUE", DefaultDataType.getDefaultDataType("\"pg_catalog\".\"internal\""), false, false);
+    public static final Parameter<Object> RETURN_VALUE = Internal.createParameter("RETURN_VALUE", DefaultDataType.getDefaultDataType("\"pg_catalog\".\"internal\""), false);
 
     /**
      * The parameter <code>public.gin_extract_value_trgm._1</code>.
      */
-    public static final Parameter<String> _1 = Internal.createParameter("_1", SQLDataType.CLOB, false, true);
+    public static final Parameter<String> _1 = Internal.createParameter("_1", SQLDataType.CLOB, true);
 
     /**
      * @deprecated Unknown data type. If this is a qualified, user-defined type,
@@ -52,13 +53,13 @@ public class GinExtractValueTrgm extends AbstractRoutine<Object> {
      * configuration.
      */
     @Deprecated
-    public static final Parameter<Object> _2 = Internal.createParameter("_2", DefaultDataType.getDefaultDataType("\"pg_catalog\".\"internal\""), false, true);
+    public static final Parameter<Object> _2 = Internal.createParameter("_2", DefaultDataType.getDefaultDataType("\"pg_catalog\".\"internal\""), true);
 
     /**
      * Create a new routine call instance
      */
     public GinExtractValueTrgm() {
-        super("gin_extract_value_trgm", Public.PUBLIC, DefaultDataType.getDefaultDataType("\"pg_catalog\".\"internal\""));
+        super("gin_extract_value_trgm", Public.PUBLIC, DSL.comment(""), DefaultDataType.getDefaultDataType("\"pg_catalog\".\"internal\""));
 
         setReturnParameter(RETURN_VALUE);
         addInParameter(_1);

@@ -18,13 +18,14 @@ import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
 import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.Select;
 import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
+import org.jooq.TableLike;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 import org.trustdeck.jooq.generated.Indexes;
@@ -57,7 +58,7 @@ public class AuditEvent extends TableImpl<AuditEventRecord> {
     /**
      * The column <code>public.audit_event.id</code>.
      */
-    public final TableField<AuditEventRecord, Long> ID = createField(DSL.name("id"), SQLDataType.BIGINT.nullable(false).identity(true), this, "");
+    public final TableField<AuditEventRecord, Long> ID = createField(DSL.name("id"), SQLDataType.BIGINT.nullable(false).generatedByDefaultAsIdentity(), this, "");
 
     /**
      * The column <code>public.audit_event.request_time</code>.
@@ -197,7 +198,7 @@ public class AuditEvent extends TableImpl<AuditEventRecord> {
      */
     @Override
     public AuditEvent where(Condition condition) {
-        return new AuditEvent(getQualifiedName(), aliased() ? this : null, null, condition);
+        return new AuditEvent(getQualifiedName(), aliased() ? this : null, null, Internal.condition(this, condition));
     }
 
     /**
@@ -264,7 +265,7 @@ public class AuditEvent extends TableImpl<AuditEventRecord> {
      * Create an inline derived table from this table
      */
     @Override
-    public AuditEvent whereExists(Select<?> select) {
+    public AuditEvent whereExists(TableLike<?> select) {
         return where(DSL.exists(select));
     }
 
@@ -272,7 +273,7 @@ public class AuditEvent extends TableImpl<AuditEventRecord> {
      * Create an inline derived table from this table
      */
     @Override
-    public AuditEvent whereNotExists(Select<?> select) {
+    public AuditEvent whereNotExists(TableLike<?> select) {
         return where(DSL.notExists(select));
     }
 }

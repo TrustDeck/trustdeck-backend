@@ -126,7 +126,7 @@ public class ProjectImageRecord extends UpdatableRecordImpl<ProjectImageRecord> 
         setImage(from.getImage());
         setImageSizeBytes(from.getImageSizeBytes());
         setMimeType(from.getMimeType());
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 
     @Override
@@ -157,13 +157,13 @@ public class ProjectImageRecord extends UpdatableRecordImpl<ProjectImageRecord> 
         setImage(image);
         setImageSizeBytes(imageSizeBytes);
         setMimeType(mimeType);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 
     /**
      * Create a detached, initialised ProjectImageRecord
      */
-    public ProjectImageRecord(org.trustdeck.jooq.generated.tables.pojos.ProjectImage value) {
+    public ProjectImageRecord(IProjectImage value) {
         super(ProjectImage.PROJECT_IMAGE);
 
         if (value != null) {
@@ -172,7 +172,7 @@ public class ProjectImageRecord extends UpdatableRecordImpl<ProjectImageRecord> 
             setImage(value.getImage());
             setImageSizeBytes(value.getImageSizeBytes());
             setMimeType(value.getMimeType());
-            resetChangedOnNotNull();
+            resetTouchedOnNotNull();
         }
     }
 }
