@@ -41,16 +41,15 @@ import org.trustdeck.linkage.model.LinkageFieldRule;
 import org.trustdeck.linkage.model.PPRLConfig;
 import org.trustdeck.utils.LRUCache;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.networknt.schema.JsonSchema;
-import com.networknt.schema.JsonSchemaFactory;
-import com.networknt.schema.SpecVersion;
-import com.networknt.schema.ValidationMessage;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.cfg.JsonNodeFeature;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.ObjectNode;
+import com.networknt.schema.Schema;
+import com.networknt.schema.SchemaRegistry;
+import com.networknt.schema.SpecificationVersion;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -67,33 +66,33 @@ public class JsonSchemaService {
 	/** A mapper for transforming JSONB into JsonNode and back. */
 	private ObjectMapper om;
 
-	/** The schema factory used for building the schemas used for validating entity types and instances. */
-	private JsonSchemaFactory factory;
+	/** The schema registry used for building the schemas used for validating entity types and instances. */
+	private SchemaRegistry schemaRegistry;
 
 	/** Stores (caches) the meta schema used to validate user-provided schemas. */
-	private JsonSchema metaSchema;
+	private Schema metaSchema;
 	
 	/** Least recently used cache for the compiled type schemas. */
-	private final Map<String, JsonSchema> compiledCache = Collections.synchronizedMap(new LRUCache<>(50));
+	private final Map<String, Schema> compiledCache = Collections.synchronizedMap(new LRUCache<>(50));
 	
 	/** Path of the meta schema that defines how the entity type schema's are allowed to look like. */
 	private static final String META_SCHEMA_PATH = "entity-schemas/definition-meta-schema.json";
 
 	/**
-	 * Constructor that defines the object mapper and initializes the schema factory
+	 * Constructor that defines the object mapper and initializes the schema registry
 	 * and the meta schema.
 	 * 
 	 * @param om the object mapper to map from the meta schema file to a JsonNode (will be auto injected by spring boot)
 	 */
 	public JsonSchemaService(ObjectMapper om) {
 		this.om = om;
-		this.factory = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V202012);
+		this.schemaRegistry = SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12);
 
 		// Load the meta schema from file into the application
 		try (InputStream metaSchema = new ClassPathResource(META_SCHEMA_PATH).getInputStream()) {
 			// Map the input stream to the proper type
 			JsonNode meta = om.readTree(metaSchema);
-			this.metaSchema = factory.getSchema(meta);
+			this.metaSchema = schemaRegistry.getSchema(meta);
 		} catch (IOException e) {
 			throw new IllegalStateException("Failed to load definition meta-schema.", e);
 		}
@@ -107,11 +106,11 @@ public class JsonSchemaService {
 	 */
 	public List<String> validateDefinition(JsonNode definition) {
 		// Validate the given schema and collect all messages (errors)
-		Set<ValidationMessage> msgs = metaSchema.validate(definition);
+		List<com.networknt.schema.Error> msgs = metaSchema.validate(definition);
 
 		// Check if there are any messages in the set
 		if (!msgs.isEmpty()) {
-			return msgs.stream().map(ValidationMessage::getMessage).collect(Collectors.toList());
+			return msgs.stream().map(com.networknt.schema.Error::getMessage).collect(Collectors.toList());
 		}
 
 		// Check additional constraints that cannot (easily) be defined in the schema
@@ -145,7 +144,7 @@ public class JsonSchemaService {
 		JsonNode schema;
 		try {
 			schema = om.readTree(definition.toString());
-		} catch (JsonProcessingException e) {
+		} catch (JacksonException e) {
 			log.debug("Failed to parse JSONB into JsonNode while building the instance schema.", e);
 			return null;
 		}
@@ -260,8 +259,8 @@ public class JsonSchemaService {
 			if (b.has("pattern")) {
 				if (!p.has("pattern")) {
 					errors.add("Attribute \"" + path + "\": base has a pattern; project must keep the same pattern.");
-				} else if (!b.get("pattern").asText().equals(p.get("pattern").asText())) {
-					errors.add("Attribute \"" + path + "\": project pattern must equal base pattern (\"" + b.get("pattern").asText() + "\").");
+				} else if (!b.get("pattern").asString().equals(p.get("pattern").asString())) {
+					errors.add("Attribute \"" + path + "\": project pattern must equal base pattern (\"" + b.get("pattern").asString() + "\").");
 				}
 			}
 			
@@ -289,11 +288,11 @@ public class JsonSchemaService {
 	 */
 	public List<String> validateInstance(JsonNode instance, JsonNode instanceSchema) {
 		// Compile schema so it can be used
-		JsonSchema compiled = factory.getSchema(instanceSchema);
+		Schema compiled = schemaRegistry.getSchema(instanceSchema);
 
 		// Validate and return possible error messages to the caller
-		Set<ValidationMessage> msgs = compiled.validate(instance);
-		return msgs.stream().map(ValidationMessage::getMessage).collect(Collectors.toList());
+		List<com.networknt.schema.Error> msgs = compiled.validate(instance);
+		return msgs.stream().map(com.networknt.schema.Error::getMessage).collect(Collectors.toList());
 	}
 
 	/**
@@ -308,7 +307,7 @@ public class JsonSchemaService {
 		JsonNode instance;
 		try {
 			instance = om.readTree(instanceData.toString());
-		} catch (JsonProcessingException e) {
+		} catch (JacksonException e) {
 			log.debug("Failed to parse JSONB into JsonNode while validating the instance payload.", e);
 			return null;
 		}
@@ -323,19 +322,19 @@ public class JsonSchemaService {
 	 * @param compiledInstanceSchema the already compiled schema to evaluate against
 	 * @return a list of validation errors (an empty list means its valid)
 	 */
-	public List<String> validateInstance(JSONB instanceData, JsonSchema compiledInstanceSchema) {
+	public List<String> validateInstance(JSONB instanceData, Schema compiledInstanceSchema) {
 		// Parse instance data
 		JsonNode instance;
 		try {
 			instance = om.readTree(instanceData.toString());
-		} catch (JsonProcessingException e) {
+		} catch (JacksonException e) {
 			log.debug("Failed to parse JSONB into JsonNode while validating the instance payload.", e);
 			return List.of("Malformed JSON payload: " + e.getMessage());
 		}
 	
 		// Validate and return any encountered errors
-		Set<ValidationMessage> msgs = compiledInstanceSchema.validate(instance);
-        return msgs.stream().map(ValidationMessage::getMessage).collect(Collectors.toList());
+		List<com.networknt.schema.Error> msgs = compiledInstanceSchema.validate(instance);
+        return msgs.stream().map(com.networknt.schema.Error::getMessage).collect(Collectors.toList());
 	}
 
 	/**
@@ -345,10 +344,10 @@ public class JsonSchemaService {
 	 * @param compiledInstanceSchema the already compiled schema to evaluate against
 	 * @return a list of validation errors (an empty list means its valid)
 	 */
-	public List<String> validateInstance(JsonNode data, JsonSchema compiledInstanceSchema) {
+	public List<String> validateInstance(JsonNode data, Schema compiledInstanceSchema) {
 		// Validate and return any encountered errors
-		Set<ValidationMessage> msgs = compiledInstanceSchema.validate(data);
-        return msgs.stream().map(ValidationMessage::getMessage).collect(Collectors.toList());
+		List<com.networknt.schema.Error> msgs = compiledInstanceSchema.validate(data);
+        return msgs.stream().map(com.networknt.schema.Error::getMessage).collect(Collectors.toList());
 	}
 
 	/**
@@ -359,12 +358,12 @@ public class JsonSchemaService {
 	 * @param typeDefinition the type definition
 	 * @return the compiled schema
 	 */
-	public JsonSchema getCompiledSchemaFromDefinition(JSONB typeDefinition) {
+	public Schema getCompiledSchemaFromDefinition(JSONB typeDefinition) {
 		// Parse the JSONB
 		JsonNode def;
 		try {
 			def = om.readTree(typeDefinition.toString());
-		} catch (JsonProcessingException e) {
+		} catch (JacksonException e) {
 			log.debug("Failed to parse JSONB into JsonNode while retrieving the compiled schema.", e);
 			return null;
 		}
@@ -379,7 +378,7 @@ public class JsonSchemaService {
 	 * @param typeDefinition the type definition
 	 * @return the compiled schema
 	 */
-	public JsonSchema getCompiledSchemaFromDefinition(JsonNode typeDefinition) {
+	public Schema getCompiledSchemaFromDefinition(JsonNode typeDefinition) {
 		boolean useCache = true;
 		
 		// Build the schema from the definition
@@ -399,7 +398,7 @@ public class JsonSchemaService {
 			log.trace("Checking cache for compiled schema.");
 		
 			// Check the (locked) cache for an already compiled schema
-			JsonSchema cached;
+			Schema cached;
 			synchronized (compiledCache) {
 				cached = compiledCache.get(key);
 			}
@@ -414,12 +413,12 @@ public class JsonSchemaService {
 
 		// No cached schema found or no cache used: compile the schema
 		log.trace("Compiling schema ...");
-		JsonSchema compiled = factory.getSchema(instanceSchemaNode);
+		Schema compiled = schemaRegistry.getSchema(instanceSchemaNode);
 
 		if (useCache) {
 			// Cache the newly compiled schema (use double-checked locking)
 			synchronized (compiledCache) {
-				JsonSchema existing = compiledCache.get(key);
+				Schema existing = compiledCache.get(key);
 				if (existing != null) {
 					// The schema was cached in the meantime; return it
 					return existing;
@@ -507,7 +506,7 @@ public class JsonSchemaService {
 			JsonNode tagSourceNode = projectSpecificNode.has("tags") ? projectSpecificNode : baseNode;
 			if (tagSourceNode != null && tagSourceNode.has("tags") && tagSourceNode.get("tags").isArray()
 					&& !tagSourceNode.get("tags").isEmpty()) {
-				rule.setTag(tagSourceNode.get("tags").get(0).asText());
+				rule.setTag(tagSourceNode.get("tags").get(0).asString());
 			}
 
 			// Decide which linkage config to use
@@ -578,7 +577,7 @@ public class JsonSchemaService {
 		// Check if the node is a container for nested nodes
 		if (isContainerNode(attr)) {
 			// The current node is a container and therefore defines a layout; extract the layout, name, and repeatability
-			String layout = attr.path("layout").asText("");
+			String layout = attr.path("layout").asString("");
 			String name = getOptionalName(attr);
 			boolean repeatable = attr.path("repeatable").asBoolean(false);
 
@@ -599,7 +598,7 @@ public class JsonSchemaService {
 			// If the current attribute is a group, append the group name to the path that is used for the next validation step
 			String nextPath = currentPath;
 			if (isNamedGroup(attr)) {
-				String groupPath = appendPath(currentPath, attr.get("name").asText());
+				String groupPath = appendPath(currentPath, attr.get("name").asString());
 				if (!seenPaths.add(groupPath)) {
 					errors.add("Duplicated attribute name/path: \"" + groupPath + "\".");
 				}
@@ -612,8 +611,8 @@ public class JsonSchemaService {
 			return errors;
 		}
 
-		String name = attr.get("name").asText();
-		String type = attr.get("type").asText();
+		String name = attr.get("name").asString();
+		String type = attr.get("type").asString();
 		String fullPath = appendPath(currentPath, name);
 
 		if (!seenPaths.add(fullPath)) {
@@ -717,7 +716,7 @@ public class JsonSchemaService {
 					// Named groups become real nested properties in the instance schema: 
 					// { "name": "address", "layout": "group", ... }  becomes "address": { "type": "object", ... }
 					if (isNamedGroup(defAttribute)) {
-						String groupName = defAttribute.get("name").asText();
+						String groupName = defAttribute.get("name").asString();
 						JsonNode groupSchema = childObjectSchema;
 
 						// Repeatable groups are represented as arrays of objects
@@ -734,7 +733,7 @@ public class JsonSchemaService {
 					// merged directly into the surrounding object schema.
 					JsonNode childPropertiesNode = childObjectSchema.get("properties");
 					if (childPropertiesNode != null && childPropertiesNode.isObject()) {
-						Iterator<Map.Entry<String, JsonNode>> fields = childPropertiesNode.fields();
+						Iterator<Map.Entry<String, JsonNode>> fields = childPropertiesNode.properties().iterator();
 						
 						while (fields.hasNext()) {
 							Map.Entry<String, JsonNode> entry = fields.next();
@@ -747,7 +746,7 @@ public class JsonSchemaService {
 					JsonNode childRequiredNode = childObjectSchema.get("required");
 					if (childRequiredNode != null && childRequiredNode.isArray()) {
 						for (JsonNode req : childRequiredNode) {
-							required.add(req.asText());
+							required.add(req.asString());
 						}
 					}
 					
@@ -755,7 +754,7 @@ public class JsonSchemaService {
 				}
 				
 				// Leaf attributes become direct properties of the current object schema
-				String name = defAttribute.get("name").asText();
+				String name = defAttribute.get("name").asString();
 				properties.set(name, buildLeafSchema(defAttribute));
 				
 				if (defAttribute.path("required").asBoolean(false)) {
@@ -781,7 +780,7 @@ public class JsonSchemaService {
 	 */
 	private JsonNode buildLeafSchema(JsonNode defAttribute) {
 		ObjectNode attribute = om.createObjectNode();
-		String type = defAttribute.get("type").asText();
+		String type = defAttribute.get("type").asString();
 
 		// Handle the type
 		switch (type) {
@@ -884,12 +883,12 @@ public class JsonSchemaService {
 			if (isContainerNode(node)) {
 				String nextPath = currentPath;
 				if (isNamedGroup(node)) {
-					nextPath = appendPath(currentPath, node.get("name").asText());
+					nextPath = appendPath(currentPath, node.get("name").asString());
 				}
 				
 				flat.putAll(collectLeafNodes(node.get("attributes"), nextPath));
 			} else {
-				flat.put(appendPath(currentPath, node.get("name").asText()), node);
+				flat.put(appendPath(currentPath, node.get("name").asString()), node);
 			}
 		}
 		
@@ -913,8 +912,8 @@ public class JsonSchemaService {
 	 * @return {@code true} if the node is a group-layout-descriptor with a name, {@code false} otherwise
 	 */
 	private boolean isNamedGroup(JsonNode node) {
-		return node != null && "group".equalsIgnoreCase(node.path("layout").asText(""))
-				&& node.hasNonNull("name") && !node.get("name").asText().isBlank();
+		return node != null && "group".equalsIgnoreCase(node.path("layout").asString(""))
+				&& node.hasNonNull("name") && !node.get("name").asString().isBlank();
 	}
 
 	/**
@@ -925,7 +924,7 @@ public class JsonSchemaService {
 	 */
 	private String getOptionalName(JsonNode node) {
 		if (node != null && node.hasNonNull("name")) {
-			String value = node.get("name").asText();
+			String value = node.get("name").asString();
 			
 			return value == null || value.isBlank() ? null : value;
 		}
@@ -949,15 +948,15 @@ public class JsonSchemaService {
 		}
 		
 		// Extract the name
-		String name = node.path("name").asText();
+		String name = node.path("name").asString();
 		
 		// Extract the data type of the attribute which this rule is for
-		String type = node.path("type").asText("string");
+		String type = node.path("type").asString("string");
 		
 		// Extract the semantic tag for this attribute
 		String tag = null;
 		if (node.has("tags") && node.get("tags").isArray() && !node.get("tags").isEmpty()) {
-			tag = node.get("tags").get(0).asText();
+			tag = node.get("tags").get(0).asString();
 		}
 		
 		// Build the rule
@@ -1002,7 +1001,7 @@ public class JsonSchemaService {
 
 		List<String> values = new ArrayList<>();
 		for (JsonNode node : arrayNode) {
-			values.add(node.asText());
+			values.add(node.asString());
 		}
 		
 		return values;
@@ -1020,7 +1019,7 @@ public class JsonSchemaService {
 	    
 	    if (arrayNode != null && arrayNode.isArray()) {
 	        for (JsonNode n : arrayNode) {
-	            out.add(n.asText());
+	            out.add(n.asString());
 	        }
 	    }
 	    
@@ -1045,7 +1044,7 @@ public class JsonSchemaService {
 	 * @return the node's type or "string", whenever the type was "enum" 
 	 */
 	private String normalizeType(JsonNode node) {
-		String type = node.path("type").asText();
+		String type = node.path("type").asString();
 		
 		return "enum".equalsIgnoreCase(type) ? "string" : type;
 	}
@@ -1093,7 +1092,7 @@ public class JsonSchemaService {
 
 		Set<String> result = new HashSet<>();
 		for (JsonNode value : values) {
-			result.add(value.asText());
+			result.add(value.asString());
 		}
 		
 		return result;
@@ -1108,11 +1107,10 @@ public class JsonSchemaService {
 	 */
 	private byte[] canonicalize(JsonNode node) {
 		try {
-			ObjectMapper omCopy = om.copy();
-			omCopy.configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true);
+			ObjectMapper omCopy = om.rebuild().enable(JsonNodeFeature.WRITE_PROPERTIES_SORTED).build();
 			
 			return omCopy.writeValueAsBytes(node);
-		} catch (IOException e) {
+		} catch (JacksonException e) {
 			// Fallback to String
 			return node.toString().getBytes(StandardCharsets.UTF_8);
 		}
@@ -1144,11 +1142,11 @@ public class JsonSchemaService {
 	 */
 	private String textValue(JsonNode primary, JsonNode fallback, String property, String defaultValue) {
 		if (primary != null && primary.hasNonNull(property)) {
-			return primary.get(property).asText(defaultValue);
+			return primary.get(property).asString(defaultValue);
 		}
 		
 		if (fallback != null && fallback.hasNonNull(property)) {
-			return fallback.get(property).asText(defaultValue);
+			return fallback.get(property).asString(defaultValue);
 		}
 		
 		return defaultValue;

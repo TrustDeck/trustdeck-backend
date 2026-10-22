@@ -50,11 +50,6 @@
             <artifactId>spring-boot-starter-webmvc</artifactId>
         </dependency>
         <dependency>
-            <!-- Keeps Jackson 2 as the JSON mapper for Spring MVC and the auto-configured ObjectMapper. -->
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-jackson2</artifactId>
-        </dependency>
-        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-aspectj</artifactId>
         </dependency>
@@ -151,7 +146,7 @@
         	<!-- License: Apache 2.0 -->
 		    <groupId>com.networknt</groupId>
 		    <artifactId>json-schema-validator</artifactId>
-		    <version>1.5.9</version>
+		    <version>3.0.8</version>
 		</dependency>
 	    <dependency>
         	<!-- Needed for enitity type definition validation. -->

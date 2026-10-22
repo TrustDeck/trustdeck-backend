@@ -39,7 +39,7 @@ import org.trustdeck.service.PseudonymDBAccessService;
 import org.trustdeck.utils.Assertion;
 import org.trustdeck.utils.Utility;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
+import tools.jackson.core.JacksonException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -103,7 +103,7 @@ public class PseudonymKafkaListener {
 		KafkaPseudonymMessageDTO kafkaDto;
 		try {
 			kafkaDto = kafkaParser.parse(payload);
-		} catch (JsonProcessingException e) {
+		} catch (JacksonException e) {
 			// Log the exception and ack so we don't block the partition forever
 			log.warn("Parsing the Kafka message JSON failed, so it was skipped. Payload=" 
 					+ Utility.truncateWhenTooLong(payload, 2000), e);

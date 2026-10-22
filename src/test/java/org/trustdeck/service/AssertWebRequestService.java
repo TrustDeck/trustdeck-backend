@@ -17,12 +17,10 @@
 
 package org.trustdeck.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JavaType;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.databind.type.TypeFactory;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JavaType;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.type.TypeFactory;
 import java.io.IOException;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
@@ -272,9 +270,9 @@ public class AssertWebRequestService {
      * @param body the request body as any object
      * @param accessToken the access token string
      * @return the mock HTTP servlet request builder
-     * @throws JsonProcessingException the JSON processing exception
+     * @throws JacksonException the JSON processing exception
      */
-    protected MockHttpServletRequestBuilder createRequestBuilder(MockHttpServletRequestBuilder method, Map<String, String> params, Object body, String accessToken) throws JsonProcessingException {
+    protected MockHttpServletRequestBuilder createRequestBuilder(MockHttpServletRequestBuilder method, Map<String, String> params, Object body, String accessToken) throws JacksonException {
         if (accessToken != null && !accessToken.isEmpty()) {
             method.header("Authorization", "Bearer " + accessToken);
         }
@@ -286,9 +284,8 @@ public class AssertWebRequestService {
         }
 
         if (body != null) {
+            // Jackson 3 supports the java.time types and writes them as ISO strings by default
             ObjectMapper mapper = new ObjectMapper();
-            mapper.registerModule(new JavaTimeModule());
-            mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
             method.content(mapper.writeValueAsString(body));
         }
 
@@ -684,12 +681,11 @@ public class AssertWebRequestService {
      */
     public <T> List<T> mapJsonObjectsInStringToList(String content, Class<T> valueType) {
         try {
+            // Jackson 3 supports the java.time types and writes them as ISO strings by default
             ObjectMapper mapper = new ObjectMapper();
-            mapper.registerModule(new JavaTimeModule());
-            mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
             return mapper.readValue(content, CollectionsTypeFactory.listOf(valueType));
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             log.error(e.getMessage(), e);
             return null;
         }
@@ -705,12 +701,11 @@ public class AssertWebRequestService {
      */
     public <T> T applySingleJsonContentToClass(String content, Class<T> valueType) {
         try {
+            // Jackson 3 supports the java.time types and writes them as ISO strings by default
             ObjectMapper mapper = new ObjectMapper();
-            mapper.registerModule(new JavaTimeModule());
-            mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
             return mapper.readValue(content, valueType);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             log.error(e.getMessage(), e);
             return null;
         }
@@ -908,7 +903,7 @@ public class AssertWebRequestService {
      */
     public static class CollectionsTypeFactory {
         static JavaType listOf(@SuppressWarnings("rawtypes") Class clazz) {
-            return TypeFactory.defaultInstance().constructCollectionType(List.class, clazz);
+            return TypeFactory.createDefaultInstance().constructCollectionType(List.class, clazz);
         }
     }
 }

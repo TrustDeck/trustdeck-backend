@@ -34,8 +34,8 @@ import org.trustdeck.dto.EntityDTO;
 import org.trustdeck.dto.EntityTypeDTO;
 import org.trustdeck.service.AssertWebRequestService;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * This class offers tests for the entity type and entity endpoints.

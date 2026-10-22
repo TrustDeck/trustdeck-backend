@@ -8,9 +8,9 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.networknt.schema.JsonSchema;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import com.networknt.schema.Schema;
 
 class JsonSchemaServiceTest {
 
@@ -99,7 +99,7 @@ class JsonSchemaServiceTest {
 
     @Test
     void validatesInstancesAgainstTheDefinition() throws Exception {
-        JsonSchema schema = service.getCompiledSchemaFromDefinition(json(BASE_DEFINITION));
+        Schema schema = service.getCompiledSchemaFromDefinition(json(BASE_DEFINITION));
 
         assertEquals(List.of(), service.validateInstance(json("{ \"firstName\": \"Erika\", \"age\": 42, \"sex\": \"female\" }"), schema));
         assertEquals(List.of(), service.validateInstance(json("{ \"firstName\": \"Erika\" }"), schema));
@@ -118,7 +118,7 @@ class JsonSchemaServiceTest {
 
     @Test
     void validatesRepeatableGroupsInInstances() throws Exception {
-        JsonSchema schema = service.getCompiledSchemaFromDefinition(json("""
+        Schema schema = service.getCompiledSchemaFromDefinition(json("""
                 {
                   "attributes": [
                     { "name": "addresses", "layout": "group", "repeatable": true, "attributes": [

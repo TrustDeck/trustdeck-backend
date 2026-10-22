@@ -35,7 +35,7 @@ import org.trustdeck.linkage.model.LinkageToken;
 import org.trustdeck.service.EntityTypeDBService;
 import org.trustdeck.service.JsonSchemaService;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 
 import lombok.extern.slf4j.Slf4j;
 
