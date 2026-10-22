@@ -57,10 +57,8 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * This class encapsulates the requests for domains in a controller for the REST-API.
@@ -373,7 +371,7 @@ public class DomainController {
     											@PathVariable("attribute") String attributeName,
     		                                    @RequestHeader(name = "accept", required = false) String responseContentType) {
     	// Check if the user has the rights to access the requested attribute
-    	boolean canSeeComplete = authorizationService.hasGlobalPermission("complete-view");
+    	boolean canSeeComplete = authorizationService.hasDomainPermission(domainName, "complete-view");
     	
     	if (!"name, prefix, validfrom, validto, multiplepsnallowed, description".contains(attributeName.trim().toLowerCase()) && !canSeeComplete) {
     		log.debug("The user is trying to read protected attributes without the necessary permission.");
@@ -538,12 +536,9 @@ public class DomainController {
         	return responseService.notFound(responseContentType);
         }
 
-        // Determine whether or not a reduced standard view or a complete view is requested
-        boolean canSeeComplete = authorizationService.hasGlobalPermission("complete-view");
-
-        // Create a list of domains
+        // Determine for each domain whether or not a reduced standard view or a complete view is requested
         for (int i = 0; i < domains.size(); i++) {
-        	if (!canSeeComplete) {
+        	if (!authorizationService.hasDomainPermission(domains.get(i).getName(), "complete-view")) {
         		domains.get(i).toReducedStandardView();
         	}
         }
@@ -571,9 +566,6 @@ public class DomainController {
     @PreAuthorize("isAuthenticated() and @auth.hasGlobalPermission(#root, 'domain:list-all')")
     @Audit
     public ResponseEntity<?> listDomainHierarchy(@RequestHeader(name = "accept", required = false) String responseContentType) {
-        // Determine whether or not a reduced standard view or a complete view is requested
-        boolean canSeeComplete = authorizationService.hasGlobalPermission("complete-view");
-        
         List<DomainDTO> domains = domainDBAccessService.listDomains();
         
         if (domains == null || domains.size() == 0) {
@@ -581,9 +573,9 @@ public class DomainController {
         	return responseService.notFound(responseContentType);
         }
 
-        // Create a list of domains
+        // Determine for each domain whether or not a reduced standard view or a complete view is requested
         for (int i = 0; i < domains.size(); i++) {
-        	if (!canSeeComplete) {
+        	if (!authorizationService.hasDomainPermission(domains.get(i).getName(), "complete-view")) {
         		domains.get(i).toReducedStandardView();
         	}
         }
@@ -1105,8 +1097,9 @@ public class DomainController {
             nodesByName.put(dto.getName(), DomainTreeDTO.builder().domain(dto).build());
         }
 
-        // Start by assuming every node is a root, we’ll remove children later
-        Set<DomainTreeDTO> roots = new HashSet<>(nodesByName.values());
+        // Start by assuming every node is a root, we’ll remove children later.
+        // The roots are tracked by name, since adding children changes a node's hash code.
+        Map<String, DomainTreeDTO> roots = new HashMap<>(nodesByName);
 
         // Insert child-domains into their parents using superDomainName
         for (DomainDTO dto : domains) {
@@ -1128,10 +1121,10 @@ public class DomainController {
                 }
                 
                 parent.getChildren().add(child);
-                roots.remove(child);
+                roots.remove(dto.getName());
             }
         }
 
-        return new ArrayList<>(roots);
+        return new ArrayList<>(roots.values());
     }
 }

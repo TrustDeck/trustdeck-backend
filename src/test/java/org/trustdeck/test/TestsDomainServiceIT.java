@@ -135,9 +135,8 @@ public class TestsDomainServiceIT extends AssertWebRequestService {
         String domainName = "TestStudie-Labor";
 
         // Test: get domain without creating it first
-        //permissionDBService.addDomainPermissionsForSubject(TODO, domainName);
-        //domainOidcService.createDomainGroupsAndRolesAndJoin(domainName, "3dfb6717-3def-493b-a237-b7345fc42718");
-        this.assertNotFoundRequest("getDomainNotFoundDomainName", get("/api/domains/" + domainName), null, null, this.getAccessToken());
+        // Requests on non-existing domains are forbidden, so that their existence is not revealed
+        this.assertForbiddenRequest("getDomainNotFoundDomainName", get("/api/domains/" + domainName), null, null, this.getAccessToken());
 
         // Update domain while domain is not yet created
         Map<String, String> updateParameter = new HashMap<>() {
@@ -149,7 +148,7 @@ public class TestsDomainServiceIT extends AssertWebRequestService {
         // Needs an non empty object to trigger not found
         DomainDTO domainDTO = new DomainDTO();
         domainDTO.setDescription("Just Something");
-        this.assertNotFoundRequest("updateDomainNotFoundDomainName", put("/api/domains/complete"), updateParameter, domainDTO, this.getAccessToken());
+        this.assertForbiddenRequest("updateDomainNotFoundDomainName", put("/api/domains/complete"), updateParameter, domainDTO, this.getAccessToken());
 
         // Create domain with unknown parentName
         Map<String, String> createParameter = new HashMap<>() {
@@ -167,7 +166,7 @@ public class TestsDomainServiceIT extends AssertWebRequestService {
 		{
             put("name", domainName);
         }};
-        this.assertNotFoundRequest("deleteDomainNotFoundParentName", delete("/api/domains"), deleteParameter, null, this.getAccessToken());
+        this.assertForbiddenRequest("deleteDomainNotFoundParentName", delete("/api/domains"), deleteParameter, null, this.getAccessToken());
 
     }
 
@@ -262,9 +261,20 @@ public class TestsDomainServiceIT extends AssertWebRequestService {
         d.getAlgorithm().setName(newAlgo);
         this.domainUpdateHelperComplete(d, domainName, d);
 
-        long newConsecVal = 10L;
-        d.getAlgorithm().setConsecutiveValueCounter(newConsecVal);
-        this.domainUpdateHelperComplete(d, domainName, d);
+        // The consecutive value counter is the algorithm's runtime state and must not be changed by a domain update
+        Long oldConsecVal = d.getAlgorithm().getConsecutiveValueCounter();
+        d.getAlgorithm().setConsecutiveValueCounter(10L);
+        Map<String, String> updateParameter = new HashMap<>() {
+            private static final long serialVersionUID = -2708461912069760668L;
+            {
+                put("name", domainName);
+                put("recursive", "false");
+            }
+        };
+        this.assertOkRequest("commonUpdateDomainComplete", put("/api/domains/complete"), updateParameter, d, this.getAccessToken());
+
+        d.getAlgorithm().setConsecutiveValueCounter(oldConsecVal);
+        this.getAndCheckDomain(d, domainName);
 
         this.assertIsDeletedDomain(domainName);
     }
@@ -322,29 +332,72 @@ public class TestsDomainServiceIT extends AssertWebRequestService {
         // Check if the minimal domain-net makes sense here
         for (DomainDTO domain : domains) {
 
-            switch (domain.getId()) {
-                case 1:
-                    assertEquals("TestStudie", domain.getName());
-                    assertNull(domain.getSuperDomainID());
+            switch (domain.getName()) {
+                case "TestStudie":
+                    assertNull(domain.getSuperDomainName());
                     break;
-                case 2:
-                    assertEquals("TestStudie-Labor-Analyse", domain.getName());
+                case "TestStudie-Labor-Analyse":
+                    assertEquals("TestStudie", domain.getSuperDomainName());
                     assertEquals(1, domain.getSuperDomainID());
                     break;
-                case 3:
-                    assertEquals("TestStudie-Paper", domain.getName());
+                case "TestStudie-Paper":
+                    assertEquals("TestStudie", domain.getSuperDomainName());
                     assertEquals(1, domain.getSuperDomainID());
                     break;
-                case 4:
-                    assertEquals("No-Permission-Domain", domain.getName());
+                case "No-Permission-Domain":
+                    assertEquals("TestStudie-Labor-Analyse", domain.getSuperDomainName());
                     assertEquals(2, domain.getSuperDomainID());
                     break;
                 default:
-                    throw new AssertionFailedError("Domain ID " + String.valueOf(domain.getId()) + " not found");
+                    throw new AssertionFailedError("Domain " + domain.getName() + " not expected");
             }
         }
     }
     
+    /**
+     * Test that updates the salt of a domain, including an explicitly allowed empty salt.
+     *
+     * @throws Exception forwards any internally thrown exceptions
+     */
+    @Test
+    @DisplayName("updateDomainSaltTest")
+    public void updateDomainSaltTest() throws Exception {
+        String domainName = "TestStudie";
+        String newSalt = "NewSaltValue_0123456789abcdefghi";
+
+        // An empty salt must be rejected when it is not explicitly allowed
+        Map<String, String> emptySaltParameter = new HashMap<>() {
+            private static final long serialVersionUID = 5163487263450851837L;
+            {
+                put("salt", "");
+            }
+        };
+        this.assertBadRequestRequest("updateDomainSaltEmptyNotAllowed", put("/api/domains/" + domainName + "/salt"), emptySaltParameter, null, this.getAccessToken());
+
+        // Update to a new non-empty salt
+        Map<String, String> saltParameter = new HashMap<>() {
+            private static final long serialVersionUID = -4380158238715462307L;
+            {
+                put("salt", newSalt);
+            }
+        };
+        this.assertOkRequest("updateDomainSalt", put("/api/domains/" + domainName + "/salt"), saltParameter, null, this.getAccessToken());
+
+        MockHttpServletResponse response = this.assertOkRequest("getDomainAfterSaltUpdate", get("/api/domains/" + domainName), null, null, this.getAccessToken());
+        DomainDTO domain = this.applySingleJsonContentToClass(response.getContentAsString(), DomainDTO.class);
+        assertEquals(newSalt, domain.getAlgorithm().getSalt());
+        assertEquals(newSalt.length(), domain.getAlgorithm().getSaltLength());
+
+        // Update to an explicitly allowed empty salt
+        emptySaltParameter.put("allowEmpty", "true");
+        this.assertOkRequest("updateDomainSaltEmptyAllowed", put("/api/domains/" + domainName + "/salt"), emptySaltParameter, null, this.getAccessToken());
+
+        response = this.assertOkRequest("getDomainAfterEmptySaltUpdate", get("/api/domains/" + domainName), null, null, this.getAccessToken());
+        domain = this.applySingleJsonContentToClass(response.getContentAsString(), DomainDTO.class);
+        assertEquals("", domain.getAlgorithm().getSalt());
+        assertEquals(0, domain.getAlgorithm().getSaltLength());
+    }
+
     /**
      * Test that retrieves a domain with its nested algorithm.
      *

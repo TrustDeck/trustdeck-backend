@@ -69,6 +69,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 import org.trustdeck.dto.DomainDTO;
+import org.trustdeck.dto.DomainTreeDTO;
 import org.trustdeck.dto.AlgorithmDTO;
 import org.trustdeck.dto.PseudonymDTO;
 import org.trustdeck.dto.ProjectDTO;
@@ -157,7 +158,11 @@ public class AssertWebRequestService {
 	        	// Remove all data from the database
 	        log.debug("Truncating table project and its dependent data.");
 	        conn.createStatement().execute("TRUNCATE TABLE project CASCADE;");
-	        	
+
+	        	// Remove all algorithms, since they are not removed together with their domains
+	        	log.debug("Truncating table algorithm.");
+	        	conn.createStatement().execute("TRUNCATE TABLE algorithm CASCADE;");
+
 	        	// Reset the sequence counter
 	        	log.debug("Resetting the sequence counter in the database.");
                 conn.createStatement().execute("ALTER SEQUENCE domain_id_seq RESTART WITH 1;");
@@ -724,7 +729,7 @@ public class AssertWebRequestService {
 
         MockHttpServletResponse response = this.assertOkRequest("listDomainHierarchy", get("/api/domains/hierarchy"), null, null, this.getAccessToken());
         String content = response.getContentAsString();
-        List<DomainDTO> domains = this.mapJsonObjectsInStringToList(content, DomainDTO.class);
+        List<DomainDTO> domains = this.mapDomainHierarchyToList(content);
 
         if (expectedLength == 0) {
             assertNull(domains);
@@ -736,17 +741,54 @@ public class AssertWebRequestService {
     }
 
     /**
+     * Maps the JSON list of domain trees returned by the hierarchy endpoint to a flat list of domains.
+     * The domains are added in depth-first order, i.e. each domain is followed by its children.
+     *
+     * @param content the raw JSON content
+     * @return the flat list of domains or {@code null} when the content couldn't be mapped
+     */
+    public List<DomainDTO> mapDomainHierarchyToList(String content) {
+        List<DomainTreeDTO> trees = this.mapJsonObjectsInStringToList(content, DomainTreeDTO.class);
+        if (trees == null) {
+            return null;
+        }
+
+        List<DomainDTO> domains = new ArrayList<>();
+        for (DomainTreeDTO tree : trees) {
+            this.addDomainTreeToList(tree, domains);
+        }
+
+        return domains;
+    }
+
+    /**
+     * Recursively adds a domain tree's domain and all its children to the given list.
+     *
+     * @param tree the domain tree to add
+     * @param domains the list the domains are added to
+     */
+    private void addDomainTreeToList(DomainTreeDTO tree, List<DomainDTO> domains) {
+        domains.add(tree.getDomain());
+
+        if (tree.getChildren() != null) {
+            for (DomainTreeDTO child : tree.getChildren()) {
+                this.addDomainTreeToList(child, domains);
+            }
+        }
+    }
+
+    /**
      * A small helper to assert that the number of records is as expected.
      *
      * @param expectedLength the expected length
-     * @param goodDomainButNotFound name of a domain that will return a 404 status
+     * @param goodDomainButNotFound name of a non-existing domain that will return a 403 status
      * @param goodDomain a domain where the batch retrieval will work
      * @return the list of records that were checked and returned by the service
      * @throws Exception forwards any internally thrown exceptions
      */
     protected List<PseudonymDTO> assertEqualsListRecordsLength(int expectedLength, String goodDomainButNotFound, String goodDomain) throws Exception {
-        this.assertNotFoundRequest("getRecordBatchNotFound", get("/api/domains/" + goodDomainButNotFound + "/pseudonyms"), null, null, this.getAccessToken());
-        MockHttpServletResponse response = this.assertOkRequest("getRecordBatch", get("/api/domains/" + goodDomain + "/pseudonyms"), null, null, this.getAccessToken());
+        this.assertForbiddenRequest("getRecordBatchNotFound", get("/api/domains/" + goodDomainButNotFound + "/pseudonyms/batch"), null, null, this.getAccessToken());
+        MockHttpServletResponse response = this.assertOkRequest("getRecordBatch", get("/api/domains/" + goodDomain + "/pseudonyms/batch"), null, null, this.getAccessToken());
         String content = response.getContentAsString();
         List<PseudonymDTO> records = this.mapJsonObjectsInStringToList(content, PseudonymDTO.class);
 
@@ -852,14 +894,8 @@ public class AssertWebRequestService {
 
         this.assertNoContent("deleteDomain", delete("/api/domains"), deleteParameter, null, this.getAccessToken());
 
-        // Getting the domain must lead to a not found
-        Map<String, String> getParameter = new HashMap<>() {
-			private static final long serialVersionUID = -3594953606458809296L;
-		{
-            put("name", domainName);
-        }};
-
-        this.assertForbiddenRequest("getDomainNotFoundAfterDelete", get("/api/domains"), getParameter, null, this.getAccessToken());
+        // Getting the domain must be forbidden, since it doesn't exist anymore
+        this.assertForbiddenRequest("getDomainNotFoundAfterDelete", get("/api/domains/" + domainName), null, null, this.getAccessToken());
     }
 
     /**
