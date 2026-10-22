@@ -159,6 +159,10 @@ public class AssertWebRequestService {
 	        log.debug("Truncating table project and its dependent data.");
 	        conn.createStatement().execute("TRUNCATE TABLE project CASCADE;");
 
+	        	// Remove all entity types (incl. the base types, which don't belong to a project) and their entities
+	        	log.debug("Truncating table entity_type and its dependent data.");
+	        	conn.createStatement().execute("TRUNCATE TABLE entity_type CASCADE;");
+	        	
 	        	// Remove all algorithms, since they are not removed together with their domains
 	        	log.debug("Truncating table algorithm.");
 	        	conn.createStatement().execute("TRUNCATE TABLE algorithm CASCADE;");

@@ -168,7 +168,7 @@ public class PermissionController {
 	                                                 @RequestBody List<PermissionDTO> permissions,
 	                                                 @RequestHeader(name = "accept", required = false) String responseContentType) {
 
-		if (Assertion.isNullOrEmpty(domainName, userId) || permissions == null || permissions.isEmpty()) {
+		if (!Assertion.isNotNullOrEmpty(domainName, userId) || permissions == null || permissions.isEmpty()) {
 			log.debug("Missing parameter (domainName, userId, or list of permissions).");
 			return responseService.badRequest(responseContentType);
 		}
@@ -309,7 +309,7 @@ public class PermissionController {
 	                                                  @RequestBody List<PermissionDTO> permissions,
 	                                                  @RequestHeader(name = "accept", required = false) String responseContentType) {
 
-		if (Assertion.isNullOrEmpty(projectAbbreviation, userId) || permissions == null || permissions.isEmpty()) {
+		if (!Assertion.isNotNullOrEmpty(projectAbbreviation, userId) || permissions == null || permissions.isEmpty()) {
 			log.debug("Missing parameter (projectAbbreviation, userId, or list of permissions).");
 			return responseService.badRequest(responseContentType);
 		}
@@ -706,7 +706,7 @@ public class PermissionController {
                                                   @RequestParam(name = "userId") String userId,
                                                   @RequestHeader(name = "accept", required = false) String responseContentType) {
 
-        if (Assertion.isNullOrEmpty(domainName, userId)) {
+        if (!Assertion.isNotNullOrEmpty(domainName, userId)) {
         	log.debug("The domain name or the user ID was empty");
             return responseService.badRequest(responseContentType);
         }
@@ -752,7 +752,7 @@ public class PermissionController {
                                                    @RequestParam(name = "userId") String userId,
                                                    @RequestHeader(name = "accept", required = false) String responseContentType) {
 
-        if (Assertion.isNullOrEmpty(projectAbbreviation, userId)) {
+        if (!Assertion.isNotNullOrEmpty(projectAbbreviation, userId)) {
         	log.debug("The project abbreviation or the user ID was empty");
             return responseService.badRequest(responseContentType);
         }
@@ -832,7 +832,7 @@ public class PermissionController {
             										  @RequestParam String userId,
             										  @RequestHeader(name = "accept", required = false) String responseContentType) {
     	// Check if we have all the info needed
-    	if (Assertion.isNullOrEmpty(projectAbbreviation, entityTypeName, userId)) {
+    	if (!Assertion.isNotNullOrEmpty(projectAbbreviation, entityTypeName, userId)) {
         	log.debug("The project abbreviation, the entity type name, or the user ID was empty");
             return responseService.badRequest(responseContentType);
         }
@@ -917,7 +917,7 @@ public class PermissionController {
                                                      @RequestBody List<PermissionDTO> permissions,
                                                      @RequestHeader(name = "accept", required = false) String responseContentType) {
 
-        if (Assertion.isNullOrEmpty(domainName, userId) || permissions == null) {
+        if (!Assertion.isNotNullOrEmpty(domainName, userId) || permissions == null) {
         	log.debug("Missing parameter (domainName, userId, or list of permissions).");
             return responseService.badRequest(responseContentType);
         }
@@ -1009,7 +1009,7 @@ public class PermissionController {
                                                       @RequestBody List<PermissionDTO> permissions,
                                                       @RequestHeader(name = "accept", required = false) String responseContentType) {
 
-    	if (Assertion.isNullOrEmpty(projectAbbreviation, userId) || permissions == null) {
+    	if (!Assertion.isNotNullOrEmpty(projectAbbreviation, userId) || permissions == null) {
         	log.debug("Missing parameter (projectAbbreviation, userId, or list of permissions).");
             return responseService.badRequest(responseContentType);
         }
@@ -1178,7 +1178,7 @@ public class PermissionController {
                                                          @RequestBody List<PermissionDTO> permissions,
                                                          @RequestHeader(name = "accept", required = false) String responseContentType) {
         
-    	if (Assertion.isNullOrEmpty(projectAbbreviation, entityTypeName, userId) || permissions == null) {
+    	if (!Assertion.isNotNullOrEmpty(projectAbbreviation, entityTypeName, userId) || permissions == null) {
         	log.debug("Missing parameter (projectAbbreviation, entityTypeName, userId, or list of permissions).");
             return responseService.badRequest(responseContentType);
         }
@@ -1274,7 +1274,7 @@ public class PermissionController {
                                                      @RequestBody List<PermissionDTO> permissions,
                                                      @RequestHeader(name = "accept", required = false) String responseContentType) {
 
-        if (Assertion.isNullOrEmpty(domainName, userId) || permissions == null || permissions.isEmpty()) {
+        if (!Assertion.isNotNullOrEmpty(domainName, userId) || permissions == null || permissions.isEmpty()) {
             log.debug("Missing parameter (domainName, userId, or list of permissions).");
             return responseService.badRequest(responseContentType);
         }
@@ -1405,7 +1405,7 @@ public class PermissionController {
                                                       @RequestBody List<PermissionDTO> permissions,
                                                       @RequestHeader(name = "accept", required = false) String responseContentType) {
 
-        if (Assertion.isNullOrEmpty(projectAbbreviation, userId) || permissions == null || permissions.isEmpty()) {
+        if (!Assertion.isNotNullOrEmpty(projectAbbreviation, userId) || permissions == null || permissions.isEmpty()) {
             log.debug("Missing parameter (projectAbbreviation, userId, or list of permissions).");
             return responseService.badRequest(responseContentType);
         }
@@ -1648,7 +1648,7 @@ public class PermissionController {
                                                          @RequestBody List<PermissionDTO> permissions,
                                                          @RequestHeader(name = "accept", required = false) String responseContentType) {
         
-    	if (Assertion.isNullOrEmpty(projectAbbreviation, entityTypeName, userId) || permissions == null || permissions.isEmpty()) {
+    	if (!Assertion.isNotNullOrEmpty(projectAbbreviation, entityTypeName, userId) || permissions == null || permissions.isEmpty()) {
             log.debug("Missing parameter (projectAbbreviation, entityTypeName, userId, or list of permissions).");
             return responseService.badRequest(responseContentType);
         }
