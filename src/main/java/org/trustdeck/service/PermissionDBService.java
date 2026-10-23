@@ -335,7 +335,7 @@ public class PermissionDBService {
 				continue;
 			}
 			
-			if (Assertion.isNullOrEmpty(p.getSubjectId(), p.getResourceType(), p.getAction()) || p.getResourceId() == null) {
+			if (!Assertion.isNotNullOrEmpty(p.getSubjectId(), p.getResourceType(), p.getAction()) || p.getResourceId() == null) {
 				log.trace("Skipping permission creation because mandatory data was missing.");
 				continue;
 			}
@@ -637,7 +637,7 @@ public class PermissionDBService {
 			}
 			
 			// Assert that we have the information we need
-			if (Assertion.isNullOrEmpty(p.getSubjectId(), p.getResourceType(), p.getAction()) || p.getResourceId() == null) {
+			if (!Assertion.isNotNullOrEmpty(p.getSubjectId(), p.getResourceType(), p.getAction()) || p.getResourceId() == null) {
 				// We are lacking information, see if an ID is given, so we can get the information first
 				if (p.getId() != null) {
 					// ID is given: overwrite the DTO with the data from the database 
@@ -721,7 +721,7 @@ public class PermissionDBService {
 				continue;
 			}
 			
-			if (Assertion.isNullOrEmpty(p.getSubjectId(), p.getResourceType(), p.getAction()) || p.getResourceId() == null) {
+			if (!Assertion.isNotNullOrEmpty(p.getSubjectId(), p.getResourceType(), p.getAction()) || p.getResourceId() == null) {
 				log.trace("Skipping permission deletion because mandatory data was missing.");
 				continue;
 			}
