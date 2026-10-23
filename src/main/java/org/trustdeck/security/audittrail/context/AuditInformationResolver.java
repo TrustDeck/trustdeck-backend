@@ -66,6 +66,7 @@ public class AuditInformationResolver {
     private AuditUserTypeConfiguration auditUserTypeConfig;
 
 	/** Gives access to the message parser so we can transform a Kafka message into a processable DTO. */
+	@SuppressWarnings("removal")
 	@Autowired
 	private KafkaPseudonymMessageParser kafkaParser;
     
@@ -197,6 +198,7 @@ public class AuditInformationResolver {
      * @param record the Kafka ConsumerRecord
      * @return the audit information object
      */
+    @SuppressWarnings("removal")
     private AuditInformationObject buildFromConsumerRecord(ConsumerRecord<?, ?> record) {
     	// Parse payload (the value() in the record object) into DTO, so we can access the username in the message
 		KafkaPseudonymMessageDTO kafkaDto = null;
@@ -239,6 +241,7 @@ public class AuditInformationResolver {
      * @param message the Spring Message object in which the information needed for auditing is contained
      * @return the audit information object built from the Spring Message
      */
+    @SuppressWarnings("removal")
     private AuditInformationObject buildFromSpringMessage(Message<?> message) {
         if (message == null) {
             return null;
