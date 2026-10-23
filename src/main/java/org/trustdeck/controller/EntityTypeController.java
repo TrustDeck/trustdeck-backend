@@ -259,7 +259,7 @@ public class EntityTypeController {
 		
 		if (!baseType.getIsBaseType()) {
 			log.debug("Cannot extend from \"" + baseType.getName() + "\", as it is not a base type.");
-			return responseService.badRequest(projectAbbreviation);
+			return responseService.badRequest(responseContentType);
 		}
 
 		// Validate the definition against the meta-schema

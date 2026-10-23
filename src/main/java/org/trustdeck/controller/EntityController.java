@@ -312,9 +312,9 @@ public class EntityController {
 	 * @param responseContentType (optional) the response content type
 	 * @return <li>a <b>200-OK</b> status with the requested entity on success</li>
      *         <li>a <b>404-NOT_FOUND</b> status when the project, entity type, or 
-     *         entity cannot be found</li>
-     *         <li>a <b>410-GONE</b> status when the project has ended, the entity type 
-     *         is marked as deprecated, or the entity is marked as deleted</li>
+     *         entity cannot be found (deleted entities are treated as not found)</li>
+     *         <li>a <b>410-GONE</b> status when the project has ended or the entity type 
+     *         is marked as deprecated</li>
 	 */
 	@GetMapping("/projects/{projectAbbreviation}/entities/{entityTypeName}/{trustDeckId}")
 	@PreAuthorize("isAuthenticated() and @auth.hasEntityTypePermission(#root, #projectAbbreviation, #entityTypeName, 'entity:read')")
@@ -618,9 +618,9 @@ public class EntityController {
      *         <li>a <b>403-FORBIDDEN</b> status when the rights to read or link 
      *         pseudonyms in any of the involved domains is missing</li>
      *         <li>a <b>404-NOT_FOUND</b> status when the project, the entity type, or  
-     *         the entity cannot be found</li>
-     *         <li>a <b>410-GONE</b> status when the project has ended, the entity type 
-     *         is marked as deprecated, or the entity is marked as deleted</li>
+     *         the entity cannot be found (deleted entities are treated as not found)</li>
+     *         <li>a <b>410-GONE</b> status when the project has ended or the entity type 
+     *         is marked as deprecated</li>
      *         <li>a <b>422-UNPROCESSABLE_ENTITY</b> status when there was no domain 
      *         associated with the entity type</li>
 	 */

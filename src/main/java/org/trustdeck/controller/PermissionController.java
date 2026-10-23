@@ -900,7 +900,7 @@ public class PermissionController {
 	 *
 	 * @param domainName the name of the domain
 	 * @param userId the ID of the user
-	 * @param permissions the desired list of permissions
+	 * @param permissions the desired list of permissions; each permission must contain the domainName of the domain given in the URI
 	 * @param responseContentType (optional) the response content type
      * @return <li>a <b>200-OK</b> status when the user's permissions were 
      * 		   successfully synchronized with the provided list</li>
@@ -992,7 +992,7 @@ public class PermissionController {
 	 *
 	 * @param projectAbbreviation the abbreviation of the project
 	 * @param userId the ID of the user
-	 * @param permissions the desired list of permissions
+	 * @param permissions the desired list of permissions; each permission must contain the projectAbbreviation of the project given in the URI
 	 * @param responseContentType (optional) the response content type
      * @return <li>a <b>200-OK</b> status when the user's permissions were 
      * 		   successfully synchronized with the provided list</li>
@@ -1163,7 +1163,7 @@ public class PermissionController {
      * @param projectAbbreviation the abbreviation of the project
      * @param entityTypeName the name of the entity type
      * @param userId the ID of the user
-     * @param permissions the desired list of permissions
+     * @param permissions the desired list of permissions; each permission must contain the entityTypeName of the entity type given in the URI
      * @param responseContentType (optional) the response content type
      * @return <li>a <b>200-OK</b> status when the permissions were synchronized successfully</li>
      *         <li>a <b>400-BAD_REQUEST</b> status when required parameters are missing or replacement failed</li>
@@ -1255,7 +1255,7 @@ public class PermissionController {
 	 *
 	 * @param domainName the name of the domain
 	 * @param userId the ID of the user
-	 * @param permissions the desired list of permissions
+	 * @param permissions the desired list of permissions; each permission must contain the domainName of the domain given in the URI
 	 * @param responseContentType (optional) the response content type
      * @return <li>a <b>204-NO_CONTENT</b> status when the user's  
      * 		   permissions were successfully deleted</li>
@@ -1386,7 +1386,7 @@ public class PermissionController {
 	 *
 	 * @param projectAbbreviation the abbreviation of the project
 	 * @param userId the ID of the user
-	 * @param permissions the desired list of permissions
+	 * @param permissions the desired list of permissions; each permission must contain the projectAbbreviation of the project given in the URI
 	 * @param responseContentType (optional) the response content type
      * @return <li>a <b>204-NO_CONTENT</b> status when the user's  
      * 		   permissions were successfully deleted</li>
@@ -1632,7 +1632,7 @@ public class PermissionController {
      * @param projectAbbreviation the abbreviation of the project
      * @param entityTypeName the name of the entity type
      * @param userId the ID of the user
-     * @param permissions the permissions to delete
+     * @param permissions the permissions to delete; each permission must contain the entityTypeName of the entity type given in the URI
      * @param responseContentType (optional) the response content type
      * @return <li>a <b>204-NO_CONTENT</b> status when the permissions were deleted successfully</li>
      *         <li>a <b>400-BAD_REQUEST</b> status when required parameters or valid permissions are missing</li>
