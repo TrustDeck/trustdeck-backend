@@ -163,8 +163,8 @@ public class TestsSearchServiceIT extends AssertWebRequestService {
         assertEquals(Set.of("Erika Mustermann"), this.searchEntities(entityPath, "Erika Mustermann"));
         assertEquals(Set.of("Erika Mustermann", "Max Mustermann", "Erika Meier"), this.searchEntities(entityPath, "*"));
 
-        // No matches are reported as not found
-        this.assertNotFoundRequest("searchEntitiesNoMatch", get(entityPath), Map.of("query", "Nobody"), null, this.getAccessToken());
+        // No matches
+        assertEquals(Set.of(), this.searchEntities(entityPath, "Nobody"));
     }
 
     /**
