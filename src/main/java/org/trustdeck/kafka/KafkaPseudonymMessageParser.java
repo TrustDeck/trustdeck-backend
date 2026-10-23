@@ -29,8 +29,12 @@ import lombok.RequiredArgsConstructor;
  * A parser for Kafka messages for pseudonymization.
  * This parser parses a given JSON string into a {@link KafkaPseudonymMessageDTO}.
  * 
+ * @deprecated The internal Kafka listener will be replaced by the dedicated Kafka ingester
+ *             and will be removed in a future release.
+ * 
  * @author Armin Müller
  */
+@Deprecated(forRemoval = true)
 @Service
 @RequiredArgsConstructor
 public class KafkaPseudonymMessageParser {

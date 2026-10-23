@@ -29,8 +29,12 @@ import lombok.RequiredArgsConstructor;
  * A mapper to fill the attributes {@link KafkaPseudonymMessageDTO} from the 
  * DTO's catch-all map filled during JSON deserialization.
  * 
+ * @deprecated The internal Kafka listener will be replaced by the dedicated Kafka ingester
+ *             and will be removed in a future release.
+ * 
  * @author Armin Müller
  */
+@Deprecated(forRemoval = true)
 @Component
 @RequiredArgsConstructor
 public class KafkaPseudonymMessageDTOMapper {

@@ -32,8 +32,12 @@ import java.util.HashMap;
 /**
  * Data transfer object for the exchange of Kafka messages.
  *
+ * @deprecated The internal Kafka listener will be replaced by the dedicated Kafka ingester
+ *             and will be removed in a future release.
+ * 
  * @author Armin Müller
  */
+@Deprecated(forRemoval = true)
 @Data
 @Builder
 @NoArgsConstructor

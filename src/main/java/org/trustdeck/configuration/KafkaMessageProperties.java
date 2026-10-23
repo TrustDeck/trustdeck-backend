@@ -24,8 +24,12 @@ import org.springframework.context.annotation.Configuration;
 /**
  * Class that loads the Kafka message properties from the yml-file.
  * 
+ * @deprecated The internal Kafka listener will be replaced by the dedicated Kafka ingester
+ *             and will be removed in a future release.
+ * 
  * @author Armin Müller
  */
+@Deprecated(forRemoval = true)
 @Data
 @Configuration
 @ConfigurationProperties(prefix = "app.kafka.message")
