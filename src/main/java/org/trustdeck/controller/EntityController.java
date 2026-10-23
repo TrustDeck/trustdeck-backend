@@ -551,11 +551,11 @@ public class EntityController {
 	 * @param query the search string that should be looked up 
 	 * @param responseContentType (optional) the response content type
 	 * @return <li>a <b>200-OK</b> status with the list of matching entities on 
-	 * 		   success</li>
+	 * 		   success (an empty list when no entities match the query)</li>
      *         <li>a <b>206-PARTIAL_CONTENT</b> status with a truncated result set when 
      *         more than the maximum number of allowed results are found</li>
      *         <li>a <b>404-NOT_FOUND</b> status when the project or entity type cannot 
-     *         be found, or when no entities match the query</li>
+     *         be found</li>
      *         <li>a <b>410-GONE</b> status when the project has ended or the entity type 
      *         is marked as deprecated</li>
 	 */
@@ -594,7 +594,7 @@ public class EntityController {
 		// Evaluate findings
 		if (foundEntities == null || foundEntities.size() == 0) {
 			log.debug("No entities were found for the given search string.");
-			return responseService.notFound(responseContentType);
+			return responseService.ok(responseContentType, List.of());
 		} else if (foundEntities.size() > MAX_NUMBER_OF_SEARCH_RESULTS) {
 			log.debug("Successfully queried the database and found more than " + MAX_NUMBER_OF_SEARCH_RESULTS + " search results, so the result list was truncated.");
 			return responseService.partialContent(responseContentType, foundEntities.subList(0, MAX_NUMBER_OF_SEARCH_RESULTS));
