@@ -107,10 +107,11 @@ public class TestsProjectServiceIT extends AssertWebRequestService {
         assertEquals("SECOND", updated.getAbbreviation());
         assertEquals("An updated description", updated.getDescription());
 
-        // Delete (tombstone) the project, which also removes the project permissions of the requester
+        // Delete (tombstone) the project, after which it can't be used anymore
         this.assertNoContent("deleteProject", delete("/api/projects/SECOND"), null, null, this.getAccessToken());
-        this.assertForbiddenRequest("getDeletedProject", get("/api/projects/SECOND"), null, null, this.getAccessToken());
-        this.assertForbiddenRequest("deleteDeletedProject", delete("/api/projects/SECOND"), null, null, this.getAccessToken());
+        this.assertRequestFromRequestBuilder("getDeletedProject", get("/api/projects/SECOND"), null, null, this.getAccessToken(), status().isGone());
+        this.assertRequestFromRequestBuilder("updateDeletedProject", put("/api/projects/SECOND"), null, update, this.getAccessToken(), status().isGone());
+        this.assertRequestFromRequestBuilder("deleteDeletedProject", delete("/api/projects/SECOND"), null, null, this.getAccessToken(), status().isGone());
     }
 
     /**

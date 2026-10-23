@@ -215,7 +215,8 @@ public class ProjectDBService {
     /**
      * Delete a project from the database using its name.
      * The deletion is a tombstoning operation where the 
-     * end_date is set and no real deletion is performed. 
+     * end_date is set and no real deletion is performed. The 
+     * permissions on the project are kept.
      * 
      * @param project the DTO containing information about the project that should be deleted
      * @param deleteDate the date which should be used for the end_date
@@ -253,11 +254,7 @@ public class ProjectDBService {
                 throw new UnexpectedResultSizeException(1, deletedRecords);
             }
     	
-            // Handle permissions
-            if (!permissionDBService.removeProjectPermissionsForSubject(project.getAbbreviation())) {
-            	log.debug("Failed to remove the project's permissions. Aborting.");
-            	throw new PermissionManagementException(project.getAbbreviation());
-            }
+            // The permissions are kept, so that users with access to the project are informed that it is gone
             
             // The project object was successfully deleted
             log.debug("Successfully removed the project object.");
