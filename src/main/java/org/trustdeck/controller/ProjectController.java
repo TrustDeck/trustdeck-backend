@@ -103,8 +103,8 @@ public class ProjectController {
 	 * @param responseContentType (optional) the response content type
      * @return <li>a <b>200-OK</b> status with the existing project when a duplicate was detected</li>
      *         <li>a <b>201-CREATED</b> status with the created project and a <b>Location</b> header on success</li>
-     *         <li>a <b>400-BAD_REQUEST</b> status when the name/abbreviation is missing or dates are invalid</li>
-     *         <li>a <b>406-NOT_ACCEPTABLE</b> status when the abbreviation contains disallowed characters</li>
+     *         <li>a <b>400-BAD_REQUEST</b> status when the name/abbreviation is missing, the abbreviation 
+     *         contains disallowed characters, or the dates are invalid</li>
      *         <li>a <b>422-UNPROCESSABLE_ENTITY</b> status when creation failed</li>
 	 */
 	@PostMapping("/projects")
@@ -372,6 +372,7 @@ public class ProjectController {
 	 * The project will not be removed from the database but rather
 	 * tombstoned, meaning the end-date will be set properly so that
 	 * retrieving, updating, inserting, etc. is not allowed anymore.
+	 * The project permissions of the requesting user are removed as well.
 	 * 
 	 * @param projectAbbreviation the project's abbreviation
 	 * @param deleteDate (optional) the date from which the project should be considered as deleted 
