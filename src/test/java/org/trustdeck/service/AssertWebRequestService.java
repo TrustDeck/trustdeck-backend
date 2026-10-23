@@ -790,12 +790,7 @@ public class AssertWebRequestService {
         MockHttpServletResponse response = this.assertOkRequest("getRecordBatch", get("/api/domains/" + goodDomain + "/pseudonyms/batch"), null, null, this.getAccessToken());
         String content = response.getContentAsString();
         List<PseudonymDTO> records = this.mapJsonObjectsInStringToList(content, PseudonymDTO.class);
-
-        if (expectedLength == 0) {
-            assertNull(records);
-        } else {
-            assertEquals(expectedLength, records.size());
-        }
+        assertEquals(expectedLength, records.size());
 
         return records;
     }

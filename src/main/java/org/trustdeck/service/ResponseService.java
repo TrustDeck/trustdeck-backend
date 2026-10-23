@@ -295,8 +295,8 @@ public class ResponseService {
                         return this.createResponseEntityFromHttpStatus(mediaType, status, location);
                 }
             } else if (body instanceof List<?> && ((List<?>) body).size() == 0) {
-            	// Empty list; return empty JSON
-            	return (ResponseEntity<T>) ResponseEntity.status(status).header(HttpHeaders.CONTENT_TYPE, contentTypeHeader).location(location).body("{}");
+            	// Empty list; return an empty JSON array
+            	return (ResponseEntity<T>) ResponseEntity.status(status).header(HttpHeaders.CONTENT_TYPE, contentTypeHeader).location(location).body("[]");
             } else if (body instanceof List<?> && ((List<?>) body).get(0) instanceof String) {
             	// Usually this is reached while using any batch endpoint
             	return (ResponseEntity<T>) ResponseEntity.status(status).header(HttpHeaders.CONTENT_TYPE, contentTypeHeader).location(location).body(String.join(";", (Iterable<? extends CharSequence>) body));
