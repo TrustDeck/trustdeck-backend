@@ -172,9 +172,9 @@ class PseudonymizerTest {
         assertFalse(new LuhnMod10CheckDigit().validateCheckDigit("79927398714", ""));
         assertFalse(new LuhnMod10CheckDigit().validateCheckDigit("79927398731", ""));
 
-        // The prefix is ignored, case and trailing white spaces don't matter
+        // The prefix is ignored, case and surrounding white spaces don't matter
         assertEquals('3', new LuhnMod10CheckDigit().computeCheckDigit("P-7992739871", "P-"));
-        assertTrue(new LuhnMod10CheckDigit().validateCheckDigit("P-79927398713 ", "P-"));
+        assertTrue(new LuhnMod10CheckDigit().validateCheckDigit(" P-79927398713 ", "P-"));
         Character hexCheckDigit = new LuhnMod16CheckDigit().computeCheckDigit("1db52bb3", "");
         assertTrue(new LuhnMod16CheckDigit().validateCheckDigit("1DB52BB3" + hexCheckDigit, ""));
 

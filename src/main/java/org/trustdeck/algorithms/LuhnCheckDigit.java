@@ -42,7 +42,7 @@ public abstract class LuhnCheckDigit {
 	 * Basic constructor. A list of allowed characters needs to be provided.
 	 * The list's length must be divisible by two.
 	 * 
-	 * @param allowedCharacters
+	 * @param allowedCharacters the characters that are allowed in the input and in the check digit
 	 */
 	public LuhnCheckDigit(String allowedCharacters) {
 		this.allowedCharacters = allowedCharacters;
@@ -50,7 +50,7 @@ public abstract class LuhnCheckDigit {
 	}
 	
 	/**
-	 * A method to standardize the input strings (e.g. turns input into upper case, removes domain prefix, ...).
+	 * A method to standardize the input strings (e.g. removes surrounding white spaces and the domain prefix, turns input into upper case, ...).
 	 * 
 	 * @param input the unsanitized input string
 	 * @param domainPrefix the prefix of the domain where the input is in, including hyphens
@@ -67,15 +67,18 @@ public abstract class LuhnCheckDigit {
 			domainPrefix = "";
 		}
 		
+		// Remove surrounding white spaces before looking for the prefix
+		String trimmedInput = input.trim();
+		
 		// Remove the domain's prefix if it's there
-		String temp = input.startsWith(domainPrefix) ? input.substring(domainPrefix.length()) : PREFIX_NOT_FOUND;
+		String temp = trimmedInput.startsWith(domainPrefix) ? trimmedInput.substring(domainPrefix.length()) : PREFIX_NOT_FOUND;
 		
 		// Remove white spaces and capitalize
 		return temp.trim().toUpperCase();
 	}
 	
 	/**
-	 * Method to validate the check digit from the given input.
+	 * Method to compute the check digit for the given input.
 	 * 
 	 * @param input the unsanitized input string
 	 * @param domainPrefix the prefix of the domain where the input should be in, including hyphens
