@@ -58,6 +58,8 @@ import org.springframework.restdocs.RestDocumentationContextProvider;
 import org.springframework.restdocs.RestDocumentationExtension;
 import org.springframework.restdocs.mockmvc.RestDocumentationResultHandler;
 import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.RequestBuilder;
@@ -66,10 +68,12 @@ import org.springframework.test.web.servlet.ResultMatcher;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
+import org.trustdeck.configuration.PermissionConfig;
 import org.trustdeck.dto.DomainDTO;
 import org.trustdeck.dto.DomainTreeDTO;
 import org.trustdeck.dto.AlgorithmDTO;
 import org.trustdeck.dto.PseudonymDTO;
+import org.trustdeck.dto.PermissionDTO;
 import org.trustdeck.dto.ProjectDTO;
 import org.trustdeck.model.IdentifierItem;
 import org.trustdeck.utils.Assertion;
@@ -113,9 +117,26 @@ public class AssertWebRequestService {
     /** Enables access to the permission grants database methods. */
     @Autowired
     private PermissionDBService permissionDBService;
+
+    /** Provides the names of all available permissions. */
+    @Autowired
+    private PermissionConfig permissionConfig;
     
     /** The name of the database where TRUSTDECK stores its data. **/
     private static final String TRUSTDECK = "trustdeck";
+
+    /** The Keycloak ID of the user "test", who performs the requests in the tests. */
+    private static final String TEST_USER_ID = "3dfb6717-3def-493b-a237-b7345fc42718";
+
+    /**
+     * Starts the PostgreSQL and Keycloak test containers and provides their connection details.
+     *
+     * @param registry the registry for the dynamic properties of the test context
+     */
+    @DynamicPropertySource
+    static void registerTestContainerProperties(DynamicPropertyRegistry registry) {
+        TrustDeckTestContainers.registerProperties(registry);
+    }
     
     /**
      * Resets the test environment and sets up the mock objects.
@@ -176,6 +197,18 @@ public class AssertWebRequestService {
 	        permissionDBService.removeDomainPermissions();
 	        permissionDBService.removeProjectPermissions();
 	        permissionDBService.removeEntityTypePermissions();
+
+	        // Ensure that the test user has all global permissions (the user doesn't have any in a fresh database)
+	        List<PermissionDTO> globalPermissions = new ArrayList<>();
+	        for (String action : permissionConfig.getGlobalPermissions()) {
+	        	PermissionDTO permission = new PermissionDTO();
+	        	permission.setSubjectId(TEST_USER_ID);
+	        	permission.setResourceType("GLOBAL");
+	        	permission.setResourceId(0);
+	        	permission.setAction(action);
+	        	globalPermissions.add(permission);
+	        }
+	        permissionDBService.createPermissions(globalPermissions);
 
             // Create the project required by all test domains
             ProjectDTO projectDTO = new ProjectDTO();
