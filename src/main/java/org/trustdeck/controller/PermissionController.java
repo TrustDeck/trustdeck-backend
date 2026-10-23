@@ -1398,7 +1398,7 @@ public class PermissionController {
      *         does not exist or cannot be resolved</li>
 	 */
     @DeleteMapping("/projects/{projectAbbreviation}")
-    @PreAuthorize("isAuthenticated() and @auth.hasProjectPermission(#root, #projectAbbreviation, 'project:manage-permissions'))")
+    @PreAuthorize("isAuthenticated() and @auth.hasProjectPermission(#root, #projectAbbreviation, 'project:manage-permissions')")
     @Audit
     public ResponseEntity<?> deleteProjectPermissions(@PathVariable("projectAbbreviation") String projectAbbreviation,
     												  @RequestParam(name = "userId") String userId,
