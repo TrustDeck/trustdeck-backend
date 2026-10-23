@@ -37,9 +37,13 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.trustdeck.dto.EntityDTO;
+import org.trustdeck.dto.EntityTypeDTO;
 import org.trustdeck.dto.PermissionDTO;
 import org.trustdeck.service.AssertWebRequestService;
 import org.trustdeck.service.PermissionDBService;
+
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * This class offers tests for the permission endpoints.
@@ -61,6 +65,9 @@ public class TestsPermissionServiceIT extends AssertWebRequestService {
     /** Enables access to the permission grants database methods. */
     @Autowired
     private PermissionDBService permissionDBService;
+
+    /** Used to create the type definitions and entity data. */
+    private final ObjectMapper om = new ObjectMapper();
 
     /** The query parameters identifying the user "test2". */
     private final Map<String, String> test2Parameter = Map.of("userId", TEST2_ID);
@@ -199,6 +206,60 @@ public class TestsPermissionServiceIT extends AssertWebRequestService {
     }
 
     /**
+     * Tests creating, retrieving, replacing, and deleting entity type permissions and that they take effect.
+     *
+     * @throws Exception forwards any internally thrown exceptions
+     */
+    @Test
+    @DisplayName("entityTypePermissionTest")
+    public void entityTypePermissionTest() throws Exception {
+        String definition = """
+                {
+                  "attributes": [ { "name": "name", "type": "string", "required": true, "linkage": false } ],
+                  "recordLinkage": { "enabled": false }
+                }
+                """;
+        this.assertCreatedRequest("createBaseTypeForPermissions", post("/api/entities/base-types"), null,
+                this.entityType("permission-person", definition, null), this.getAccessToken());
+        this.assertCreatedRequest("createProjectTypeForPermissions", post("/api/projects/" + PROJECT + "/entities/config"), null,
+                this.entityType("permission-participant", definition, "permission-person"), this.getAccessToken());
+        String entityPath = "/api/projects/" + PROJECT + "/entities/permission-participant";
+        EntityDTO entity = new EntityDTO();
+        entity.setData(om.readTree("{ \"name\": \"Erika\" }"));
+        MockHttpServletResponse response = this.assertCreatedRequest("createEntityForPermissions", post(entityPath), null, entity, this.getAccessToken());
+        String entityUrl = entityPath + "/" + this.applySingleJsonContentToClass(response.getContentAsString(), EntityDTO.class).getTrustdeckID();
+        String permissionPath = "/api/permissions/projects/" + PROJECT + "/entity-types/permission-participant";
+
+        this.assertForbiddenRequest("getEntityWithoutPermission", get(entityUrl), null, null, this.getTest2AccessToken());
+
+        // Grant the permissions
+        this.assertCreatedRequest("createEntityTypePermissions", post(permissionPath), test2Parameter,
+                List.of(this.permission("ENTITY_TYPE", "entity:read"), this.permission("ENTITY_TYPE", "entity:search")), this.getAccessToken());
+        assertEquals(Set.of("entity:read", "entity:search"), this.getActions(permissionPath));
+        this.assertOkRequest("getEntityWithPermission", get(entityUrl), null, null, this.getTest2AccessToken());
+        this.assertForbiddenRequest("createEntityWithoutPermission", post(entityPath), null, entity, this.getTest2AccessToken());
+
+        // Domain actions can't be granted on entity types
+        this.assertBadRequestRequest("createEntityTypePermissionDomainAction", post(permissionPath), test2Parameter,
+                List.of(this.permission("ENTITY_TYPE", "domain:read")), this.getAccessToken());
+
+        // Replace the permissions
+        List<PermissionDTO> replacement = List.of(this.permission("ENTITY_TYPE", "entity:search"));
+        replacement.forEach(p -> p.setEntityTypeName("permission-participant"));
+        this.assertOkRequest("updateEntityTypePermissions", put(permissionPath), test2Parameter, replacement, this.getAccessToken());
+        assertEquals(Set.of("entity:search"), this.getActions(permissionPath));
+        this.assertForbiddenRequest("getEntityAfterReplacement", get(entityUrl), null, null, this.getTest2AccessToken());
+
+        // Delete the permission
+        this.assertNoContent("deleteEntityTypePermission", delete(permissionPath), test2Parameter, replacement, this.getAccessToken());
+        this.assertNotFoundRequest("getEntityTypePermissionsAfterDeletion", get(permissionPath), test2Parameter, null, this.getAccessToken());
+
+        // Requests on non-existing entity types are forbidden, so that their existence is not revealed
+        this.assertForbiddenRequest("createPermissionUnknownEntityType", post("/api/permissions/projects/" + PROJECT + "/entity-types/unknown-type"),
+                test2Parameter, List.of(this.permission("ENTITY_TYPE", "entity:read")), this.getAccessToken());
+    }
+
+    /**
      * Tests that users can only manage permissions when they are allowed to and only
      * delegate the actions they have themselves (bounded delegation).
      *
@@ -262,6 +323,23 @@ public class TestsPermissionServiceIT extends AssertWebRequestService {
         permission.setDecision("ALLOW");
 
         return permission;
+    }
+
+    /**
+     * Helper to create an entity type DTO.
+     *
+     * @param name the name of the entity type
+     * @param definition the type definition as JSON string
+     * @param baseTypeName the name of the base type (only for project specific types)
+     * @return the entity type DTO
+     */
+    private EntityTypeDTO entityType(String name, String definition, String baseTypeName) {
+        EntityTypeDTO entityType = new EntityTypeDTO();
+        entityType.setName(name);
+        entityType.setTypeDefinition(om.readTree(definition));
+        entityType.setBaseTypeName(baseTypeName);
+
+        return entityType;
     }
 
     /**
