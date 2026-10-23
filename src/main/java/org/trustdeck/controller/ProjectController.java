@@ -115,8 +115,8 @@ public class ProjectController {
 		ProjectDTO p = new ProjectDTO();
 		
 		// Sanitize all the necessary attributes are given and store them in p
-		String name = projectDTO.getName().trim();
-		String abbr = projectDTO.getAbbreviation().trim();
+		String name = projectDTO.getName() == null ? null : projectDTO.getName().trim();
+		String abbr = projectDTO.getAbbreviation() == null ? null : projectDTO.getAbbreviation().trim();
 		OffsetDateTime start = projectDTO.getStartDate();
 		OffsetDateTime end = projectDTO.getEndDate();
 		Boolean storeEntities = projectDTO.getStoreEntities();
