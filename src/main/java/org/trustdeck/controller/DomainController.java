@@ -199,7 +199,7 @@ public class DomainController {
         // Build the location before persisting so invalid names are rejected early
         URI location;
         try {
-            location = new URI("/api/pseudonymization/domain?name=" + dto.getName());
+            location = new URI("/api/domains/" + dto.getName());
         } catch (URISyntaxException e) {
             return responseService.notAcceptable(responseContentType);
         }

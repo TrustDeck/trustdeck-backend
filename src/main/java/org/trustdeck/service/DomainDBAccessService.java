@@ -972,8 +972,7 @@ public class DomainDBAccessService {
                 // Check if child domains should also be updated
                 if (recursiveChanges) {
                     // Find child domains
-                    List<Domain> oldChilds = DSL.using(configuration).select(DOMAIN.ID)
-                            .from(DOMAIN)
+                    List<Domain> oldChilds = DSL.using(configuration).selectFrom(DOMAIN)
                             .where(DOMAIN.SUPERDOMAINID.equal(oldDomain.getId()))
                             .fetchInto(Domain.class);
 
