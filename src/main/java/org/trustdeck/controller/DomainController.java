@@ -771,11 +771,11 @@ public class DomainController {
             return responseService.unprocessableEntity(responseContentType);
         }
 
-        // Check if the new name is already in use
+        // Check if the new name is already in use; if so, the name stays unchanged
         String domainName;
         if (newName != null && !newName.isBlank()) {
-        	Domain d = domainDBAccessService.getDomainByName(newName);
-        	domainName = d == null ? old.getName() : newName.trim();
+        	Domain d = domainDBAccessService.getDomainByName(newName.trim());
+        	domainName = d == null ? newName.trim() : old.getName();
         } else {
         	domainName = old.getName();
         }
