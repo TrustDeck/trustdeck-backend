@@ -61,6 +61,10 @@ public class ProjectDBService {
     @Autowired
     @Lazy
     private PermissionDBService permissionDBService;
+    
+    /** Cache for the permission look-ups. */
+    @Autowired
+    private CachingService cachingService;
 
     /**
      * Method to insert a new project into the database table.
@@ -370,18 +374,10 @@ public class ProjectDBService {
             return null;
     	}
     	
-    	// Check if the permissions need to be adapted
+    	// Permissions reference the project's ID, which doesn't change on renaming. Only the cached
+    	// effective permissions contain the abbreviation and need to be refreshed.
         if (newAbbreviation != null && !oldProject.getAbbreviation().equals(newAbbreviation)) {
-        	// The project abbreviation has changed, so we need to update the permissions
-            if (!permissionDBService.removeProjectPermissionsForSubject(newAbbreviation)) {
-            	log.debug("Failed to remove the project's permissions. Aborting.");
-            	throw new PermissionManagementException(newAbbreviation);
-            }
-            
-            if (!permissionDBService.addProjectPermissionsForSubject(newAbbreviation)) {
-            	log.debug("Failed to add the project's permissions. Aborting.");
-            	throw new PermissionManagementException(newAbbreviation);
-            }
+        	cachingService.clearEffectivePermissionsCache();
         }
 
 		// Return the newly updated project DTO
