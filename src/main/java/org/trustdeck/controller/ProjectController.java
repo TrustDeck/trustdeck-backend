@@ -28,9 +28,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -41,7 +38,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.trustdeck.dto.PermissionDTO;
+import org.trustdeck.dto.EffectivePermissionDTO;
 import org.trustdeck.dto.ProjectDomainDTO;
 import org.trustdeck.dto.ProjectDTO;
 import org.trustdeck.dto.ProjectStatisticsDTO;
@@ -49,6 +46,7 @@ import org.trustdeck.configuration.DefaultProperties;
 import org.trustdeck.exception.DuplicateProjectException;
 import org.trustdeck.exception.UnexpectedResultSizeException;
 import org.trustdeck.security.audittrail.annotation.Audit;
+import org.trustdeck.service.AuthorizationService;
 import org.trustdeck.service.PermissionDBService;
 import org.trustdeck.service.DomainDBAccessService;
 import org.trustdeck.service.ProjectDBService;
@@ -85,6 +83,10 @@ public class ProjectController {
     /** Enables access to the permission grants database methods. */
     @Autowired
     private PermissionDBService permissionDBService;
+    
+    /** Enables the permission checks within the endpoints. */
+    @Autowired
+    private AuthorizationService authorizationService;
 
     /** Enables access to project-owned domains. */
     @Autowired
@@ -183,39 +185,42 @@ public class ProjectController {
 
 	/**
 	 * Method to retrieve a list of all projects where the 
-	 * requesting user has access to.
+	 * requesting user has access to. Every authenticated user may
+	 * list the projects they are allowed to read. Listing all
+	 * projects requires the global permission to do so.
 	 * 
+	 * @param all (optional) whether all projects should be listed instead of only those the user can read
 	 * @param responseContentType (optional) the response content type
      * @return <li>a <b>200-OK</b> status and a list of projects 
      * 		   where the user has access to</li>
+     *         <li>a <b>403-FORBIDDEN</b> status when all projects were requested
+     *         without the permission to list them</li>
 	 */
 	@GetMapping("/projects")
-    @PreAuthorize("isAuthenticated() and @auth.hasGlobalPermission(#root, 'project:list-all')")
+    @PreAuthorize("isAuthenticated()")
     @Audit
-    public ResponseEntity<?> getProjectsWithAccessTo(@RequestHeader(name = "accept", required = false) String responseContentType) {
-		// Get subject/user from security context
-		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null) {
-        	log.debug("Could not retrieve the authentication from the security context.");
-        	return responseService.unprocessableEntity(responseContentType);
-        }
-        
-		Object principal = authentication.getPrincipal();
-		if (!(principal instanceof Jwt jwt)) {
-			log.debug("The authentication principal was not a JWT.");
-        	return responseService.unprocessableEntity(responseContentType);
+    public ResponseEntity<?> getProjectsWithAccessTo(@RequestParam(name = "all", required = false, defaultValue = "false") boolean all,
+    												 @RequestHeader(name = "accept", required = false) String responseContentType) {
+		// Listing all projects requires the global permission
+		if (all) {
+			if (!authorizationService.hasGlobalPermission("project:list-all")) {
+				log.debug("The requesting user is not allowed to list all projects.");
+				return responseService.forbidden(responseContentType);
+			}
+			
+			List<ProjectDTO> projects = projectDBService.getAllProjects();
+			log.debug("Succesfully retrieved a list of all " + projects.size() + (projects.size() == 1 ? " project." : " projects."));
+			return responseService.ok(responseContentType, projects);
 		}
-        
-		// Get all permissions of the current subject/user
-		List<PermissionDTO> permissions = permissionDBService.getAllPermissionsForSubject(jwt.getSubject());
 		
 		// Collect all projects with read-access into a list
 		Set<ProjectDTO> projects = new HashSet<>();
-		for (PermissionDTO p : permissions) {
-			if (p.getResourceType().equalsIgnoreCase("PROJECT") && p.getAction().equalsIgnoreCase("project:read")
-					&& p.getDecision().equalsIgnoreCase("ALLOW") && p.getValidFrom().isBefore(OffsetDateTime.now())
-					&& p.getValidTo().isAfter(OffsetDateTime.now())) {
-				projects.add(projectDBService.getProjectByID(p.getResourceId()));
+		for (EffectivePermissionDTO p : permissionDBService.getCurrentlyAllowedActionsForRequester()) {
+			if ("PROJECT".equalsIgnoreCase(p.getResourceType()) && "project:read".equals(p.getAction()) && p.getResourceName() != null) {
+				ProjectDTO project = projectDBService.getProjectByAbbreviation(p.getResourceName());
+				if (project != null) {
+					projects.add(project);
+				}
 			}
 		}
         

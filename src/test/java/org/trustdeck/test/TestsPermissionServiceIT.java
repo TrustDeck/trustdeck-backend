@@ -40,10 +40,13 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.trustdeck.dto.DomainDTO;
+import org.trustdeck.dto.EffectivePermissionDTO;
 import org.trustdeck.dto.EntityDTO;
 import org.trustdeck.dto.EntityTypeDTO;
 import org.trustdeck.dto.PermissionDTO;
+import org.trustdeck.dto.PermissionReplacementDTO;
 import org.trustdeck.dto.ProjectDTO;
+import org.trustdeck.dto.UserDTO;
 import org.trustdeck.service.AssertWebRequestService;
 import org.trustdeck.service.PermissionDBService;
 
@@ -59,6 +62,9 @@ public class TestsPermissionServiceIT extends AssertWebRequestService {
 
     /** The Keycloak ID of the user "test2", who receives the permissions in these tests. */
     private static final String TEST2_ID = "2719369c-4354-4303-aab3-a5f43a9aa4d6";
+
+    /** The Keycloak ID of the user "test", who runs the tests and holds all permissions. */
+    private static final String TEST_ID = "3dfb6717-3def-493b-a237-b7345fc42718";
 
     /** The domain created for every test. */
     private static final String DOMAIN = "TestStudie";
@@ -192,13 +198,18 @@ public class TestsPermissionServiceIT extends AssertWebRequestService {
     public void globalPermissionTest() throws Exception {
         String permissionPath = "/api/permissions/global";
         List<PermissionDTO> listProjects = List.of(this.permission("GLOBAL", "project:list-all"));
+        Map<String, String> allProjects = Map.of("all", "true");
 
-        this.assertForbiddenRequest("listProjectsWithoutPermission", get("/api/projects"), null, null, this.getTest2AccessToken());
+        // Every user can list the projects they can read, but listing all projects requires the global permission
+        MockHttpServletResponse response = this.assertOkRequest("listOwnProjectsWithoutPermission", get("/api/projects"), null, null, this.getTest2AccessToken());
+        assertTrue(this.mapJsonObjectsInStringToList(response.getContentAsString(), ProjectDTO.class).isEmpty());
+        this.assertForbiddenRequest("listAllProjectsWithoutPermission", get("/api/projects"), allProjects, null, this.getTest2AccessToken());
 
         // Grant the permission
         this.assertCreatedRequest("createGlobalPermission", post(permissionPath), test2Parameter, listProjects, this.getAccessToken());
         assertEquals(Set.of("project:list-all"), this.getActions(permissionPath));
-        this.assertOkRequest("listProjectsWithPermission", get("/api/projects"), null, null, this.getTest2AccessToken());
+        response = this.assertOkRequest("listAllProjectsWithPermission", get("/api/projects"), allProjects, null, this.getTest2AccessToken());
+        assertTrue(this.mapJsonObjectsInStringToList(response.getContentAsString(), ProjectDTO.class).stream().anyMatch(p -> PROJECT.equals(p.getAbbreviation())));
 
         // Domain actions can't be granted globally
         this.assertBadRequestRequest("createGlobalPermissionDomainAction", post(permissionPath), test2Parameter,
@@ -206,7 +217,13 @@ public class TestsPermissionServiceIT extends AssertWebRequestService {
 
         // Delete the permission
         this.assertNoContent("deleteGlobalPermission", delete(permissionPath), test2Parameter, listProjects, this.getAccessToken());
-        this.assertForbiddenRequest("listProjectsAfterDeletion", get("/api/projects"), null, null, this.getTest2AccessToken());
+        this.assertForbiddenRequest("listAllProjectsAfterDeletion", get("/api/projects"), allProjects, null, this.getTest2AccessToken());
+
+        // A project read permission is enough to see the project in the own list
+        this.assertCreatedRequest("createProjectReadPermission", post("/api/permissions/projects/" + PROJECT), test2Parameter,
+                List.of(this.permission("PROJECT", "project:read")), this.getAccessToken());
+        response = this.assertOkRequest("listOwnProjectsWithPermission", get("/api/projects"), null, null, this.getTest2AccessToken());
+        assertEquals(List.of(PROJECT), this.mapJsonObjectsInStringToList(response.getContentAsString(), ProjectDTO.class).stream().map(ProjectDTO::getAbbreviation).toList());
     }
 
     /**
@@ -277,17 +294,45 @@ public class TestsPermissionServiceIT extends AssertWebRequestService {
         // Without the permission to manage permissions, test2 can't grant anything
         this.assertForbiddenRequest("createDomainPermissionWithoutManagePermission", post(permissionPath), test2Parameter,
                 List.of(this.permission("DOMAIN", "domain:read")), this.getTest2AccessToken());
-        this.assertForbiddenRequest("getAllPermissionsWithoutManagePermission", get("/api/permissions"), null, null, this.getTest2AccessToken());
 
-        // Allow test2 to manage the domain's permissions, but nothing else
+        // Allow test2 to manage the domain's permissions and to read the domain, but nothing else
         this.assertCreatedRequest("createDomainManagePermission", post(permissionPath), test2Parameter,
-                List.of(this.permission("DOMAIN", "domain:manage-permissions")), this.getAccessToken());
+                List.of(this.permission("DOMAIN", "domain:manage-permissions"), this.permission("DOMAIN", "domain:read")), this.getAccessToken());
         this.assertOkRequest("getDomainPermissionsAsManager", get(permissionPath), test2Parameter, null, this.getTest2AccessToken());
 
         // test2 can't grant itself actions it doesn't have
         this.assertForbiddenRequest("createDomainPermissionBeyondOwnActions", post(permissionPath), test2Parameter,
                 List.of(this.permission("DOMAIN", "domain:delete")), this.getTest2AccessToken());
         assertFalse(this.getActions(permissionPath).contains("domain:delete"));
+
+        // Replacing is rejected as a whole when an added action can't be granted, and the rejected actions are reported
+        List<PermissionDTO> beyondOwnActions = this.domainPermissions(TEST2_ID, "domain:manage-permissions", "domain:read", "domain:delete");
+        MockHttpServletResponse response = this.assertForbiddenRequest("updateDomainPermissionsBeyondOwnActions", put(permissionPath),
+                test2Parameter, beyondOwnActions, this.getTest2AccessToken());
+        assertEquals(List.of("domain:delete"), this.applySingleJsonContentToClass(response.getContentAsString(), PermissionReplacementDTO.class).getRejected());
+        assertEquals(Set.of("domain:manage-permissions", "domain:read"), this.getActions(permissionPath));
+
+        // A manager can edit a user who holds more actions than the manager, as long as nothing beyond the manager's actions is added
+        Map<String, String> testParameter = Map.of("userId", TEST_ID);
+        List<String> actionsOfTest = this.getActions(permissionPath, testParameter).stream().filter(a -> !a.equals("domain:delete")).toList();
+        response = this.assertOkRequest("updateDomainPermissionsOfMorePrivilegedUser", put(permissionPath), testParameter,
+                this.domainPermissions(TEST_ID, actionsOfTest.toArray(String[]::new)), this.getTest2AccessToken());
+        assertEquals(List.of("domain:delete"), this.applySingleJsonContentToClass(response.getContentAsString(), PermissionReplacementDTO.class).getRemoved());
+        assertEquals(Set.copyOf(actionsOfTest), this.getActions(permissionPath, testParameter));
+    }
+
+    /**
+     * Tests that only the decision ALLOW can be granted, since DENY is not evaluated.
+     *
+     * @throws Exception forwards any internally thrown exceptions
+     */
+    @Test
+    @DisplayName("denyIsRejectedTest")
+    public void denyIsRejectedTest() throws Exception {
+        PermissionDTO deny = this.permission("DOMAIN", "domain:read");
+        deny.setDecision("DENY");
+        this.assertBadRequestRequest("createDenyPermission", post("/api/permissions/domains/" + DOMAIN), test2Parameter, List.of(deny), this.getAccessToken());
+        this.assertNotFoundRequest("getPermissionsAfterDeny", get("/api/permissions/domains/" + DOMAIN), test2Parameter, null, this.getAccessToken());
     }
 
     /**
@@ -376,12 +421,53 @@ public class TestsPermissionServiceIT extends AssertWebRequestService {
         this.assertBadRequestRequest("searchUsersWithoutQuery", get("/api/permissions/users"), Map.of("query", " "), null, this.getAccessToken());
         this.assertForbiddenRequest("searchUsersWithoutPermission", get("/api/permissions/users"), Map.of("query", "test"), null, this.getTest2AccessToken());
 
-        // List all available permissions
-        response = this.assertOkRequest("getAllPermissions", get("/api/permissions"), null, null, this.getAccessToken());
+        // A manager of a single domain can search users, but only sees their permissions on that domain
+        this.assertCreatedRequest("createDomainManagePermissionForSearch", post("/api/permissions/domains/" + DOMAIN), test2Parameter,
+                List.of(this.permission("DOMAIN", "domain:manage-permissions")), this.getAccessToken());
+        response = this.assertOkRequest("searchUsersAsDomainManager", get("/api/permissions/users"), Map.of("query", TEST_ID), null, this.getTest2AccessToken());
+        List<UserDTO> users = this.mapJsonObjectsInStringToList(response.getContentAsString(), UserDTO.class);
+        assertEquals(1, users.size());
+        assertFalse(users.getFirst().getEffectivePermissions().isEmpty());
+        assertTrue(users.getFirst().getEffectivePermissions().stream().allMatch(p -> "DOMAIN".equals(p.getResourceType()) && DOMAIN.equals(p.getResourceName())));
+
+        // Every user can retrieve their own permissions
+        response = this.assertOkRequest("getOwnPermissions", get("/api/permissions/me"), null, null, this.getTest2AccessToken());
+        List<EffectivePermissionDTO> ownPermissions = this.mapJsonObjectsInStringToList(response.getContentAsString(), EffectivePermissionDTO.class);
+        assertEquals(List.of("domain:manage-permissions"), ownPermissions.stream().map(EffectivePermissionDTO::getAction).toList());
+        this.assertUnauthorizedRequest("getOwnPermissionsUnauth", get("/api/permissions/me"), null, null, "SomeToken");
+
+        // Every user can list all available permissions
+        response = this.assertOkRequest("getAllPermissions", get("/api/permissions"), null, null, this.getTest2AccessToken());
         String content = response.getContentAsString();
         for (String action : List.of("domain:read", "project:read", "entity:create", "system:statistics")) {
             assertTrue(content.contains("\"" + action + "\""), "Missing action " + action);
         }
+
+        // The list can be limited to one scope
+        response = this.assertOkRequest("getDomainPermissionCatalogue", get("/api/permissions"), Map.of("scope", "domain"), null, this.getTest2AccessToken());
+        List<EffectivePermissionDTO> catalogue = this.mapJsonObjectsInStringToList(response.getContentAsString(), EffectivePermissionDTO.class);
+        assertTrue(catalogue.stream().allMatch(p -> "DOMAIN".equals(p.getResourceType())));
+        assertTrue(catalogue.stream().anyMatch(p -> "pseudonym:create".equals(p.getAction())));
+        this.assertBadRequestRequest("getUnknownPermissionCatalogue", get("/api/permissions"), Map.of("scope", "planet"), null, this.getTest2AccessToken());
+    }
+
+    /**
+     * Helper to create domain permissions with the domain name, as needed for replacing permissions.
+     *
+     * @param subjectId the Keycloak ID of the user who receives the permissions
+     * @param actions the actions that are permitted
+     * @return the list of permission DTOs
+     */
+    private List<PermissionDTO> domainPermissions(String subjectId, String... actions) {
+        List<PermissionDTO> permissions = new ArrayList<>();
+        for (String action : actions) {
+            PermissionDTO permission = this.permission("DOMAIN", action);
+            permission.setSubjectId(subjectId);
+            permission.setDomainName(DOMAIN);
+            permissions.add(permission);
+        }
+
+        return permissions;
     }
 
     /**
@@ -426,7 +512,19 @@ public class TestsPermissionServiceIT extends AssertWebRequestService {
      * @throws Exception forwards any internally thrown exceptions
      */
     private Set<String> getActions(String permissionPath) throws Exception {
-        MockHttpServletResponse response = this.assertOkRequest("getPermissions", get(permissionPath), test2Parameter, null, this.getAccessToken());
+        return this.getActions(permissionPath, test2Parameter);
+    }
+
+    /**
+     * Helper to retrieve the actions a user has on the resource of the given permission path.
+     *
+     * @param permissionPath the path of the permission endpoint
+     * @param userParameter the query parameters identifying the user
+     * @return the set of actions
+     * @throws Exception forwards any internally thrown exceptions
+     */
+    private Set<String> getActions(String permissionPath, Map<String, String> userParameter) throws Exception {
+        MockHttpServletResponse response = this.assertOkRequest("getPermissions", get(permissionPath), userParameter, null, this.getAccessToken());
         List<PermissionDTO> permissions = this.mapJsonObjectsInStringToList(response.getContentAsString(), PermissionDTO.class);
 
         return new ArrayList<>(permissions).stream().map(PermissionDTO::getAction).collect(Collectors.toSet());
