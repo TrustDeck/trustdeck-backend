@@ -211,7 +211,7 @@ public class TestsRecordServiceIT extends AssertWebRequestService {
         createRecordDto.setIdentifierItem(IdentifierItem.builder().identifier(assertId).idType(assertIdType).build());
 
         // Unauthorized tests for creating
-        this.assertBadRequestRequest("createNewRecordBadRequest", post("/api/domains/" + domainName + "/pseudonyms"), null, createRecordDto, "");
+        this.assertUnauthorizedRequest("createNewRecordNoToken", post("/api/domains/" + domainName + "/pseudonyms"), null, createRecordDto, "");
         this.assertUnauthorizedRequest("createNewRecordUnauth", post("/api/domains/" + domainName + "/pseudonyms"), null, createRecordDto, "SomeToken");
 
         MockHttpServletResponse response = this.assertCreatedRequest("createNewRecord", post("/api/domains/" + domainName + "/pseudonyms"), null, createRecordDto, this.getAccessToken());
@@ -237,7 +237,7 @@ public class TestsRecordServiceIT extends AssertWebRequestService {
         };
 
         // Unauthorized test for reading
-        this.assertBadRequestRequest("readRecordBadRequest", get("/api/domains/" + domainName + "/pseudonyms"), getParameter, null, "");
+        this.assertUnauthorizedRequest("readRecordNoToken", get("/api/domains/" + domainName + "/pseudonyms"), getParameter, null, "");
         this.assertUnauthorizedRequest("readRecordUnauth", get("/api/domains/" + domainName + "/pseudonyms"), getParameter, null, "SomeToken");
 
         response = this.assertOkRequest("readRecordByIdentifier", get("/api/domains/" + domainName + "/pseudonyms"), getParameter, null, this.getAccessToken());
@@ -276,7 +276,7 @@ public class TestsRecordServiceIT extends AssertWebRequestService {
         updateRecordDto.setIdentifierItem(IdentifierItem.builder().idType(assertNewIdType).build());
 
         // Unauthorized test for updating
-        this.assertBadRequestRequest("updateRecordBadRequest", put("/api/domains/" + domainName + "/pseudonyms/complete"), updateParameter, updateRecordDto, "");
+        this.assertUnauthorizedRequest("updateRecordNoToken", put("/api/domains/" + domainName + "/pseudonyms/complete"), updateParameter, updateRecordDto, "");
         this.assertUnauthorizedRequest("updateRecordUnauth", put("/api/domains/" + domainName + "/pseudonyms/complete"), updateParameter, updateRecordDto, "SomeToken");
 
         // Delete a record
@@ -290,7 +290,7 @@ public class TestsRecordServiceIT extends AssertWebRequestService {
         };
 
         // Unauthorized test for deleting
-        this.assertBadRequestRequest("deleteRecordBadRequest", delete("/api/domains/" + domainName + "/pseudonyms"), deleteParameter, null, "");
+        this.assertUnauthorizedRequest("deleteRecordNoToken", delete("/api/domains/" + domainName + "/pseudonyms"), deleteParameter, null, "");
         this.assertUnauthorizedRequest("deleteRecordUnauth", delete("/api/domains/" + domainName + "/pseudonyms"), deleteParameter, null, "SomeToken");
 
         this.assertNoContent("deleteRecord", delete("/api/domains/" + domainName + "/pseudonyms"), deleteParameter, null, this.getAccessToken());
@@ -433,7 +433,7 @@ public class TestsRecordServiceIT extends AssertWebRequestService {
         recordDtoList.add(new PseudonymDTO().assignPojoValues(pseudonym2));
 
         // Unauthorized test for batch create
-        this.assertBadRequestRequest("createNewRecordBatchBadRequest", post("/api/domains/" + goodDomain + "/pseudonyms/batch"), null, recordDtoList, "");
+        this.assertUnauthorizedRequest("createNewRecordBatchNoToken", post("/api/domains/" + goodDomain + "/pseudonyms/batch"), null, recordDtoList, "");
         this.assertUnauthorizedRequest("createNewRecordBatchUnauth", post("/api/domains/" + goodDomain + "/pseudonyms/batch"), null, recordDtoList, "SomeToken");
 
         // No body

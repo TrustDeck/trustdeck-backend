@@ -18,6 +18,7 @@
 package org.trustdeck.security.authentication.handler;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
@@ -31,7 +32,7 @@ import java.io.PrintWriter;
 import java.security.Principal;
 
 /**
- * Used to control incoming requests without an access token.
+ * Used to control incoming requests without a valid access token.
  * 
  * @author Eric Wündisch and Armin Müller
  */
@@ -52,21 +53,22 @@ public class CustomAuthenticationEntryPointHandler implements AuthenticationEntr
         String username = getRequesterName(httpServletRequest);
         String ip = getClientIpAddress(httpServletRequest);
 
-        log.debug("Request without an access token encountered. Request was denied with status code 400-BAD_REQUEST.");
+        log.debug("Request without a valid access token encountered. Request was denied with status code 401-UNAUTHORIZED.");
     	log.trace("Causing request: [" + method + "] " + uri + "\nCausing user: " + username + ", IP: " + ip);
         
         if (!httpServletResponse.isCommitted() ) {
-	        // Set a 400-BAD_REQUEST status.
-	        httpServletResponse.setStatus(HttpStatus.BAD_REQUEST.value());
+	        // Set a 401-UNAUTHORIZED status and tell the client to authenticate with a bearer token.
+	        httpServletResponse.setStatus(HttpStatus.UNAUTHORIZED.value());
+	        httpServletResponse.setHeader(HttpHeaders.WWW_AUTHENTICATE, "Bearer");
 	        
 	        // Try to add an accompanying text.
             PrintWriter writer;
             try {
 				writer = httpServletResponse.getWriter();
-	            writer.print(HttpStatus.BAD_REQUEST.name().toUpperCase());
+	            writer.print(HttpStatus.UNAUTHORIZED.name().toUpperCase());
 			} catch (IOException e) {
 				// Not really critical since a HTTP status was successfully set already.
-				log.trace("Couldn't add a text to the 400-BAD_REQUEST state: " + e.getMessage());
+				log.trace("Couldn't add a text to the 401-UNAUTHORIZED state: " + e.getMessage());
 			}
         }
     }
