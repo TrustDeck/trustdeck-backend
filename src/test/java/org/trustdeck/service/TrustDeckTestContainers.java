@@ -18,6 +18,7 @@
 package org.trustdeck.service;
 
 import java.time.Duration;
+import java.util.UUID;
 
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.testcontainers.containers.GenericContainer;
@@ -61,8 +62,11 @@ public final class TrustDeckTestContainers {
     /** The Keycloak client from the example Keycloak database. */
     private static final String CLIENT_ID = "trustdeck";
 
-    /** The secret of the Keycloak client from the example Keycloak database. */
-    private static final String CLIENT_SECRET = "1h6T3Dnx45hrd4pgv7YdcIfP9GRarbpN";
+    /** 
+     * The secret of the Keycloak client. It is generated for every test run and replaces the
+     * public secret of the example Keycloak database, just like during a regular installation.
+     */
+    private static final String CLIENT_SECRET = UUID.randomUUID().toString();
 
     /** The network alias under which Keycloak reaches the database. */
     private static final String DATABASE_ALIAS = "trustdeck-postgresql";
@@ -78,7 +82,11 @@ public final class TrustDeckTestContainers {
             .withUsername(DATABASE_USER)
             .withPassword(DATABASE_PASSWORD)
             .withCopyFileToContainer(MountableFile.forClasspathResource("db/trustdeck-example.sql"), "/docker-entrypoint-initdb.d/1-trustdeck-example.sql")
-            .withCopyFileToContainer(MountableFile.forClasspathResource("db/keycloak-example.sql"), "/docker-entrypoint-initdb.d/2-keycloak-example.sql");
+            .withCopyFileToContainer(MountableFile.forClasspathResource("db/keycloak-example.sql"), "/docker-entrypoint-initdb.d/2-keycloak-example.sql")
+            .withCopyFileToContainer(MountableFile.forClasspathResource("db/keycloak-rotate-client-secret.sh", 0755), "/docker-entrypoint-initdb.d/3-keycloak-rotate-client-secret.sh")
+            .withEnv("KEYCLOAK_CLIENT_ID", CLIENT_ID)
+            .withEnv("KEYCLOAK_CLIENT_SECRET", CLIENT_SECRET)
+            .withEnv("KEYCLOAK_REALM_NAME", REALM);
 
     /** The Keycloak container using the Keycloak database from the database container. */
     private static final GenericContainer<?> KEYCLOAK = new GenericContainer<>(KEYCLOAK_IMAGE)

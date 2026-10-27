@@ -2547,7 +2547,6 @@ INSERT INTO public.keycloak_role (id, client_realm_constraint, client_role, desc
 INSERT INTO public.keycloak_role (id, client_realm_constraint, client_role, description, name, realm_id, client, realm) VALUES ('666ed87a-22da-43e8-8cf0-08cffd1e0b8a', 'development', false, '${role_uma_authorization}', 'uma_authorization', 'development', NULL, NULL);
 INSERT INTO public.keycloak_role (id, client_realm_constraint, client_role, description, name, realm_id, client, realm) VALUES ('124eaa2c-407d-457e-b011-43de0447c790', 'c8afb027-0c8c-4bdc-bf0f-be4a2c172439', true, '${role_view-groups}', 'view-groups', 'master', 'c8afb027-0c8c-4bdc-bf0f-be4a2c172439', NULL);
 INSERT INTO public.keycloak_role (id, client_realm_constraint, client_role, description, name, realm_id, client, realm) VALUES ('4acedae6-e297-4029-a9a0-4c87ff235666', '15b080ba-7783-49c9-b155-86ac5e1855b1', true, '${role_view-groups}', 'view-groups', 'development', '15b080ba-7783-49c9-b155-86ac5e1855b1', NULL);
-INSERT INTO public.keycloak_role (id, client_realm_constraint, client_role, description, name, realm_id, client, realm) VALUES ('b9a1e688-d3f0-495f-a2ed-8e915adac8b4', '2be34fd2-d092-457d-b56b-9535ff5ea02a', true, NULL, 'permission-manager', 'development', '2be34fd2-d092-457d-b56b-9535ff5ea02a', NULL);
 
 
 --
@@ -3408,12 +3407,9 @@ INSERT INTO public.user_role_mapping (role_id, user_id) VALUES ('d380a439-4eb0-4
 INSERT INTO public.user_role_mapping (role_id, user_id) VALUES ('448e437a-b999-419d-81b9-462d3b9faa47', '25003dd9-9c30-4da5-a4cd-79c2a7dab915');
 INSERT INTO public.user_role_mapping (role_id, user_id) VALUES ('4ba6f226-e44d-4601-8dfd-64c21b052b17', '25003dd9-9c30-4da5-a4cd-79c2a7dab915');
 INSERT INTO public.user_role_mapping (role_id, user_id) VALUES ('4fdcfef1-c38b-4ca0-8182-b1d664709520', '25003dd9-9c30-4da5-a4cd-79c2a7dab915');
-INSERT INTO public.user_role_mapping (role_id, user_id) VALUES ('b9a1e688-d3f0-495f-a2ed-8e915adac8b4', '3dfb6717-3def-493b-a237-b7345fc42718');
 INSERT INTO public.user_role_mapping (role_id, user_id) VALUES ('03eb0760-ea2d-490f-8608-402662997979', '224572f6-e49b-4955-9b9c-658f385c9492');
 INSERT INTO public.user_role_mapping (role_id, user_id) VALUES ('d380a439-4eb0-4f64-b365-184a87dbf1ae', '224572f6-e49b-4955-9b9c-658f385c9492');
-INSERT INTO public.user_role_mapping (role_id, user_id) VALUES ('4fdcfef1-c38b-4ca0-8182-b1d664709520', '224572f6-e49b-4955-9b9c-658f385c9492');
 INSERT INTO public.user_role_mapping (role_id, user_id) VALUES ('6c7ef695-de97-4ffe-bef7-1607ed2c1b37', '224572f6-e49b-4955-9b9c-658f385c9492');
-INSERT INTO public.user_role_mapping (role_id, user_id) VALUES ('4ba6f226-e44d-4601-8dfd-64c21b052b17', '224572f6-e49b-4955-9b9c-658f385c9492');
 INSERT INTO public.user_role_mapping (role_id, user_id) VALUES ('3e73b15e-331c-481d-b925-babec65d356b', '224572f6-e49b-4955-9b9c-658f385c9492');
 INSERT INTO public.user_role_mapping (role_id, user_id) VALUES ('8bc3c47d-126a-49b7-94d7-541ff2ff7804', '224572f6-e49b-4955-9b9c-658f385c9492');
 INSERT INTO public.user_role_mapping (role_id, user_id) VALUES ('448e437a-b999-419d-81b9-462d3b9faa47', '224572f6-e49b-4955-9b9c-658f385c9492');
