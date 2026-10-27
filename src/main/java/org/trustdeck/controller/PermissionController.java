@@ -18,7 +18,9 @@
 package org.trustdeck.controller;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import lombok.extern.slf4j.Slf4j;
@@ -43,6 +45,7 @@ import org.trustdeck.dto.UserDTO;
 import org.trustdeck.jooq.generated.tables.pojos.Domain;
 import org.trustdeck.dto.EffectivePermissionDTO;
 import org.trustdeck.dto.PermissionDTO;
+import org.trustdeck.dto.PermissionReplacementDTO;
 import org.trustdeck.dto.ProjectDTO;
 import org.trustdeck.dto.EntityTypeDTO;
 import org.trustdeck.security.audittrail.annotation.Audit;
@@ -101,8 +104,24 @@ public class PermissionController {
     private DefaultProperties defaults;
 
 	/**
+	 * Retrieves the currently effective permissions of the requesting user.
+	 * Every authenticated user may retrieve their own permissions.
+	 *
+	 * @param responseContentType (optional) the response content type
+	 * @return a <b>200-OK</b> status with the (possibly empty) list of the requester's effective permissions
+	 */
+	@GetMapping("/me")
+	@PreAuthorize("isAuthenticated()")
+	@Audit
+	public ResponseEntity<?> getOwnPermissions(@RequestHeader(name = "accept", required = false) String responseContentType) {
+		return responseService.ok(responseContentType, permissionDBService.getCurrentlyAllowedActionsForRequester());
+	}
+
+	/**
      * Searches normal Keycloak users, LDAP-federated users returned by Keycloak, client
      * service accounts, and exact Keycloak user IDs based on a search term.
+     * Allowed for every user who may manage the permissions of at least one resource. The 
+     * effective permissions of the found users are limited to the resources the requester manages.
 	 *
 	 * @param query the search term
 	 * @param responseContentType (optional) the response content type
@@ -114,7 +133,7 @@ public class PermissionController {
 	 *         <i>query</i> parameter is missing</li>
 	 */
 	@GetMapping("/users")
-    @PreAuthorize("isAuthenticated() and @auth.hasGlobalPermission(#root, 'global:manage-permissions')")
+    @PreAuthorize("isAuthenticated() and @auth.hasAnyManagePermission(#root)")
     @Audit
     public ResponseEntity<?> searchUsers(@RequestParam(name = "query") String query,
                                          @RequestHeader(name = "accept", required = false) String responseContentType) {
@@ -128,8 +147,8 @@ public class PermissionController {
         int resultLimit = defaults.getPermission().getUserSearchResultLimit();
         List<UserDTO> users = keycloakService.searchUsers(query, resultLimit + 1);
 
-        // Add the list of allowed actions for this user
-        users.forEach(u -> u.setEffectivePermissions(permissionDBService.getCurrentlyAllowedActionsForSubject(u.getUserId())));
+        // Add the list of allowed actions for this user (only on resources the requester manages)
+        users.forEach(u -> u.setEffectivePermissions(permissionDBService.getCurrentlyAllowedActionsManagedByRequester(u.getUserId())));
         
         if (users.size() == resultLimit + 1) {
             log.debug("The list of found users was longer than the maximum (" + resultLimit + " and was therefore truncated.");
@@ -197,6 +216,12 @@ public class PermissionController {
 			// Ignore nulls
 			if (p == null) {
 				log.trace("Permission validation failed because it was null.");
+				continue;
+			}
+
+			// Only ALLOW is supported, since DENY would not be evaluated by the permission checks
+			if (p.getDecision() != null && !PermissionDBService.DECISION_ALLOW.equalsIgnoreCase(p.getDecision())) {
+				log.trace("Permission validation failed because the decision was not \"ALLOW\".");
 				continue;
 			}
 
@@ -340,6 +365,12 @@ public class PermissionController {
 				continue;
 			}
 
+			// Only ALLOW is supported, since DENY would not be evaluated by the permission checks
+			if (p.getDecision() != null && !PermissionDBService.DECISION_ALLOW.equalsIgnoreCase(p.getDecision())) {
+				log.trace("Permission validation failed because the decision was not \"ALLOW\".");
+				continue;
+			}
+
 			// Ensure that the correct user gets the permissions assigned
 			if (!userId.equals(p.getSubjectId())) {
 				log.trace("Permission validation failed because permission's subjectId did not match the userId "
@@ -466,6 +497,12 @@ public class PermissionController {
 	        	continue;
 	        }
 	        
+	        // Only ALLOW is supported, since DENY would not be evaluated by the permission checks
+	        if (p.getDecision() != null && !PermissionDBService.DECISION_ALLOW.equalsIgnoreCase(p.getDecision())) {
+	        	log.trace("Permission validation failed because the decision was not \"ALLOW\".");
+	        	continue;
+	        }
+
 	        // Ensure that the correct user gets the permissions assigned
  			if (!userId.equals(p.getSubjectId())) {
  				log.trace("Permission validation failed because permission's subjectId did not match the userId "
@@ -602,6 +639,12 @@ public class PermissionController {
 			// Ignore nulls
 			if (p == null) {
 				log.trace("Permission validation failed because it was null.");
+				continue;
+			}
+
+			// Only ALLOW is supported, since DENY would not be evaluated by the permission checks
+			if (p.getDecision() != null && !PermissionDBService.DECISION_ALLOW.equalsIgnoreCase(p.getDecision())) {
+				log.trace("Permission validation failed because the decision was not \"ALLOW\".");
 				continue;
 			}
 
@@ -860,37 +903,39 @@ public class PermissionController {
     
     /**
      * Method for retrieving all permissions defined in the application.yml.
-     * This method is needed by the frontend to discover what roles are currently available.
+     * This method is needed by the frontend to discover what actions are currently available.
+     * Every authenticated user may retrieve this catalogue.
      * 
+     * @param scope (optional) the resource type to which the list is limited (PROJECT, DOMAIN, ENTITY_TYPE, or GLOBAL)
 	 * @param responseContentType (optional) the response content type
-     * @return <li>a <b>200-OK</b> status with the list of permissions 
-     * 		   for the user when successful</li>
+     * @return <li>a <b>200-OK</b> status with the list of available permissions</li>
+     *         <li>a <b>400-BAD_REQUEST</b> status when the scope is unknown</li>
      */
     @GetMapping
-    @PreAuthorize("isAuthenticated() and @auth.hasGlobalPermission(#root, 'global:manage-permissions')")
+    @PreAuthorize("isAuthenticated()")
     @Audit
-    public ResponseEntity<?> getAllPermissions(@RequestHeader(name = "accept", required = false) String responseContentType) {
+    public ResponseEntity<?> getAllPermissions(@RequestParam(name = "scope", required = false) String scope,
+    										   @RequestHeader(name = "accept", required = false) String responseContentType) {
+    	Map<String, List<String>> catalogue = new LinkedHashMap<>();
+    	catalogue.put("PROJECT", permissionConfig.getProjectPermissions());
+    	catalogue.put("DOMAIN", permissionConfig.getDomainPermissions());
+    	catalogue.put("ENTITY_TYPE", permissionConfig.getEntityTypePermissions());
+    	catalogue.put("GLOBAL", permissionConfig.getGlobalPermissions());
+    	
+    	// Limit the catalogue to the requested scope
+    	if (Assertion.isNotNullOrEmpty(scope)) {
+    		String resourceType = scope.trim().toUpperCase();
+    		if (!catalogue.containsKey(resourceType)) {
+    			log.debug("Unknown permission scope \"" + scope + "\".");
+    			return responseService.badRequest(responseContentType);
+    		}
+    		
+    		catalogue.keySet().retainAll(List.of(resourceType));
+    	}
+    	
     	List<EffectivePermissionDTO> permissions = new ArrayList<>();
-    	
-    	// Add project-specific roles
-		for (String projectRole : permissionConfig.getProjectPermissions()) {
-			permissions.add(EffectivePermissionDTO.builder().resourceType("PROJECT").action(projectRole).build());
-    	}
-    	
-    	// Add domain-specific roles
-		for (String domainRole : permissionConfig.getDomainPermissions()) {
-			permissions.add(EffectivePermissionDTO.builder().resourceType("DOMAIN").action(domainRole).build());
-    	}
-    	
-    	// Add entity-type-specific roles
-		for (String entityTypeRole : permissionConfig.getEntityTypePermissions()) {
-			permissions.add(EffectivePermissionDTO.builder().resourceType("ENTITY_TYPE").action(entityTypeRole).build());
-    	}
-    	
-    	// Add global roles
-    	for (String globalRole : permissionConfig.getGlobalPermissions()) {
-    		permissions.add(EffectivePermissionDTO.builder().resourceType("GLOBAL").action(globalRole).build());
-    	}
+    	catalogue.forEach((resourceType, actions) -> actions.forEach(action -> 
+    			permissions.add(EffectivePermissionDTO.builder().resourceType(resourceType).action(action).build())));
     	
         return responseService.ok(responseContentType, permissions);
     }
@@ -902,10 +947,12 @@ public class PermissionController {
 	 * @param userId the ID of the user
 	 * @param permissions the desired list of permissions; each permission must contain the domainName of the domain given in the URI
 	 * @param responseContentType (optional) the response content type
-     * @return <li>a <b>200-OK</b> status when the user's permissions were 
-     * 		   successfully synchronized with the provided list</li>
+     * @return <li>a <b>200-OK</b> status and the added and removed actions when the user's 
+     * 		   permissions were successfully synchronized with the provided list</li>
      *         <li>a <b>400-BAD_REQUEST</b> status when a parameter is 
      *         missing or the update failed</li>
+     *         <li>a <b>403-FORBIDDEN</b> status and the rejected actions when the requester
+     *         is not allowed to grant some of the added actions; nothing is changed then</li>
      *         <li>a <b>404-NOT_FOUND</b> status when the specified domain does 
      *         not exist or cannot be resolved</li>
 	 */
@@ -939,6 +986,12 @@ public class PermissionController {
             
             if (Assertion.isNullOrEmpty(p.getDomainName()) || !p.getDomainName().equals(domainName)) {
             	log.trace("Permission validation failed because the domain name was different from the URI-domain name.");
+            	continue;
+            }
+
+            // Only ALLOW is supported, since DENY would not be evaluated by the permission checks
+            if (p.getDecision() != null && !PermissionDBService.DECISION_ALLOW.equalsIgnoreCase(p.getDecision())) {
+            	log.trace("Permission validation failed because the decision was not \"ALLOW\".");
             	continue;
             }
 
@@ -976,14 +1029,17 @@ public class PermissionController {
 
         // Replace the old actions with the set of new actions
         log.trace("Found " + validatedActions.size() + " valid permissions for the replacement process.");
-        boolean result = permissionDBService.replacePermissionsForResourceSecured(userId, "DOMAIN", domain.getId(), validatedActions);
+        PermissionReplacementDTO result = permissionDBService.replacePermissionsForResourceSecured(userId, "DOMAIN", domain.getId(), validatedActions);
         
-        if (result) {
-        	log.debug("Successfully updated the domain permissions for user " + userId + " in domain " + domain.getName());
-        	return responseService.ok(responseContentType);
-        } else {
+        if (result == null) {
         	log.debug("Failed to update the domain permissions for user " + userId + " in domain " + domain.getName());
         	return responseService.badRequest(responseContentType);
+        } else if (!result.getRejected().isEmpty()) {
+        	log.debug("The requester is not allowed to grant the actions " + result.getRejected() + ", so nothing was changed.");
+        	return responseService.forbidden(responseContentType, result);
+        } else {
+        	log.debug("Successfully updated the domain permissions for user " + userId + " in domain " + domain.getName());
+        	return responseService.ok(responseContentType, result);
         }
     }
 
@@ -994,10 +1050,12 @@ public class PermissionController {
 	 * @param userId the ID of the user
 	 * @param permissions the desired list of permissions; each permission must contain the projectAbbreviation of the project given in the URI
 	 * @param responseContentType (optional) the response content type
-     * @return <li>a <b>200-OK</b> status when the user's permissions were 
-     * 		   successfully synchronized with the provided list</li>
+     * @return <li>a <b>200-OK</b> status and the added and removed actions when the user's 
+     * 		   permissions were successfully synchronized with the provided list</li>
      *         <li>a <b>400-BAD_REQUEST</b> status when a parameter is 
      *         missing or the update failed</li>
+     *         <li>a <b>403-FORBIDDEN</b> status and the rejected actions when the requester
+     *         is not allowed to grant some of the added actions; nothing is changed then</li>
      *         <li>a <b>404-NOT_FOUND</b> status when the specified project does 
      *         not exist or cannot be resolved</li>
 	 */
@@ -1031,6 +1089,12 @@ public class PermissionController {
             
             if (Assertion.isNullOrEmpty(p.getProjectAbbreviation()) || !p.getProjectAbbreviation().equals(projectAbbreviation)) {
             	log.trace("Permission validation failed because the project abbreviation was different from the URI-project abbreviation.");
+            	continue;
+            }
+
+            // Only ALLOW is supported, since DENY would not be evaluated by the permission checks
+            if (p.getDecision() != null && !PermissionDBService.DECISION_ALLOW.equalsIgnoreCase(p.getDecision())) {
+            	log.trace("Permission validation failed because the decision was not \"ALLOW\".");
             	continue;
             }
 
@@ -1068,14 +1132,17 @@ public class PermissionController {
 
         // Replace the old actions with the set of new actions
         log.trace("Found " + validatedActions.size() + " valid permissions for the replacement process.");
-        boolean result = permissionDBService.replacePermissionsForResourceSecured(userId, "PROJECT", project.getId(), validatedActions);
+        PermissionReplacementDTO result = permissionDBService.replacePermissionsForResourceSecured(userId, "PROJECT", project.getId(), validatedActions);
         
-        if (result) {
-        	log.debug("Successfully updated the project permissions for user " + userId + " in project " + project.getAbbreviation());
-        	return responseService.ok(responseContentType);
-        } else {
+        if (result == null) {
         	log.debug("Failed to update the project permissions for user " + userId + " in project " + project.getAbbreviation());
         	return responseService.badRequest(responseContentType);
+        } else if (!result.getRejected().isEmpty()) {
+        	log.debug("The requester is not allowed to grant the actions " + result.getRejected() + ", so nothing was changed.");
+        	return responseService.forbidden(responseContentType, result);
+        } else {
+        	log.debug("Successfully updated the project permissions for user " + userId + " in project " + project.getAbbreviation());
+        	return responseService.ok(responseContentType, result);
         }
     }
     
@@ -1085,10 +1152,12 @@ public class PermissionController {
 	 * @param userId the ID of the user
 	 * @param permissions the desired list of permissions
 	 * @param responseContentType (optional) the response content type
-     * @return <li>a <b>200-OK</b> status when the user's permissions were 
-     * 		   successfully synchronized with the provided list</li>
+     * @return <li>a <b>200-OK</b> status and the added and removed actions when the user's 
+     * 		   permissions were successfully synchronized with the provided list</li>
      *         <li>a <b>400-BAD_REQUEST</b> status when a parameter is 
      *         missing or the update failed</li>
+     *         <li>a <b>403-FORBIDDEN</b> status and the rejected actions when the requester
+     *         is not allowed to grant some of the added actions; nothing is changed then</li>
      */
     @PutMapping("/global")
     @PreAuthorize("isAuthenticated() and @auth.hasGlobalPermission(#root, 'global:manage-permissions')")
@@ -1108,6 +1177,12 @@ public class PermissionController {
             	log.trace("Permission validation failed because it was null.");
             	continue;
             }
+
+	        // Only ALLOW is supported, since DENY would not be evaluated by the permission checks
+	        if (p.getDecision() != null && !PermissionDBService.DECISION_ALLOW.equalsIgnoreCase(p.getDecision())) {
+	        	log.trace("Permission validation failed because the decision was not \"ALLOW\".");
+	        	continue;
+	        }
 
 	        // Ensure that the correct user is affected
  			if (!userId.equals(p.getSubjectId())) {
@@ -1146,14 +1221,17 @@ public class PermissionController {
 
         // Replace the old actions with the set of new actions
         log.trace("Found " + validatedActions.size() + " valid permissions for the replacement process.");
-        boolean result = permissionDBService.replacePermissionsForResourceSecured(userId, "GLOBAL", 0, validatedActions);
+        PermissionReplacementDTO result = permissionDBService.replacePermissionsForResourceSecured(userId, "GLOBAL", 0, validatedActions);
         
-        if (result) {
-        	log.debug("Successfully updated the global permissions for user " + userId + ".");
-        	return responseService.ok(responseContentType);
-        } else {
+        if (result == null) {
         	log.debug("Failed to update the global permissions for user " + userId + ".");
         	return responseService.badRequest(responseContentType);
+        } else if (!result.getRejected().isEmpty()) {
+        	log.debug("The requester is not allowed to grant the actions " + result.getRejected() + ", so nothing was changed.");
+        	return responseService.forbidden(responseContentType, result);
+        } else {
+        	log.debug("Successfully updated the global permissions for user " + userId + ".");
+        	return responseService.ok(responseContentType, result);
         }
     }
 
@@ -1165,8 +1243,10 @@ public class PermissionController {
      * @param userId the ID of the user
      * @param permissions the desired list of permissions; each permission must contain the entityTypeName of the entity type given in the URI
      * @param responseContentType (optional) the response content type
-     * @return <li>a <b>200-OK</b> status when the permissions were synchronized successfully</li>
+     * @return <li>a <b>200-OK</b> status and the added and removed actions when the permissions were synchronized successfully</li>
      *         <li>a <b>400-BAD_REQUEST</b> status when required parameters are missing or replacement failed</li>
+     *         <li>a <b>403-FORBIDDEN</b> status and the rejected actions when the requester is not allowed 
+     *         to grant some of the added actions; nothing is changed then</li>
      *         <li>a <b>404-NOT_FOUND</b> status when the type name could not be resolved</li>
      */
     @PutMapping("/projects/{projectAbbreviation}/entity-types/{entityTypeName}")
@@ -1200,6 +1280,12 @@ public class PermissionController {
             
             if (Assertion.isNullOrEmpty(p.getEntityTypeName()) || !p.getEntityTypeName().equals(entityTypeName)) {
             	log.trace("Permission validation failed because the entity type's name was different from the URI-entity type's name.");
+            	continue;
+            }
+
+            // Only ALLOW is supported, since DENY would not be evaluated by the permission checks
+            if (p.getDecision() != null && !PermissionDBService.DECISION_ALLOW.equalsIgnoreCase(p.getDecision())) {
+            	log.trace("Permission validation failed because the decision was not \"ALLOW\".");
             	continue;
             }
 
@@ -1237,14 +1323,17 @@ public class PermissionController {
 
         // Replace the old actions with the set of new actions
         log.trace("Found " + validatedActions.size() + " valid permissions for the replacement process.");
-        boolean result = permissionDBService.replacePermissionsForResourceSecured(userId, "ENTITY_TYPE", type.getId(), validatedActions);
+        PermissionReplacementDTO result = permissionDBService.replacePermissionsForResourceSecured(userId, "ENTITY_TYPE", type.getId(), validatedActions);
         
-        if (result) {
-        	log.debug("Successfully updated the entity type permissions for user " + userId + " in entity type " + type.getName());
-        	return responseService.ok(responseContentType);
-        } else {
+        if (result == null) {
         	log.debug("Failed to update the entity type permissions for user " + userId + " in entity type " + type.getName());
         	return responseService.badRequest(responseContentType);
+        } else if (!result.getRejected().isEmpty()) {
+        	log.debug("The requester is not allowed to grant the actions " + result.getRejected() + ", so nothing was changed.");
+        	return responseService.forbidden(responseContentType, result);
+        } else {
+        	log.debug("Successfully updated the entity type permissions for user " + userId + " in entity type " + type.getName());
+        	return responseService.ok(responseContentType, result);
         }
     }
     

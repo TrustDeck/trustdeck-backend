@@ -408,6 +408,18 @@ public class ResponseService {
     }
 
     /**
+     * Forbidden (403) response entity with a body.
+     * 
+     * @param <T> the type parameter
+     * @param mediaType the media type
+     * @param body the details on what was forbidden
+     * @return the response entity
+     */
+    public <T> ResponseEntity<T> forbidden(String mediaType, T body) {
+    	return this.createResponseEntityFromBody(HttpStatus.FORBIDDEN, mediaType, body, null);
+    }
+
+    /**
      * Partial Content (206) response entity <b>with</b> a body.
      *
      * @param <T> the type parameter

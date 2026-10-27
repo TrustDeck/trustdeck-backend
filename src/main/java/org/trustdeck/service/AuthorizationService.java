@@ -249,4 +249,20 @@ public class AuthorizationService {
         
         return permissionDBService.isActionAllowed(jwt.getSubject(), "GLOBAL", 0, action);
     }
+
+    /**
+     * Method that checks whether the user may manage the permissions of at least one resource,
+     * i.e. holds any of the *:manage-permissions actions on any resource.
+     *
+     * @param root method-level security control context object that includes information about the authenticated user
+     * @return {@code true} if the requesting user manages the permissions of any resource, {@code false} if not
+     */
+    public boolean hasAnyManagePermission(MethodSecurityExpressionOperations root) {
+        Authentication authentication = root.getAuthentication();
+        if (authentication == null || !(authentication.getPrincipal() instanceof Jwt)) {
+        	return false;
+        }
+        
+        return permissionDBService.isRequesterManagingAnyResource();
+    }
 }
