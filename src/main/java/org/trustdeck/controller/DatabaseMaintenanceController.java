@@ -17,6 +17,8 @@
 
 package org.trustdeck.controller;
 
+import java.util.Set;
+
 import jakarta.ws.rs.NotFoundException;
 import org.jooq.DSLContext;
 import org.jooq.exception.DataAccessException;
@@ -31,6 +33,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.trustdeck.security.audittrail.annotation.Audit;
+import org.trustdeck.service.CachingService;
 import org.trustdeck.service.PermissionDBService;
 import org.trustdeck.service.ResponseService;
 import lombok.extern.slf4j.Slf4j;
@@ -57,25 +60,47 @@ public class DatabaseMaintenanceController {
     /** Enables access to the permission grants database methods. */
     @Autowired
     private PermissionDBService permissionDBService;
+    
+    /** Cache for the permission look-ups. */
+    @Autowired
+    private CachingService cachingService;
+
+    /** 
+     * The tables that may be truncated. The audit trail is not included, so that it can't be 
+     * removed through the API.
+     */
+    private static final Set<String> TRUNCATABLE_TABLES = Set.of("algorithm", "domain", "entity", "entity_type", 
+    		"linkage_token", "permission_grant", "project", "project_image", "pseudonym");
 
     /**
      * Endpoint to truncate a table in the database.
      * Restarts identity counters. Might fail, when foreign keys exist.
+     * Only the tables holding TrustDeck's data can be truncated; afterwards, the permission caches are cleared.
      * Access to this method should be highly restricted.
      * 
      * @param tableName (required) the name of the table the user wants to truncate
-     * @return a <b>200-OK</b> status
+     * @return <li>a <b>200-OK</b> status when the table was truncated</li>
+     *         <li>a <b>400-BAD_REQUEST</b> status when the table may not be truncated</li>
+     *         <li>a <b>500-INTERNAL_SERVER_ERROR</b> status when truncating failed</li>
      */
     @DeleteMapping("/tables/{tableName}")
     @PreAuthorize("isAuthenticated() and @auth.hasGlobalPermission(#root, 'table:delete')")
     @Audit
     public ResponseEntity<?> clearTable(@PathVariable("tableName") String tableName) {
+    	if (tableName == null || !TRUNCATABLE_TABLES.contains(tableName.trim().toLowerCase())) {
+    		log.debug("The table \"" + tableName + "\" may not be truncated.");
+    		return responseService.badRequest(MediaType.TEXT_PLAIN_VALUE);
+    	}
+    	
         try {
-			dsl.truncate(DSL.table(DSL.name(tableName))).restartIdentity().execute();
+			dsl.truncate(DSL.table(DSL.name(tableName.trim().toLowerCase()))).restartIdentity().execute();
         } catch (DataAccessException e) {
-            log.error("Trincating the table " + tableName + " from the database was unsuccessfull.", e);
+            log.error("Truncating the table " + tableName + " from the database was unsuccessful.", e);
             return responseService.internalServerError(MediaType.TEXT_PLAIN_VALUE);
         }
+        
+        // The cached permissions might refer to removed permissions or resources
+        cachingService.clearAllPermissionCaches();
 
         return responseService.ok(MediaType.TEXT_PLAIN_VALUE);
     }
