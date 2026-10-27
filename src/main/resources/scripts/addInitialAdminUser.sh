@@ -21,6 +21,11 @@ Description:
   entity-type, and global permission lists from application.yml, and inserts
   all currently defined permissions for that user into TrustDeck PostgreSQL.
 
+  The permissions are valid for 3650 days. Rerunning the script renews them:
+  permissions the user already holds are extended to 3650 days from now (they
+  are never shortened), and permissions on resources created since the last run
+  are added.
+
 The script is independent of the current working directory. It locates the
 repository root by walking upwards from the script file itself.
 
@@ -836,14 +841,12 @@ SELECT
     NOW(),
     '$CREATED_BY_SQL'
 FROM actions a
-WHERE NOT EXISTS (
-    SELECT 1
-    FROM permission_grant pg
-    WHERE pg.subject_id = '$SUBJECT_ID_SQL'
-      AND pg.resource_type = 'GLOBAL'
-      AND pg.resource_id = 0
-      AND pg.action = a.action
-);
+ON CONFLICT (subject_id, resource_type, resource_id, action) DO UPDATE SET
+    decision = 'ALLOW',
+    valid_from = CASE WHEN permission_grant.valid_from IS NULL THEN NULL ELSE LEAST(permission_grant.valid_from, EXCLUDED.valid_from) END,
+    valid_to = CASE WHEN permission_grant.valid_to IS NULL THEN NULL ELSE GREATEST(permission_grant.valid_to, EXCLUDED.valid_to) END,
+    updated_at = NOW(),
+    updated_by = EXCLUDED.updated_by;
 
 -- Domain permissions for all existing domains
 WITH actions(action) AS (
@@ -882,14 +885,12 @@ SELECT
     '$CREATED_BY_SQL'
 FROM domains d
 CROSS JOIN actions a
-WHERE NOT EXISTS (
-    SELECT 1
-    FROM permission_grant pg
-    WHERE pg.subject_id = '$SUBJECT_ID_SQL'
-      AND pg.resource_type = 'DOMAIN'
-      AND pg.resource_id = d.id
-      AND pg.action = a.action
-);
+ON CONFLICT (subject_id, resource_type, resource_id, action) DO UPDATE SET
+    decision = 'ALLOW',
+    valid_from = CASE WHEN permission_grant.valid_from IS NULL THEN NULL ELSE LEAST(permission_grant.valid_from, EXCLUDED.valid_from) END,
+    valid_to = CASE WHEN permission_grant.valid_to IS NULL THEN NULL ELSE GREATEST(permission_grant.valid_to, EXCLUDED.valid_to) END,
+    updated_at = NOW(),
+    updated_by = EXCLUDED.updated_by;
 
 -- Project permissions for all existing projects
 WITH actions(action) AS (
@@ -928,14 +929,12 @@ SELECT
     '$CREATED_BY_SQL'
 FROM projects p
 CROSS JOIN actions a
-WHERE NOT EXISTS (
-    SELECT 1
-    FROM permission_grant pg
-    WHERE pg.subject_id = '$SUBJECT_ID_SQL'
-      AND pg.resource_type = 'PROJECT'
-      AND pg.resource_id = p.id
-       AND pg.action = a.action
-);
+ON CONFLICT (subject_id, resource_type, resource_id, action) DO UPDATE SET
+    decision = 'ALLOW',
+    valid_from = CASE WHEN permission_grant.valid_from IS NULL THEN NULL ELSE LEAST(permission_grant.valid_from, EXCLUDED.valid_from) END,
+    valid_to = CASE WHEN permission_grant.valid_to IS NULL THEN NULL ELSE GREATEST(permission_grant.valid_to, EXCLUDED.valid_to) END,
+    updated_at = NOW(),
+    updated_by = EXCLUDED.updated_by;
 
 -- Entity-type permissions for all existing project-specific entity types
 WITH actions(action) AS (
@@ -974,14 +973,12 @@ SELECT
     '$CREATED_BY_SQL'
 FROM entity_types et
 CROSS JOIN actions a
-WHERE NOT EXISTS (
-    SELECT 1
-    FROM permission_grant pg
-    WHERE pg.subject_id = '$SUBJECT_ID_SQL'
-      AND pg.resource_type = 'ENTITY_TYPE'
-      AND pg.resource_id = et.id
-      AND pg.action = a.action
-);
+ON CONFLICT (subject_id, resource_type, resource_id, action) DO UPDATE SET
+    decision = 'ALLOW',
+    valid_from = CASE WHEN permission_grant.valid_from IS NULL THEN NULL ELSE LEAST(permission_grant.valid_from, EXCLUDED.valid_from) END,
+    valid_to = CASE WHEN permission_grant.valid_to IS NULL THEN NULL ELSE GREATEST(permission_grant.valid_to, EXCLUDED.valid_to) END,
+    updated_at = NOW(),
+    updated_by = EXCLUDED.updated_by;
 
 COMMIT;
 SQL
