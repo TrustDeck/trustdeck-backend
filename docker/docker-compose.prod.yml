@@ -25,10 +25,15 @@ services:
       POSTGRES_USER: ${DATABASE_TRUSTDECK_USER}
       POSTGRES_PASSWORD: ${DATABASE_TRUSTDECK_PASSWORD}
       POSTGRES_DB: trustdeck
+      # Used to replace the example realm's public client secret during the initialization
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
+      KEYCLOAK_REALM_NAME: ${KEYCLOAK_REALM_NAME}
       TZ: Europe/Berlin
     volumes:
       - ../src/main/resources/db/trustdeck-example.sql:/docker-entrypoint-initdb.d/trustdeck-example.sql
       - ../src/main/resources/db/keycloak-example.sql:/docker-entrypoint-initdb.d/keycloak-example.sql
+      - ../src/main/resources/db/keycloak-rotate-client-secret.sh:/docker-entrypoint-initdb.d/keycloak-rotate-client-secret.sh
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
       - trustdeck_postgresql_data:/var/lib/postgresql
