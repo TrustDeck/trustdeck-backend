@@ -190,6 +190,14 @@ public class CachingService {
     }
 
     /**
+     * Invalidates all cached effective permissions of all subjects.
+     * Useful for when a resource was renamed, since the effective permissions contain the resource names.
+     */
+    public void clearEffectivePermissionsCache() {
+    	hazelcast.getMap(MAP_EFFECTIVE_PERMISSIONS_BY_SUBJECT).clear();
+    }
+
+    /**
      * Invalidates all cache entries for all caches.
      * Useful for when all permissions get removed.
      */

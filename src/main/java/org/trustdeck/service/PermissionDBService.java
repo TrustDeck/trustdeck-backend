@@ -1073,105 +1073,41 @@ public class PermissionDBService {
 	}
 	
 	/**
-     * Method to remove all entity type-specific permissions at once for a given entity type.
-     * The user is identified through the request.
+     * Method to remove the permissions of all subjects for a given resource.
+     * Used when a resource is deleted, so that no orphaned permissions remain.
      * 
-     * @param entityTypeId the persistent ID of the entity type for which permissions should be removed
-     * @param entityTypeName the entity type name, used only for logging
+     * @param resourceType the type of the resource, e.g. DOMAIN or ENTITY_TYPE
+     * @param resourceId the (internal) database ID of the resource
      * @return {@code true} when the deletion was successful, {@code false} otherwise
      */
 	@Transactional
-	public boolean removeEntityTypePermissionsForSubject(int entityTypeId, String entityTypeName) {
-		String subjectID = subjectIdFromRequest();
-		String type = "ENTITY_TYPE";
-		int resourceID = entityTypeId;
-		
-		// Get list of permissions from the database
-		List<PermissionDTO> activePermissions = getAllPermissionsForSubject(subjectID);
-
-		// Check if the list is empty
-		if (activePermissions == null || activePermissions.isEmpty()) {
-			log.trace("No permissions to remove --> done.");
-			return true;
-		}
-		
-		// Remove all permissions in this list that are not related to the given entity type
-		activePermissions = activePermissions.stream().filter(p -> p.getResourceType().equalsIgnoreCase(type) && p.getResourceId() == resourceID).toList();
-		
-		// Check again if the list is empty
-		if (activePermissions == null || activePermissions.isEmpty()) {
-			log.trace("No permissions to remove --> done.");
-			return true;
-		}
-		
-		// Remove the permissions
-		log.trace("Removing " + activePermissions.size() + " permissions for the entity type \"" + entityTypeName + "\".");
-		List<Boolean> results = deletePermissions(activePermissions);
-		
-		if (results == null || results.isEmpty()) {
-			log.error("Could not remove any permissions for entity type \"" + entityTypeName + "\", so the process was aborted.");
+	public boolean removePermissionsForResource(String resourceType, int resourceId) {
+		List<String> subjectIds;
+		try {
+			// Remember the affected subjects for the cache invalidation and remove the permissions
+			subjectIds = dsl.selectDistinct(PERMISSION_GRANT.SUBJECT_ID)
+					.from(PERMISSION_GRANT)
+					.where(PERMISSION_GRANT.RESOURCE_TYPE.equalIgnoreCase(resourceType))
+					.and(PERMISSION_GRANT.RESOURCE_ID.eq(resourceId))
+					.fetch(PERMISSION_GRANT.SUBJECT_ID);
+			
+			dsl.deleteFrom(PERMISSION_GRANT)
+					.where(PERMISSION_GRANT.RESOURCE_TYPE.equalIgnoreCase(resourceType))
+					.and(PERMISSION_GRANT.RESOURCE_ID.eq(resourceId))
+					.execute();
+		} catch (DataAccessException e) {
+			log.error("Couldn't remove the permissions for resource (type = " + resourceType + ", id = " + resourceId + "): " + e.getMessage(), e);
 			return false;
-		} else if (results.contains(false)) {
-			log.warn("Could not remove all permissions for entity type \"" + entityTypeName + "\". There might be orphaned permissions.");
-			return true;
-		}
-
-		// Invalidate cache entries
-		cachingService.invalidateSubject(subjectID);
-		cachingService.invalidateContext(subjectID, type, resourceID);
-		
-		log.debug("Successfully removed all permissions for entity type \"" + entityTypeName + "\".");
-		return true;
-	}
-	
-	/**
-     * Method to remove all project-specific permissions at once for a given domain.
-     * The user is identified through the request.
-     * 
-     * @param projectAbbreviation the abbreviation of the project for which the permissions should be removed
-     * @return {@code true} when the deletion was successful, {@code false} otherwise
-     */
-	@Transactional
-	public boolean removeProjectPermissionsForSubject(String projectAbbreviation) {
-		String subjectID = subjectIdFromRequest();
-		String type = "PROJECT";
-		int resourceID = pdba.getProjectByAbbreviation(projectAbbreviation).getId();
-		
-		// Get list of project-related permissions from the database
-		List<PermissionDTO> activePermissions = getAllPermissionsForSubject(subjectID);
-
-		// Check if the list is empty
-		if (activePermissions == null || activePermissions.isEmpty()) {
-			log.trace("No permissions to remove --> done.");
-			return true;
-		}
-		
-		// Remove all permissions in this list that are not related to the given domain
-		activePermissions = activePermissions.stream().filter(p -> p.getResourceType().equalsIgnoreCase(type) && p.getResourceId() == resourceID).toList();
-		
-		// Check again if the list is empty
-		if (activePermissions == null || activePermissions.isEmpty()) {
-			log.trace("No permissions to remove --> done.");
-			return true;
-		}
-		
-		// Remove the permissions
-		log.trace("Removing " + activePermissions.size() + " permissions for the project \"" + projectAbbreviation + "\".");
-		List<Boolean> results = deletePermissions(activePermissions);
-		
-		if (results == null || results.isEmpty()) {
-			log.error("Could not remove any permissions for project \"" + projectAbbreviation + "\", so the process was aborted.");
-			return false;
-		} else if (results.contains(false)) {
-			log.warn("Could not remove all permissions for project \"" + projectAbbreviation + "\". There might be orphaned permissions.");
-			return true;
 		}
 		
 		// Invalidate cache entries
-		cachingService.invalidateSubject(subjectID);
-		cachingService.invalidateContext(subjectID, type, resourceID);
+		for (String subjectId : subjectIds) {
+			cachingService.invalidateSubject(subjectId);
+			cachingService.invalidateContext(subjectId, resourceType, resourceId);
+		}
 		
-		log.debug("Successfully removed all permissions for project \"" + projectAbbreviation + "\".");
+		log.debug("Successfully removed the permissions of " + subjectIds.size() + " subject(s) for resource (type = " 
+				+ resourceType + ", id = " + resourceId + ").");
 		return true;
 	}
 	

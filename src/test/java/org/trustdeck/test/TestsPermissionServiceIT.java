@@ -25,6 +25,8 @@ import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuild
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.post;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.put;
 
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -37,9 +39,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.trustdeck.dto.DomainDTO;
 import org.trustdeck.dto.EntityDTO;
 import org.trustdeck.dto.EntityTypeDTO;
 import org.trustdeck.dto.PermissionDTO;
+import org.trustdeck.dto.ProjectDTO;
 import org.trustdeck.service.AssertWebRequestService;
 import org.trustdeck.service.PermissionDBService;
 
@@ -284,6 +288,78 @@ public class TestsPermissionServiceIT extends AssertWebRequestService {
         this.assertForbiddenRequest("createDomainPermissionBeyondOwnActions", post(permissionPath), test2Parameter,
                 List.of(this.permission("DOMAIN", "domain:delete")), this.getTest2AccessToken());
         assertFalse(this.getActions(permissionPath).contains("domain:delete"));
+    }
+
+    /**
+     * Tests that renaming a domain or a project doesn't change any permissions, so that
+     * a user with only the update action can't gain further actions by renaming.
+     *
+     * @throws Exception forwards any internally thrown exceptions
+     */
+    @Test
+    @DisplayName("renameKeepsPermissionsTest")
+    public void renameKeepsPermissionsTest() throws Exception {
+        // Allow test2 to read and update the domain, then let test2 rename it
+        this.assertCreatedRequest("createDomainUpdatePermissions", post("/api/permissions/domains/" + DOMAIN), test2Parameter,
+                List.of(this.permission("DOMAIN", "domain:read"), this.permission("DOMAIN", "domain:update")), this.getAccessToken());
+        DomainDTO renamedDomain = new DomainDTO();
+        renamedDomain.setName("RenamedStudie");
+        this.assertOkRequest("renameDomain", put("/api/domains"), Map.of("name", DOMAIN), renamedDomain, this.getTest2AccessToken());
+
+        // The renamer keeps exactly the actions it had and the other users keep theirs
+        assertEquals(Set.of("domain:read", "domain:update"), this.getActions("/api/permissions/domains/RenamedStudie"));
+        this.assertOkRequest("getRenamedDomain", get("/api/domains/RenamedStudie"), null, null, this.getAccessToken());
+
+        // The same applies to projects (a project in use can't be renamed, so an unused one is created)
+        ProjectDTO project = new ProjectDTO();
+        project.setName("Rename Study");
+        project.setAbbreviation("RENAME");
+        project.setStartDate(OffsetDateTime.of(2024, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC));
+        project.setEndDate(OffsetDateTime.of(2034, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC));
+        this.assertCreatedRequest("createProjectForRenaming", post("/api/projects"), null, project, this.getAccessToken());
+        this.assertCreatedRequest("createProjectUpdatePermissions", post("/api/permissions/projects/RENAME"), test2Parameter,
+                List.of(this.permission("PROJECT", "project:read"), this.permission("PROJECT", "project:update")), this.getAccessToken());
+        ProjectDTO renamedProject = new ProjectDTO();
+        renamedProject.setAbbreviation("RENAMED");
+        this.assertOkRequest("renameProject", put("/api/projects/RENAME"), null, renamedProject, this.getTest2AccessToken());
+
+        assertEquals(Set.of("project:read", "project:update"), this.getActions("/api/permissions/projects/RENAMED"));
+        this.assertOkRequest("getRenamedProject", get("/api/projects/RENAMED"), null, null, this.getAccessToken());
+    }
+
+    /**
+     * Tests that deleting a domain or an entity type removes the permissions of all users on it.
+     *
+     * @throws Exception forwards any internally thrown exceptions
+     */
+    @Test
+    @DisplayName("deleteRemovesPermissionsTest")
+    public void deleteRemovesPermissionsTest() throws Exception {
+        String definition = """
+                {
+                  "attributes": [ { "name": "name", "type": "string", "required": true, "linkage": false } ],
+                  "recordLinkage": { "enabled": false }
+                }
+                """;
+        this.assertCreatedRequest("createBaseTypeForDeletion", post("/api/entities/base-types"), null,
+                this.entityType("deletion-person", definition, null), this.getAccessToken());
+        this.assertCreatedRequest("createProjectTypeForDeletion", post("/api/projects/" + PROJECT + "/entities/config"), null,
+                this.entityType("deletion-participant", definition, "deletion-person"), this.getAccessToken());
+
+        // Grant test2 permissions on the domain and the entity type
+        this.assertCreatedRequest("createDomainPermissionForDeletion", post("/api/permissions/domains/" + DOMAIN), test2Parameter,
+                List.of(this.permission("DOMAIN", "domain:read")), this.getAccessToken());
+        this.assertCreatedRequest("createEntityTypePermissionForDeletion", post("/api/permissions/projects/" + PROJECT + "/entity-types/deletion-participant"),
+                test2Parameter, List.of(this.permission("ENTITY_TYPE", "entity:read")), this.getAccessToken());
+
+        // Delete both resources as user "test"
+        this.assertNoContent("deleteDomainWithPermissions", delete("/api/domains"), Map.of("name", DOMAIN), null, this.getAccessToken());
+        this.assertNoContent("deleteEntityTypeWithPermissions", delete("/api/projects/" + PROJECT + "/entities/config/deletion-participant"),
+                null, null, this.getAccessToken());
+
+        // No permissions of test2 remain on either resource
+        assertTrue(permissionDBService.getAllPermissionsForSubject(TEST2_ID).stream()
+                .noneMatch(p -> "DOMAIN".equals(p.getResourceType()) || "ENTITY_TYPE".equals(p.getResourceType())));
     }
 
     /**

@@ -88,6 +88,10 @@ public class DomainDBAccessService {
     @Autowired
     @Lazy
     private PermissionDBService permissionDBService;
+    
+    /** Cache for the permission look-ups. */
+    @Autowired
+    private CachingService cachingService;
 
     /** Represents the duplication status of a requested insertion of a domain into the database. */
     public static final String INSERTION_DUPLICATE = "duplicate";
@@ -651,8 +655,8 @@ public class DomainDBAccessService {
                     throw new UnexpectedResultSizeException(1, deletedDomains);
                 }
                 
-                // Handle permissions
-                if (!permissionDBService.removeDomainPermissionsForSubject(domain.getName())) {
+                // Remove the permissions of all users on the deleted domain
+                if (!permissionDBService.removePermissionsForResource("DOMAIN", domain.getId())) {
                 	log.debug("Failed to remove the domain's permissions. Aborting.");
                 	throw new PermissionManagementException(domain.getName());
                 }
@@ -1001,18 +1005,10 @@ public class DomainDBAccessService {
                     }
                 } // End of recursive child-handling
                 
-                // Check if the permissions need to be adapted
+                // Permissions reference the domain's ID, which doesn't change on renaming. Only the cached
+                // effective permissions contain the domain name and need to be refreshed.
                 if (newDomain.getName() != null && !oldDomain.getName().equals(newDomain.getName())) {
-                	// The domain name has changed, so we need to update the permissions
-                    if (!permissionDBService.removeDomainPermissionsForSubject(newDomain.getName())) {
-                    	log.debug("Failed to remove the domain's permissions. Aborting.");
-                    	throw new PermissionManagementException(newDomain.getName());
-                    }
-                    
-                    if (!permissionDBService.addDomainPermissionsForSubject(oldDomain.getId())) {
-                    	log.debug("Failed to add the domain's permissions. Aborting.");
-                    	throw new PermissionManagementException(newDomain.getName());
-                    }
+                	cachingService.clearEffectivePermissionsCache();
                 }
 
                 // Implicit transaction commit here
@@ -1034,9 +1030,6 @@ public class DomainDBAccessService {
             return null;
         } catch (FailedChildDomainUpdateException h) {
             log.error("Updating the child-domain \"" + h.getChildName() + "\" was unsuccessful and was therefore rolled back.");
-            return null;
-        } catch (PermissionManagementException i) {
-            log.error("Updating the permissions failed for the domain (" + i.getCausingResource() + "). The update was therefore rolled back.");
             return null;
         } catch (Exception j) {
             log.error("Couldn't update the domain: " + j.getClass() + ": " + j.getMessage());
