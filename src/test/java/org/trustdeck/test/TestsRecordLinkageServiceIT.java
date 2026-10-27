@@ -82,7 +82,7 @@ public class TestsRecordLinkageServiceIT extends AssertWebRequestService {
         String trustDeckId = this.createEntity(entityPath, ERIKA);
 
         // Unauthorized tests
-        this.assertBadRequestRequest("recordLinkageBadRequest", post(linkagePath), null, this.entity(ERIKA), "");
+        this.assertUnauthorizedRequest("recordLinkageNoToken", post(linkagePath), null, this.entity(ERIKA), "");
         this.assertUnauthorizedRequest("recordLinkageUnauth", post(linkagePath), null, this.entity(ERIKA), "SomeToken");
 
         // The identical entity is found

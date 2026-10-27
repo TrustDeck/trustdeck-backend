@@ -63,7 +63,7 @@ public class TestsStatisticsServiceIT extends AssertWebRequestService {
 
         // Requests on non-existing projects are forbidden, so that their existence is not revealed
         assertForbiddenRequest("projectStatisticsNotFound", get("/api/projects/UNKNOWN/statistics"), null, null, getAccessToken());
-        assertBadRequestRequest("projectStatisticsWithoutToken", get("/api/projects/TEST/statistics"), null, null, "");
+        assertUnauthorizedRequest("projectStatisticsWithoutToken", get("/api/projects/TEST/statistics"), null, null, "");
         assertUnauthorizedRequest("projectStatisticsUnauthenticated", get("/api/projects/TEST/statistics"), null, null, "SomeToken");
     }
 

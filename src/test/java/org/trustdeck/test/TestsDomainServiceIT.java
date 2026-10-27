@@ -65,7 +65,7 @@ public class TestsDomainServiceIT extends AssertWebRequestService {
         reducedDomainDto.setProjectAbbreviation("TEST");
 
         // Unauthorized tests for creating a domain
-        this.assertBadRequestRequest("createDomainBadRequest", post("/api/domains"), null, reducedDomainDto, "");
+        this.assertUnauthorizedRequest("createDomainNoToken", post("/api/domains"), null, reducedDomainDto, "");
         this.assertUnauthorizedRequest("createDomainUnauth", post("/api/domains"), null, reducedDomainDto, "SomeToken");
 
         MockHttpServletResponse response = this.assertCreatedRequest("createDomain", post("/api/domains"), null, reducedDomainDto, this.getAccessToken());
@@ -79,7 +79,7 @@ public class TestsDomainServiceIT extends AssertWebRequestService {
         completeDomainDto.setProjectAbbreviation("TEST");
 
         // Unauthorized tests for creating a domain
-        this.assertBadRequestRequest("createDomainCompleteBadRequest", post("/api/domains/complete"), null, completeDomainDto, "");
+        this.assertUnauthorizedRequest("createDomainCompleteNoToken", post("/api/domains/complete"), null, completeDomainDto, "");
         this.assertUnauthorizedRequest("createDomainCompleteUnauth", post("/api/domains/complete"), null, completeDomainDto, "SomeToken");
 
         response = this.assertCreatedRequest("createDomainComplete", post("/api/domains/complete"), null, completeDomainDto, this.getAccessToken());
@@ -186,7 +186,7 @@ public class TestsDomainServiceIT extends AssertWebRequestService {
         }};
 
         // Unauthorized tests for getting a domain
-        this.assertBadRequestRequest("getDomainBadRequest", get("/api/domains"), getParameter, null, "");
+        this.assertUnauthorizedRequest("getDomainNoToken", get("/api/domains"), getParameter, null, "");
         this.assertUnauthorizedRequest("getDomainUnauth", get("/api/domains"), getParameter, null, "SomeToken");
 
         MockHttpServletResponse response = this.assertOkRequest("getDomain", get("/api/domains/" + domainName), null, null, this.getAccessToken());

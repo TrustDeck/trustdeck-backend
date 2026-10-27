@@ -19,6 +19,7 @@ package org.trustdeck.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.delete;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get;
@@ -106,7 +107,7 @@ public class TestsPermissionServiceIT extends AssertWebRequestService {
         this.assertForbiddenRequest("getDomainWithoutPermission", get("/api/domains/" + DOMAIN), null, null, this.getTest2AccessToken());
 
         // Unauthorized tests for creating permissions
-        this.assertBadRequestRequest("createDomainPermissionBadRequest", post(permissionPath), test2Parameter, readPermission, "");
+        this.assertUnauthorizedRequest("createDomainPermissionNoToken", post(permissionPath), test2Parameter, readPermission, "");
         this.assertUnauthorizedRequest("createDomainPermissionUnauth", post(permissionPath), test2Parameter, readPermission, "SomeToken");
 
         // Grant the permission
@@ -319,6 +320,21 @@ public class TestsPermissionServiceIT extends AssertWebRequestService {
                 this.domainPermissions(TEST_ID, actionsOfTest.toArray(String[]::new)), this.getTest2AccessToken());
         assertEquals(List.of("domain:delete"), this.applySingleJsonContentToClass(response.getContentAsString(), PermissionReplacementDTO.class).getRemoved());
         assertEquals(Set.copyOf(actionsOfTest), this.getActions(permissionPath, testParameter));
+    }
+
+    /**
+     * Tests that tokens issued for other clients of the realm are not accepted, since their audience
+     * doesn't contain TrustDeck.
+     *
+     * @throws Exception forwards any internally thrown exceptions
+     */
+    @Test
+    @DisplayName("foreignAudienceTest")
+    public void foreignAudienceTest() throws Exception {
+        String adminCliToken = this.obtainAccessTokenForClient("admin-cli", null, "test", "test");
+        assertNotNull(adminCliToken);
+        MockHttpServletResponse response = this.assertUnauthorizedRequest("getOwnPermissionsWithForeignToken", get("/api/permissions/me"), null, null, adminCliToken);
+        assertTrue(response.getHeader("WWW-Authenticate").startsWith("Bearer"));
     }
 
     /**
