@@ -49,8 +49,12 @@ import lombok.extern.slf4j.Slf4j;
  * The listener is only active when {@code app.kafka.enabled=true}
  * in the application.yaml.
  * 
+ * @deprecated The internal Kafka listener will be replaced by the dedicated Kafka ingester
+ *             and will be removed in a future release.
+ * 
  * @author Armin Müller
  */
+@Deprecated(forRemoval = true)
 @Slf4j
 @Service
 @RequiredArgsConstructor

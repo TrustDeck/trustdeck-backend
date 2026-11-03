@@ -36,8 +36,12 @@ import org.springframework.kafka.listener.ContainerProperties;
 /**
  * Class that provides the configuration for the Kafka consumer.
  * 
+ * @deprecated The internal Kafka listener will be replaced by the dedicated Kafka ingester
+ *             and will be removed in a future release.
+ * 
  * @author Armin Müller
  */
+@Deprecated(forRemoval = true)
 @Configuration
 @ConditionalOnProperty(prefix = "app.kafka", name = "enabled", havingValue = "true")
 public class KafkaConsumerConfig {

@@ -312,9 +312,9 @@ public class EntityController {
 	 * @param responseContentType (optional) the response content type
 	 * @return <li>a <b>200-OK</b> status with the requested entity on success</li>
      *         <li>a <b>404-NOT_FOUND</b> status when the project, entity type, or 
-     *         entity cannot be found</li>
-     *         <li>a <b>410-GONE</b> status when the project has ended, the entity type 
-     *         is marked as deprecated, or the entity is marked as deleted</li>
+     *         entity cannot be found (deleted entities are treated as not found)</li>
+     *         <li>a <b>410-GONE</b> status when the project has ended or the entity type 
+     *         is marked as deprecated</li>
 	 */
 	@GetMapping("/projects/{projectAbbreviation}/entities/{entityTypeName}/{trustDeckId}")
 	@PreAuthorize("isAuthenticated() and @auth.hasEntityTypePermission(#root, #projectAbbreviation, #entityTypeName, 'entity:read')")
@@ -551,11 +551,11 @@ public class EntityController {
 	 * @param query the search string that should be looked up 
 	 * @param responseContentType (optional) the response content type
 	 * @return <li>a <b>200-OK</b> status with the list of matching entities on 
-	 * 		   success</li>
+	 * 		   success (an empty list when no entities match the query)</li>
      *         <li>a <b>206-PARTIAL_CONTENT</b> status with a truncated result set when 
      *         more than the maximum number of allowed results are found</li>
      *         <li>a <b>404-NOT_FOUND</b> status when the project or entity type cannot 
-     *         be found, or when no entities match the query</li>
+     *         be found</li>
      *         <li>a <b>410-GONE</b> status when the project has ended or the entity type 
      *         is marked as deprecated</li>
 	 */
@@ -594,7 +594,7 @@ public class EntityController {
 		// Evaluate findings
 		if (foundEntities == null || foundEntities.size() == 0) {
 			log.debug("No entities were found for the given search string.");
-			return responseService.notFound(responseContentType);
+			return responseService.ok(responseContentType, List.of());
 		} else if (foundEntities.size() > MAX_NUMBER_OF_SEARCH_RESULTS) {
 			log.debug("Successfully queried the database and found more than " + MAX_NUMBER_OF_SEARCH_RESULTS + " search results, so the result list was truncated.");
 			return responseService.partialContent(responseContentType, foundEntities.subList(0, MAX_NUMBER_OF_SEARCH_RESULTS));
@@ -618,9 +618,9 @@ public class EntityController {
      *         <li>a <b>403-FORBIDDEN</b> status when the rights to read or link 
      *         pseudonyms in any of the involved domains is missing</li>
      *         <li>a <b>404-NOT_FOUND</b> status when the project, the entity type, or  
-     *         the entity cannot be found</li>
-     *         <li>a <b>410-GONE</b> status when the project has ended, the entity type 
-     *         is marked as deprecated, or the entity is marked as deleted</li>
+     *         the entity cannot be found (deleted entities are treated as not found)</li>
+     *         <li>a <b>410-GONE</b> status when the project has ended or the entity type 
+     *         is marked as deprecated</li>
      *         <li>a <b>422-UNPROCESSABLE_ENTITY</b> status when there was no domain 
      *         associated with the entity type</li>
 	 */
