@@ -372,7 +372,8 @@ public class ProjectController {
 	 * The project will not be removed from the database but rather
 	 * tombstoned, meaning the end-date will be set properly so that
 	 * retrieving, updating, inserting, etc. is not allowed anymore.
-	 * The project permissions of the requesting user are removed as well.
+	 * The permissions on the project are kept, so that users with access to it 
+	 * receive a 410-GONE status for further requests.
 	 * 
 	 * @param projectAbbreviation the project's abbreviation
 	 * @param deleteDate (optional) the date from which the project should be considered as deleted 

@@ -11,6 +11,7 @@
         <blake3.version>0.2.2</blake3.version>
         <lz4.version>1.11.4</lz4.version>
         <springdoc.version>3.1.1</springdoc.version>
+        <commons-io.version>2.22.0</commons-io.version>
         <jar.finalName>trustdeck</jar.finalName>
         <jooq.skip>false</jooq.skip>
     </properties>
@@ -176,7 +177,26 @@
             <artifactId>spring-boot-starter-security-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <!-- Provides the PostgreSQL and Keycloak containers for the integration tests. -->
+            <!-- License: MIT License (compatible with Apache 2.0; https://joinup.ec.europa.eu/licence/compatibility-check/MIT/Apache-2.0) -->
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <!-- The Keycloak admin client pulls in an old version, which is too old for the Testcontainers' file copying. -->
+                <!-- License: Apache 2.0 -->
+                <groupId>commons-io</groupId>
+                <artifactId>commons-io</artifactId>
+                <version>${commons-io.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <build>
         <plugins>
