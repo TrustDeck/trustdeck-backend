@@ -19,7 +19,7 @@ package org.trustdeck.utils;
 
 import org.springframework.stereotype.Component;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 
 /**
  * This class encapsulates utility functionalities.
@@ -135,8 +135,8 @@ public class Assertion {
         	return true;
         }
     	
-    	if (node.isTextual()) {
-        	return node.asText().trim().isEmpty();
+    	if (node.isString()) {
+        	return node.asString().trim().isEmpty();
         }
         
         if (node.isArray() || node.isObject()) {

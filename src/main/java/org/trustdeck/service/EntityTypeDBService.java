@@ -39,9 +39,9 @@ import org.trustdeck.jooq.generated.tables.pojos.EntityType;
 import org.trustdeck.jooq.generated.tables.records.EntityTypeRecord;
 import org.trustdeck.utils.Assertion;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -603,7 +603,7 @@ public class EntityTypeDBService {
     		try {
 				String nodeAsString = objectMapper.writeValueAsString(node);
 				jsonb = JSONB.valueOf(nodeAsString);
-			} catch (JsonProcessingException e) {
+			} catch (JacksonException e) {
 				log.debug("Could not parse JsonNode into JSONB.");
 			}
     	}

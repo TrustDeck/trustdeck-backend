@@ -47,7 +47,7 @@ import org.trustdeck.security.audittrail.usertype.AuditUserType;
 import org.trustdeck.utils.Assertion;
 import org.trustdeck.utils.Utility;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
+import tools.jackson.core.JacksonException;
 
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
@@ -204,7 +204,7 @@ public class AuditInformationResolver {
 		try {
 			payload = (String) record.value();
 			kafkaDto = kafkaParser.parse(payload);
-		} catch (ClassCastException | JsonProcessingException e) {
+		} catch (ClassCastException | JacksonException e) {
 			log.warn("Parsing the Kafka message failed, so it was skipped.", e);
 
 		}
@@ -270,7 +270,7 @@ public class AuditInformationResolver {
         KafkaPseudonymMessageDTO kafkaDto = null;
 		try {
 			kafkaDto = kafkaParser.parse(payload);
-		} catch (ClassCastException | JsonProcessingException e) {
+		} catch (ClassCastException | JacksonException e) {
 			// Ignored
 		}
 

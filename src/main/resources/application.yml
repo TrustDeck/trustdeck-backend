@@ -29,10 +29,10 @@ spring:
   servlet:
     multipart:
       enabled: true
-  http:
-    converters:
-      # Keep Jackson 2 for HTTP message conversion until the code base is migrated to Jackson 3.
-      preferred-json-mapper: jackson2
+  jackson:
+    mapper:
+      # Jackson 3 sorts properties alphabetically by default; keep the declaration order of the DTOs.
+      sort-properties-alphabetically: false
   security:
     oauth2:
       resourceserver:

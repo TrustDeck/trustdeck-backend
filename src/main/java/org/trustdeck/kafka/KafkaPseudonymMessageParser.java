@@ -20,8 +20,8 @@ package org.trustdeck.kafka;
 import org.springframework.stereotype.Service;
 import org.trustdeck.dto.KafkaPseudonymMessageDTO;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 import lombok.RequiredArgsConstructor;
 
@@ -47,9 +47,9 @@ public class KafkaPseudonymMessageParser {
 	 * 
 	 * @param json the original Kafka message as a JSON string
 	 * @return the DTO with properly filled attribute fields
-	 * @throws JsonProcessingException when reading the original Kafka JSON message failed
+	 * @throws JacksonException when reading the original Kafka JSON message failed
 	 */
-	public KafkaPseudonymMessageDTO parse(String json) throws JsonProcessingException {
+	public KafkaPseudonymMessageDTO parse(String json) throws JacksonException {
 		// Initial mapping from JSON string into DTO --> fills the catch-all map
 		KafkaPseudonymMessageDTO dto = objectMapper.readValue(json, KafkaPseudonymMessageDTO.class);
 		

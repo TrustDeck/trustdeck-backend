@@ -154,7 +154,7 @@ class KeycloakServiceTest {
             assertEquals("service-account-trustdeck-kafka-connector", result.get(0).getUsername());
         }
 
-        verify(clients, org.mockito.Mockito.times(6)).findAll("", true, true, 0, 10);
+        verify(clients, times(6)).findAll("", true, true, 0, 10);
     }
 
     /**
