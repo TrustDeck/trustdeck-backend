@@ -229,7 +229,7 @@ public class EntityTypeController {
 		String associatedDomainName = entityTypeDTO.getAssociatedDomainName();
 
 		// Check for null values
-		if (Assertion.isNullOrEmpty(typeName, baseTypeName) || projectEntityTypeDef == null) {
+		if (!Assertion.isNotNullOrEmpty(typeName, baseTypeName) || projectEntityTypeDef == null) {
 			log.debug("Missing type name, base type name, or type definition.");
 			return responseService.badRequest(responseContentType);
 		}

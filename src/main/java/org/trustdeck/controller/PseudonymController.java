@@ -1131,7 +1131,7 @@ public class PseudonymController {
         }
 
         // Check if the requester has the permission for the newDomain if given
-        if (newDomain != null && !authorizationService.hasGlobalPermission(newDomain.getName())) {
+        if (newDomain != null && !authorizationService.hasDomainPermission(newDomain.getName(), "pseudonym:create")) {
             log.error("The user requested to change the domain of a pseudonym to a domain the user has no rights for.");
             return responseService.forbidden(responseContentType);
         }

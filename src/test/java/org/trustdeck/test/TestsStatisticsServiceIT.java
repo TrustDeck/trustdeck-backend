@@ -61,8 +61,10 @@ public class TestsStatisticsServiceIT extends AssertWebRequestService {
         assertEquals(1, statistics.getPseudonymsByDomain().size());
         assertEquals(1L, statistics.getPseudonymsByDomain().getFirst().getCount());
 
-        assertNotFoundRequest("projectStatisticsNotFound", get("/api/projects/UNKNOWN/statistics"), null, null, getAccessToken());
-        assertUnauthorizedRequest("projectStatisticsUnauthenticated", get("/api/projects/TEST/statistics"), null, null, "");
+        // Requests on non-existing projects are forbidden, so that their existence is not revealed
+        assertForbiddenRequest("projectStatisticsNotFound", get("/api/projects/UNKNOWN/statistics"), null, null, getAccessToken());
+        assertBadRequestRequest("projectStatisticsWithoutToken", get("/api/projects/TEST/statistics"), null, null, "");
+        assertUnauthorizedRequest("projectStatisticsUnauthenticated", get("/api/projects/TEST/statistics"), null, null, "SomeToken");
     }
 
     /**
@@ -88,7 +90,7 @@ public class TestsStatisticsServiceIT extends AssertWebRequestService {
                 && table.getTotalRelationSizeBytes() >= 0));
         assertTrue(statistics.getDatabase().getTables().stream().filter(table -> table.getToastSizeBytes() == 0)
                 .allMatch(table -> table.getTotalRelationSizeBytes() == table.getTableSizeBytes() + table.getIndexSizeBytes()));
-        assertTrue(statistics.getDatabase().getTables().stream().noneMatch(table -> table.getTableName().startsWith("entity_t")));
+        assertTrue(statistics.getDatabase().getTables().stream().noneMatch(table -> table.getTableName().matches("entity_t\\d+")));
         assertTrue(statistics.getConnectionPool().getTotalConnections() >= 0);
         assertTrue(statistics.getJvmMemory().getHeapUsedBytes() >= 0);
         assertTrue(statistics.getJvmMemory().getNonHeapUsedBytes() >= 0);

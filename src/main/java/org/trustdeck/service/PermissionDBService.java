@@ -1387,7 +1387,7 @@ public class PermissionDBService {
 	 * @return {@code true} when granting is allowed, {@code false} otherwise
 	 */
 	private boolean isBoundedDelegationAllowed(String subjectId, String resourceType, Integer resourceId, String action) {
-		if (Assertion.isNullOrEmpty(subjectId, resourceType, action) || resourceId == null) {
+		if (!Assertion.isNotNullOrEmpty(subjectId, resourceType, action) || resourceId == null) {
 			return false;
 		}
 		

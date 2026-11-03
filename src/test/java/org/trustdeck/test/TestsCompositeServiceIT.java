@@ -23,6 +23,7 @@ import org.opentest4j.AssertionFailedError;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.trustdeck.dto.DomainDTO;
 import org.trustdeck.dto.PseudonymDTO;
+import org.trustdeck.dto.PseudonymUpdateDTO;
 import org.trustdeck.jooq.generated.tables.pojos.Pseudonym;
 import org.trustdeck.model.IdentifierItem;
 import org.trustdeck.service.AssertWebRequestService;
@@ -105,8 +106,7 @@ public class TestsCompositeServiceIT extends AssertWebRequestService {
         MockHttpServletResponse response = this.assertCreatedRequest("createRecord", post("/api/domains/" + domainName + "/pseudonyms"), null, createRecord, this.getAccessToken());
         String content = response.getContentAsString();
 
-        List<PseudonymDTO> r1l = this.mapJsonObjectsInStringToList(content, PseudonymDTO.class);
-        PseudonymDTO r = r1l.get(0);
+        PseudonymDTO r = this.applySingleJsonContentToClass(content, PseudonymDTO.class);
 
         PseudonymDTO nextRecord = new PseudonymDTO();
         nextRecord.setIdentifierItem(IdentifierItem.builder().identifier(r.getPsn()).idType(r.getDomainName()).build());
@@ -216,25 +216,24 @@ public class TestsCompositeServiceIT extends AssertWebRequestService {
 
         MockHttpServletResponse response = this.assertOkRequest("listDomainHierarchy", get("/api/domains/hierarchy"), null, null, this.getAccessToken());
         String content = response.getContentAsString();
-        List<DomainDTO> domains = this.mapJsonObjectsInStringToList(content, DomainDTO.class);
+        List<DomainDTO> domains = this.mapDomainHierarchyToList(content);
 
         // Then check net: i.e. the ID must be increased
         for (DomainDTO domain : domains) {
-            switch (domain.getId()) {
-                case 1:
-                    assertEquals("TestStudie", domain.getName());
-                    assertNull(domain.getSuperDomainID());
+            switch (domain.getName()) {
+                case "TestStudie":
+                    assertNull(domain.getSuperDomainName());
                     break;
-                case 4:
-                    assertEquals("TestStudie-Labor-Analyse", domain.getName());
+                case "TestStudie-Labor-Analyse":
+                    assertEquals("TestStudie", domain.getSuperDomainName());
                     assertEquals(1, domain.getSuperDomainID());
                     break;
-                case 5:
-                    assertEquals("TestStudie-Paper", domain.getName());
+                case "TestStudie-Paper":
+                    assertEquals("TestStudie-Labor-Analyse", domain.getSuperDomainName());
                     assertEquals(4, domain.getSuperDomainID());
                     break;
                 default:
-                    throw new AssertionFailedError("Domain ID " + domain.getId() + " not found");
+                    throw new AssertionFailedError("Domain " + domain.getName() + " not expected");
             }
         }
 
@@ -268,13 +267,11 @@ public class TestsCompositeServiceIT extends AssertWebRequestService {
         response = this.assertOkRequest("readRecord", get("/api/domains/" + child + "/pseudonyms"), getParameter, null, this.getAccessToken());
         content = response.getContentAsString();
 
-        List<PseudonymDTO> r1l = this.mapJsonObjectsInStringToList(content, PseudonymDTO.class);
-        PseudonymDTO r1 = r1l.get(0);
+        PseudonymDTO r1 = this.applySingleJsonContentToClass(content, PseudonymDTO.class);
 
         response = this.assertOkRequest("readRecord", get("/api/domains/" + childOfChild + "/pseudonyms"), getParameter, null, this.getAccessToken());
         content = response.getContentAsString();
-        List<PseudonymDTO> r2l = this.mapJsonObjectsInStringToList(content, PseudonymDTO.class);
-        PseudonymDTO r2 = r2l.get(0);
+        PseudonymDTO r2 = this.applySingleJsonContentToClass(content, PseudonymDTO.class);
 
         assertNotNull(r1.getPsn());
         assertNotNull(r2.getPsn());
@@ -300,8 +297,7 @@ public class TestsCompositeServiceIT extends AssertWebRequestService {
         response = this.assertOkRequest("readRecord", get("/api/domains/" + childOfChild + "/pseudonyms"), anotherGetParameter, null, this.getAccessToken());
         content = response.getContentAsString();
 
-        List<PseudonymDTO> r3l = this.mapJsonObjectsInStringToList(content, PseudonymDTO.class);
-        PseudonymDTO r3 = r3l.get(0);
+        PseudonymDTO r3 = this.applySingleJsonContentToClass(content, PseudonymDTO.class);
 
         assertNotNull(r3.getPsn());
         assertEquals(secondId, r3.getIdentifierItem().getIdentifier());
@@ -370,7 +366,7 @@ public class TestsCompositeServiceIT extends AssertWebRequestService {
         List<PseudonymDTO> recordDtoList = new ArrayList<>();
         recordDtoList.add(new PseudonymDTO().assignPojoValues(pseudonym1));
         recordDtoList.add(new PseudonymDTO().assignPojoValues(pseudonym2));
-        this.assertUnprocessableEntity("createNewRecordBatch", post("/api/domains/" + domainName + "/pseudonyms"), null, recordDtoList, this.getAccessToken());
+        this.assertUnprocessableEntity("createNewRecordBatch", post("/api/domains/" + domainName + "/pseudonyms/batch"), null, recordDtoList, this.getAccessToken());
     }
 
     /**
@@ -416,55 +412,43 @@ public class TestsCompositeServiceIT extends AssertWebRequestService {
 
         MockHttpServletResponse response = this.assertCreatedRequest("createRecord", post("/api/domains/" + parentDomainName + "/pseudonyms"), null, record, this.getAccessToken());
 
-        List<PseudonymDTO> r1l = this.mapJsonObjectsInStringToList(response.getContentAsString(), PseudonymDTO.class);
-        PseudonymDTO r = r1l.get(0);
+        PseudonymDTO r = this.applySingleJsonContentToClass(response.getContentAsString(), PseudonymDTO.class);
 
         assertEquals(record.getValidFrom().plusSeconds(86400L), r.getValidTo());
 
         // Update a record with a user-friendly validity time string via identifier
-        Map<String, String> updateViaIdentifierParams = new HashMap<>() {
-            private static final long serialVersionUID = -2537459720418280492L;
-
-            {
-                put("id", "testIdentifier");
-                put("idType", "testType");
-            }
-        };
-        PseudonymDTO updateViaIdentifier = new PseudonymDTO();
+        PseudonymUpdateDTO updateViaIdentifier = new PseudonymUpdateDTO();
+        updateViaIdentifier.setOldIdentifierItem(IdentifierItem.builder().identifier("testIdentifier").idType("testType").build());
         updateViaIdentifier.setValidityTime("8 w");
 
-        response = this.assertOkRequest("updateRecordViaIdentifier", put("/api/domains/" + parentDomainName + "/pseudonyms"), updateViaIdentifierParams, updateViaIdentifier, this.getAccessToken());
+        response = this.assertOkRequest("updateRecordViaIdentifier", put("/api/domains/" + parentDomainName + "/pseudonyms"), null, updateViaIdentifier, this.getAccessToken());
         PseudonymDTO updatedViaIdentifier = this.applySingleJsonContentToClass(response.getContentAsString(), PseudonymDTO.class);
         assertEquals(record.getValidFrom().plusSeconds(8 * 7 * 86400L), updatedViaIdentifier.getValidTo());
 
         // Update a record with a user-friendly validity time string via psn
-        Map<String, String> updateViaPsnParams = new HashMap<>() {
-            private static final long serialVersionUID = 3409656673301886926L;
-
-            {
-                put("psn", r.getPsn());
-            }
-        };
-        PseudonymDTO updateViaPsn = new PseudonymDTO();
+        PseudonymUpdateDTO updateViaPsn = new PseudonymUpdateDTO();
+        updateViaPsn.setOldPsn(r.getPsn());
         updateViaPsn.setValidityTime("10hours");
 
-        response = this.assertOkRequest("updateRecordViaPsnHours", put("/api/domains/" + parentDomainName + "/pseudonyms"), updateViaPsnParams, updateViaPsn, this.getAccessToken());
+        response = this.assertOkRequest("updateRecordViaPsnHours", put("/api/domains/" + parentDomainName + "/pseudonyms"), null, updateViaPsn, this.getAccessToken());
         PseudonymDTO updatedViaPsn = this.applySingleJsonContentToClass(response.getContentAsString(), PseudonymDTO.class);
         assertEquals(record.getValidFrom().plusSeconds(10 * 3600L), updatedViaPsn.getValidTo());
 
         // Update using minutes
-        PseudonymDTO updateMinutes = new PseudonymDTO();
+        PseudonymUpdateDTO updateMinutes = new PseudonymUpdateDTO();
+        updateMinutes.setOldPsn(r.getPsn());
         updateMinutes.setValidityTime("12 minutes");
 
-        response = this.assertOkRequest("updateRecordViaPsnMinutes", put("/api/domains/" + parentDomainName + "/pseudonyms"), updateViaPsnParams, updateMinutes, this.getAccessToken());
+        response = this.assertOkRequest("updateRecordViaPsnMinutes", put("/api/domains/" + parentDomainName + "/pseudonyms"), null, updateMinutes, this.getAccessToken());
         PseudonymDTO updatedMinutes = this.applySingleJsonContentToClass(response.getContentAsString(), PseudonymDTO.class);
         assertEquals(record.getValidFrom().plusSeconds(12 * 60L), updatedMinutes.getValidTo());
 
         // Update using seconds
-        PseudonymDTO updateSeconds = new PseudonymDTO();
+        PseudonymUpdateDTO updateSeconds = new PseudonymUpdateDTO();
+        updateSeconds.setOldPsn(r.getPsn());
         updateSeconds.setValidityTime("53secs");
 
-        response = this.assertOkRequest("updateRecordViaPsnSeconds", put("/api/domains/" + parentDomainName + "/pseudonyms"), updateViaPsnParams, updateSeconds, this.getAccessToken());
+        response = this.assertOkRequest("updateRecordViaPsnSeconds", put("/api/domains/" + parentDomainName + "/pseudonyms"), null, updateSeconds, this.getAccessToken());
         PseudonymDTO updatedSeconds = this.applySingleJsonContentToClass(response.getContentAsString(), PseudonymDTO.class);
         assertEquals(record.getValidFrom().plusSeconds(53L), updatedSeconds.getValidTo());
     }

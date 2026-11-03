@@ -440,8 +440,17 @@ public class AlgorithmDBService {
 		algorithmRecord.setPaddingCharacter(updatedAlgorithm.getPaddingCharacter() != null && !updatedAlgorithm.getPaddingCharacter().isBlank() ? updatedAlgorithm.getPaddingCharacter() : oldAlgorithm.getPaddingCharacter());
 		algorithmRecord.setAddCheckDigit(updatedAlgorithm.getAddCheckDigit() != null ? updatedAlgorithm.getAddCheckDigit() : oldAlgorithm.getAddCheckDigit());
 		algorithmRecord.setLengthIncludesCheckDigit(updatedAlgorithm.getLengthIncludesCheckDigit() != null ? updatedAlgorithm.getLengthIncludesCheckDigit() : oldAlgorithm.getLengthIncludesCheckDigit());
-		algorithmRecord.setSalt(isSaltValueValid(updatedAlgorithm.getSalt()) ? updatedAlgorithm.getSalt() : oldAlgorithm.getSalt());
-		algorithmRecord.setSaltLength((updatedAlgorithm.getSaltLength() != null && updatedAlgorithm.getSaltLength() >= MINIMUM_SALT_LENGTH && updatedAlgorithm.getSaltLength() <= MAXIMUM_SALT_LENGTH) ? updatedAlgorithm.getSaltLength() : oldAlgorithm.getSaltLength());
+
+		// An empty salt is only accepted when it was explicitly requested, i.e. together with a salt length of 0
+		boolean emptySaltRequested = updatedAlgorithm.getSalt() != null && updatedAlgorithm.getSalt().isBlank()
+				&& updatedAlgorithm.getSaltLength() != null && updatedAlgorithm.getSaltLength() == 0;
+		if (emptySaltRequested) {
+			algorithmRecord.setSalt("");
+			algorithmRecord.setSaltLength(0);
+		} else {
+			algorithmRecord.setSalt(isSaltValueValid(updatedAlgorithm.getSalt()) ? updatedAlgorithm.getSalt() : oldAlgorithm.getSalt());
+			algorithmRecord.setSaltLength((updatedAlgorithm.getSaltLength() != null && updatedAlgorithm.getSaltLength() >= MINIMUM_SALT_LENGTH && updatedAlgorithm.getSaltLength() <= MAXIMUM_SALT_LENGTH) ? updatedAlgorithm.getSaltLength() : oldAlgorithm.getSaltLength());
+		}
 	
     	// Store and determine success
         int wasStored = algorithmRecord.update();
