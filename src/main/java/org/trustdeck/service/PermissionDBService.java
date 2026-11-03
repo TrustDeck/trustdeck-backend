@@ -37,6 +37,7 @@ import org.trustdeck.configuration.DefaultProperties;
 import org.trustdeck.dto.EffectivePermissionDTO;
 import org.trustdeck.dto.EntityTypeDTO;
 import org.trustdeck.dto.PermissionDTO;
+import org.trustdeck.dto.PermissionReplacementDTO;
 import org.trustdeck.dto.PermissionUpdateDTO;
 import org.trustdeck.dto.ProjectDTO;
 import org.trustdeck.exception.PermissionManagementException;
@@ -119,6 +120,9 @@ public class PermissionDBService {
 
     /** Represents a successful insertion of a permission into the database. */
     public static final String INSERTION_SUCCESS = "success";
+    
+    /** The only supported decision of a permission. DENY is not evaluated and therefore not accepted. */
+    public static final String DECISION_ALLOW = "ALLOW";
 
     /**
      * Method to insert multiple permissions at once in a batch. Duplicates will be ignored.
@@ -222,7 +226,14 @@ public class PermissionDBService {
 				continue;
 			}
 			
-			String decision = Assertion.isNotNullOrEmpty(dto.getDecision()) ? dto.getDecision() : "ALLOW";
+			// DENY is not evaluated by the permission checks, so only ALLOW is stored
+			if (Assertion.isNotNullOrEmpty(dto.getDecision()) && !DECISION_ALLOW.equalsIgnoreCase(dto.getDecision())) {
+				log.debug("Skipping a permission with the unsupported decision \"" + dto.getDecision() + "\".");
+				results.set(i, new Pair<PermissionDTO, String>(null, INSERTION_ERROR));
+				continue;
+			}
+			
+			String decision = DECISION_ALLOW;
 			OffsetDateTime validFrom = dto.getValidFrom() != null ? dto.getValidFrom() : now;
             OffsetDateTime validTo = dto.getValidTo() != null ? dto.getValidTo() : validFrom.plusDays(defaults.getPermission().getValidityDays());
 			OffsetDateTime createdAt = dto.getCreatedAt() != null ? dto.getCreatedAt() : now;
@@ -808,7 +819,15 @@ public class PermissionDBService {
 			String newResourceType = (Assertion.isNotNullOrEmpty(u.getNewResourceType())) ? u.getNewResourceType() : old.getResourceType();
 			Integer newResourceId = (u.getNewResourceId() != null) ? u.getNewResourceId() : old.getResourceId();
 			String newAction = (Assertion.isNotNullOrEmpty(u.getNewAction())) ? u.getNewAction() : old.getAction();
-			String newDecision = (Assertion.isNotNullOrEmpty(u.getDecision())) ? u.getDecision() : old.getDecision();
+			// DENY is not evaluated by the permission checks, so only ALLOW can be stored
+			if (Assertion.isNotNullOrEmpty(u.getDecision()) && !DECISION_ALLOW.equalsIgnoreCase(u.getDecision())) {
+				log.debug("Permission update ignored: unsupported decision \"" + u.getDecision() + "\".");
+				ignored++;
+				updateSuccess.set(j, false);
+				continue;
+			}
+			
+			String newDecision = DECISION_ALLOW;
 			OffsetDateTime newValidFrom = (u.getValidFrom() != null) ? u.getValidFrom() : old.getValidFrom();
 			OffsetDateTime newValidTo = (u.getValidTo() != null) ? u.getValidTo() : old.getValidTo();
 			OffsetDateTime updatedAt = (u.getUpdatedAt() != null) ? u.getUpdatedAt() : now;
@@ -1073,105 +1092,41 @@ public class PermissionDBService {
 	}
 	
 	/**
-     * Method to remove all entity type-specific permissions at once for a given entity type.
-     * The user is identified through the request.
+     * Method to remove the permissions of all subjects for a given resource.
+     * Used when a resource is deleted, so that no orphaned permissions remain.
      * 
-     * @param entityTypeId the persistent ID of the entity type for which permissions should be removed
-     * @param entityTypeName the entity type name, used only for logging
+     * @param resourceType the type of the resource, e.g. DOMAIN or ENTITY_TYPE
+     * @param resourceId the (internal) database ID of the resource
      * @return {@code true} when the deletion was successful, {@code false} otherwise
      */
 	@Transactional
-	public boolean removeEntityTypePermissionsForSubject(int entityTypeId, String entityTypeName) {
-		String subjectID = subjectIdFromRequest();
-		String type = "ENTITY_TYPE";
-		int resourceID = entityTypeId;
-		
-		// Get list of permissions from the database
-		List<PermissionDTO> activePermissions = getAllPermissionsForSubject(subjectID);
-
-		// Check if the list is empty
-		if (activePermissions == null || activePermissions.isEmpty()) {
-			log.trace("No permissions to remove --> done.");
-			return true;
-		}
-		
-		// Remove all permissions in this list that are not related to the given entity type
-		activePermissions = activePermissions.stream().filter(p -> p.getResourceType().equalsIgnoreCase(type) && p.getResourceId() == resourceID).toList();
-		
-		// Check again if the list is empty
-		if (activePermissions == null || activePermissions.isEmpty()) {
-			log.trace("No permissions to remove --> done.");
-			return true;
-		}
-		
-		// Remove the permissions
-		log.trace("Removing " + activePermissions.size() + " permissions for the entity type \"" + entityTypeName + "\".");
-		List<Boolean> results = deletePermissions(activePermissions);
-		
-		if (results == null || results.isEmpty()) {
-			log.error("Could not remove any permissions for entity type \"" + entityTypeName + "\", so the process was aborted.");
+	public boolean removePermissionsForResource(String resourceType, int resourceId) {
+		List<String> subjectIds;
+		try {
+			// Remember the affected subjects for the cache invalidation and remove the permissions
+			subjectIds = dsl.selectDistinct(PERMISSION_GRANT.SUBJECT_ID)
+					.from(PERMISSION_GRANT)
+					.where(PERMISSION_GRANT.RESOURCE_TYPE.equalIgnoreCase(resourceType))
+					.and(PERMISSION_GRANT.RESOURCE_ID.eq(resourceId))
+					.fetch(PERMISSION_GRANT.SUBJECT_ID);
+			
+			dsl.deleteFrom(PERMISSION_GRANT)
+					.where(PERMISSION_GRANT.RESOURCE_TYPE.equalIgnoreCase(resourceType))
+					.and(PERMISSION_GRANT.RESOURCE_ID.eq(resourceId))
+					.execute();
+		} catch (DataAccessException e) {
+			log.error("Couldn't remove the permissions for resource (type = " + resourceType + ", id = " + resourceId + "): " + e.getMessage(), e);
 			return false;
-		} else if (results.contains(false)) {
-			log.warn("Could not remove all permissions for entity type \"" + entityTypeName + "\". There might be orphaned permissions.");
-			return true;
-		}
-
-		// Invalidate cache entries
-		cachingService.invalidateSubject(subjectID);
-		cachingService.invalidateContext(subjectID, type, resourceID);
-		
-		log.debug("Successfully removed all permissions for entity type \"" + entityTypeName + "\".");
-		return true;
-	}
-	
-	/**
-     * Method to remove all project-specific permissions at once for a given domain.
-     * The user is identified through the request.
-     * 
-     * @param projectAbbreviation the abbreviation of the project for which the permissions should be removed
-     * @return {@code true} when the deletion was successful, {@code false} otherwise
-     */
-	@Transactional
-	public boolean removeProjectPermissionsForSubject(String projectAbbreviation) {
-		String subjectID = subjectIdFromRequest();
-		String type = "PROJECT";
-		int resourceID = pdba.getProjectByAbbreviation(projectAbbreviation).getId();
-		
-		// Get list of project-related permissions from the database
-		List<PermissionDTO> activePermissions = getAllPermissionsForSubject(subjectID);
-
-		// Check if the list is empty
-		if (activePermissions == null || activePermissions.isEmpty()) {
-			log.trace("No permissions to remove --> done.");
-			return true;
-		}
-		
-		// Remove all permissions in this list that are not related to the given domain
-		activePermissions = activePermissions.stream().filter(p -> p.getResourceType().equalsIgnoreCase(type) && p.getResourceId() == resourceID).toList();
-		
-		// Check again if the list is empty
-		if (activePermissions == null || activePermissions.isEmpty()) {
-			log.trace("No permissions to remove --> done.");
-			return true;
-		}
-		
-		// Remove the permissions
-		log.trace("Removing " + activePermissions.size() + " permissions for the project \"" + projectAbbreviation + "\".");
-		List<Boolean> results = deletePermissions(activePermissions);
-		
-		if (results == null || results.isEmpty()) {
-			log.error("Could not remove any permissions for project \"" + projectAbbreviation + "\", so the process was aborted.");
-			return false;
-		} else if (results.contains(false)) {
-			log.warn("Could not remove all permissions for project \"" + projectAbbreviation + "\". There might be orphaned permissions.");
-			return true;
 		}
 		
 		// Invalidate cache entries
-		cachingService.invalidateSubject(subjectID);
-		cachingService.invalidateContext(subjectID, type, resourceID);
+		for (String subjectId : subjectIds) {
+			cachingService.invalidateSubject(subjectId);
+			cachingService.invalidateContext(subjectId, resourceType, resourceId);
+		}
 		
-		log.debug("Successfully removed all permissions for project \"" + projectAbbreviation + "\".");
+		log.debug("Successfully removed the permissions of " + subjectIds.size() + " subject(s) for resource (type = " 
+				+ resourceType + ", id = " + resourceId + ").");
 		return true;
 	}
 	
@@ -1357,21 +1312,35 @@ public class PermissionDBService {
 		}
 		
 		// Get the action for the resourceType that is affected
-		String action = null;		
-		if (resourceType.equalsIgnoreCase("DOMAIN")) {
-			action = "domain:manage-permissions";
-		} else if (resourceType.equalsIgnoreCase("PROJECT")) {
-			action = "project:manage-permissions";
-		} else if (resourceType.equalsIgnoreCase("ENTITY_TYPE")) {
-			action = "entity-type:manage-permissions";
-		} else if (resourceType.equalsIgnoreCase("GLOBAL")) {
-			action = "global:manage-permissions";
-		} else {
+		String action = managePermissionsActionFor(resourceType);
+		if (action == null) {
 			log.debug("Unrecognized resourceType: " + resourceType);
 			return false;
 		}
 		
-		return Assertion.isNullOrEmpty(action) ? false : isActionAllowed(subjectId, resourceType, resourceId, action);
+		return isActionAllowed(subjectId, resourceType, resourceId, action);
+	}
+	
+	/**
+	 * Returns the action that allows managing the permissions of a resource of the given type.
+	 * 
+	 * @param resourceType the resource type, e.g. DOMAIN or GLOBAL
+	 * @return the *:manage-permissions action for the resource type, or {@code null} if the type is unknown
+	 */
+	public static String managePermissionsActionFor(String resourceType) {
+		if (resourceType == null) {
+			return null;
+		} else if (resourceType.equalsIgnoreCase("DOMAIN")) {
+			return "domain:manage-permissions";
+		} else if (resourceType.equalsIgnoreCase("PROJECT")) {
+			return "project:manage-permissions";
+		} else if (resourceType.equalsIgnoreCase("ENTITY_TYPE")) {
+			return "entity-type:manage-permissions";
+		} else if (resourceType.equalsIgnoreCase("GLOBAL")) {
+			return "global:manage-permissions";
+		} else {
+			return null;
+		}
 	}
 	
 	/**
@@ -1513,20 +1482,23 @@ public class PermissionDBService {
 	
 	/**
 	 * Replaces all permissions for a resource after enforcing bounded delegation with the list of given permissions.
-	 * The requester may only grant actions that they already hold on the same resource,
-	 * and only if they also hold the corresponding *:manage-permissions action.
+	 * The requester must hold the corresponding *:manage-permissions action on the resource. Only the actions
+	 * that are added are checked against the requester's own actions; actions that are removed or stay unchanged
+	 * are not, so that a manager can edit users who hold more actions than the manager. When any added action
+	 * is rejected, nothing is changed.
 	 * 
 	 * @param subjectId the target subject for whom permissions should be replaced
 	 * @param resourceType the resource type
 	 * @param resourceId the resource ID
 	 * @param actions the desired target set of allowed actions
-	 * @return {@code true} when the replacement was successful, {@code false} otherwise
+	 * @return the added, removed, and rejected actions, or {@code null} when parameters were missing or the 
+	 * 		   requester is not allowed to manage the permissions of the resource
 	 */
 	@Transactional
-	public boolean replacePermissionsForResourceSecured(String subjectId, String resourceType, Integer resourceId, List<String> actions) {
+	public PermissionReplacementDTO replacePermissionsForResourceSecured(String subjectId, String resourceType, Integer resourceId, List<String> actions) {
 		if (!Assertion.isNotNullOrEmpty(subjectId, resourceType) || resourceId == null || actions == null) {
 			log.debug("Missing parameters.");
-			return false;
+			return null;
 		}
 		
 		// Get the requesting subject from the current request object
@@ -1536,28 +1508,91 @@ public class PermissionDBService {
 		if (!isPermissionManagementAllowed(requester, resourceType, resourceId)) {
 			log.debug("Permission replacement denied because requester \"" + requester + "\" is not allowed "
 					+ "to manage permissions for resource (type = " + resourceType + ", id = " + resourceId + ").");
-			return false;
+			return null;
 		}
 		
 		// Normalize the action strings and remove duplicates
-		List<String> normalizedRequestedActions = actions.stream()
+		Set<String> desired = actions.stream()
 				.filter(Objects::nonNull)
 				.map(String::trim)
 				.filter(s -> !s.isBlank())
-				.distinct()
-				.toList();
+				.collect(Collectors.toCollection(HashSet::new));
 		
-		// Check if there are any permissions in the list that the requester is not allowed to grant to others
-		boolean areAllActionsGrantable = normalizedRequestedActions.stream()
-				.allMatch(a -> isBoundedDelegationAllowed(requester, resourceType, resourceId, a));
+		// Compute the differences to the currently allowed actions
+		Set<String> current = new HashSet<>(dsl.select(PERMISSION_GRANT.ACTION)
+				.from(PERMISSION_GRANT)
+				.where(PERMISSION_GRANT.SUBJECT_ID.eq(subjectId))
+				.and(PERMISSION_GRANT.RESOURCE_TYPE.eq(resourceType))
+				.and(PERMISSION_GRANT.RESOURCE_ID.eq(resourceId))
+				.and(PERMISSION_GRANT.DECISION.eq(DECISION_ALLOW))
+				.fetch(PERMISSION_GRANT.ACTION));
 		
-		if (!areAllActionsGrantable) {
-			log.debug("Permission replacement denied because at least one requested action was not "
-					+ "grantable by requester \"" + requester + "\".");
-			return false;
+		List<String> added = desired.stream().filter(a -> !current.contains(a)).sorted().toList();
+		List<String> removed = current.stream().filter(a -> !desired.contains(a)).sorted().toList();
+		
+		// Only the added actions must be grantable by the requester
+		List<String> rejected = added.stream().filter(a -> !isBoundedDelegationAllowed(requester, resourceType, resourceId, a)).toList();
+		PermissionReplacementDTO result = PermissionReplacementDTO.builder().added(added).removed(removed).rejected(rejected).build();
+		
+		if (!rejected.isEmpty()) {
+			log.debug("Permission replacement denied because the requester \"" + requester + "\" is not allowed to grant " + rejected + ".");
+			return result;
 		}
 		
-		return replacePermissionsForResource(subjectId, resourceType, resourceId, normalizedRequestedActions);
+		replacePermissionsForResource(subjectId, resourceType, resourceId, new ArrayList<>(desired));
+		return result;
+	}
+
+	/**
+	 * Retrieves the currently allowed actions of the requesting subject.
+	 * 
+	 * @return the requester's currently allowed actions
+	 */
+	public List<EffectivePermissionDTO> getCurrentlyAllowedActionsForRequester() {
+		List<EffectivePermissionDTO> permissions = getCurrentlyAllowedActionsForSubject(subjectIdFromRequest());
+		return permissions == null ? Collections.emptyList() : permissions;
+	}
+	
+	/**
+	 * Checks whether the requesting subject may manage the permissions of at least one resource.
+	 * 
+	 * @return {@code true} if the requester holds any *:manage-permissions action, {@code false} otherwise
+	 */
+	public boolean isRequesterManagingAnyResource() {
+		return getCurrentlyAllowedActionsForRequester().stream()
+				.anyMatch(p -> p.getAction() != null && p.getAction().equals(managePermissionsActionFor(p.getResourceType())));
+	}
+	
+	/**
+	 * Retrieves the currently allowed actions of a subject, limited to the resources 
+	 * whose permissions the requesting subject may manage.
+	 * 
+	 * @param subjectId the (Keycloak) ID of the subject/user whose permissions should be retrieved
+	 * @return the subject's currently allowed actions on resources managed by the requester
+	 */
+	public List<EffectivePermissionDTO> getCurrentlyAllowedActionsManagedByRequester(String subjectId) {
+		List<EffectivePermissionDTO> permissions = getCurrentlyAllowedActionsForSubject(subjectId);
+		if (permissions == null || permissions.isEmpty()) {
+			return Collections.emptyList();
+		}
+		
+		// Collect the resources the requester manages
+		Set<String> managedResources = getCurrentlyAllowedActionsForRequester().stream()
+				.filter(p -> p.getAction() != null && p.getAction().equals(managePermissionsActionFor(p.getResourceType())))
+				.map(PermissionDBService::resourceKey)
+				.collect(Collectors.toSet());
+		
+		return permissions.stream().filter(p -> managedResources.contains(resourceKey(p))).toList();
+	}
+	
+	/**
+	 * Helper method that builds a key identifying the resource of an effective permission.
+	 * 
+	 * @param permission the effective permission
+	 * @return the key consisting of the resource type, the resource name, and the project abbreviation
+	 */
+	private static String resourceKey(EffectivePermissionDTO permission) {
+		return permission.getResourceType() + "|" + permission.getResourceName() + "|" + permission.getProjectAbbreviation();
 	}
 
 	/**

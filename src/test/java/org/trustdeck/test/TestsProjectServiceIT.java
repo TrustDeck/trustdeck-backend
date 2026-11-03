@@ -70,7 +70,7 @@ public class TestsProjectServiceIT extends AssertWebRequestService {
         project.setEndDate(OffsetDateTime.of(2034, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC));
 
         // Unauthorized tests for creating a project
-        this.assertBadRequestRequest("createProjectBadRequest", post("/api/projects"), null, project, "");
+        this.assertUnauthorizedRequest("createProjectNoToken", post("/api/projects"), null, project, "");
         this.assertUnauthorizedRequest("createProjectUnauth", post("/api/projects"), null, project, "SomeToken");
 
         // Create the project

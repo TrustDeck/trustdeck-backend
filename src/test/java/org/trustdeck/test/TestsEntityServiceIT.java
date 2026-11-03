@@ -92,7 +92,7 @@ public class TestsEntityServiceIT extends AssertWebRequestService {
         EntityTypeDTO baseType = this.createEntityTypeDTO(BASE_TYPE_NAME, BASE_DEFINITION, null);
 
         // Unauthorized tests for creating a base type
-        this.assertBadRequestRequest("createBaseTypeBadRequest", post("/api/entities/base-types"), null, baseType, "");
+        this.assertUnauthorizedRequest("createBaseTypeNoToken", post("/api/entities/base-types"), null, baseType, "");
         this.assertUnauthorizedRequest("createBaseTypeUnauth", post("/api/entities/base-types"), null, baseType, "SomeToken");
 
         // Create the base type
@@ -200,7 +200,7 @@ public class TestsEntityServiceIT extends AssertWebRequestService {
 
         // Unauthorized tests for creating an entity
         EntityDTO entity = this.createEntityDTO("{ \"firstName\": \"Erika\", \"lastName\": \"Mustermann\", \"birthYear\": 1964, \"cohort\": \"A\" }");
-        this.assertBadRequestRequest("createEntityBadRequest", post(entityPath), null, entity, "");
+        this.assertUnauthorizedRequest("createEntityNoToken", post(entityPath), null, entity, "");
         this.assertUnauthorizedRequest("createEntityUnauth", post(entityPath), null, entity, "SomeToken");
 
         // Create an entity

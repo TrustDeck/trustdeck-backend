@@ -46,6 +46,8 @@ spring:
           # Custom section ends
           issuer-uri: ${KEYCLOAK_HOSTNAME}/realms/${spring.security.oauth2.resourceserver.jwt.realm}
           jwk-set-uri: ${spring.security.oauth2.resourceserver.jwt.server-uri}/realms/${spring.security.oauth2.resourceserver.jwt.realm}/protocol/openid-connect/certs
+          # Access tokens must name one of these audiences in their "aud" claim (comma-separated)
+          audiences: ${KEYCLOAK_TOKEN_AUDIENCES:trustdeck}
 
 audittrail:
   oidc-group-mapper:

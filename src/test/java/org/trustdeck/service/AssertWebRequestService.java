@@ -21,11 +21,6 @@ import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JavaType;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.type.TypeFactory;
-import java.io.IOException;
-import java.security.KeyManagementException;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.security.cert.CertificateException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -640,22 +635,35 @@ public class AssertWebRequestService {
     }
 
     /**
-     * Obtains very simple an access token from the given keycloak instance. This function should split in separate parts
-     * in the future if it gets to complex.
+     * Obtains very simple an access token from the given keycloak instance and stores it as the token of the tests.
      *
      * @param username the user name as String
      * @param password the password as String
      * @return the accessToken as String
-     * @throws IOException the IO exception
-     * @throws CertificateException the certificate exception
-     * @throws NoSuchAlgorithmException the no such algorithm exception
-     * @throws KeyStoreException the key store exception
-     * @throws KeyManagementException the key management exception
      */
-    public String obtainNewAccessToken(String username, String password) throws IOException, CertificateException, NoSuchAlgorithmException, KeyStoreException, KeyManagementException {
-        // Getting the trust-store file
-        //File trustore = ResourceUtils.getFile(Objects.requireNonNull(this.env.getProperty("spring.security.oauth2.resourceserver.jwt.truststore")));
+    public String obtainNewAccessToken(String username, String password) {
+        try {
+            this.accessToken = this.obtainAccessTokenForClient(this.env.getProperty("spring.security.oauth2.resourceserver.jwt.client-id"),
+                    this.env.getProperty("spring.security.oauth2.resourceserver.jwt.client-secret"), username, password);
+        } catch (Exception e) {
+            this.accessToken = "";
+            throw new RuntimeException(e);
+        }
 
+        return this.accessToken;
+    }
+
+    /**
+     * Obtains an access token for a user from the given Keycloak client without storing it.
+     *
+     * @param clientId the ID of the Keycloak client the token is issued for
+     * @param clientSecret the secret of the Keycloak client, or {@code null} for public clients
+     * @param username the user name as String
+     * @param password the password as String
+     * @return the accessToken as String
+     * @throws Exception forwards any internally thrown exceptions
+     */
+    protected String obtainAccessTokenForClient(String clientId, String clientSecret, String username, String password) throws Exception {
         // Setting up a SSL context in case we want to do HTTPS requests
         SSLContext theContext = SSLContexts.custom()
                 .setProtocol("TLS")
@@ -663,34 +671,26 @@ public class AssertWebRequestService {
                 .build();
 
         List<NameValuePair> params = new ArrayList<>();
-        params.add(new BasicNameValuePair("client_id", this.env.getProperty("spring.security.oauth2.resourceserver.jwt.client-id")));
+        params.add(new BasicNameValuePair("client_id", clientId));
         params.add(new BasicNameValuePair("username", username));
         params.add(new BasicNameValuePair("password", password));
         params.add(new BasicNameValuePair("grant_type", "password"));
-        params.add(new BasicNameValuePair("client_secret", this.env.getProperty("spring.security.oauth2.resourceserver.jwt.client-secret")));
+        if (clientSecret != null) {
+            params.add(new BasicNameValuePair("client_secret", clientSecret));
+        }
 
         // Contains the realm
         String targetUrl = this.env.getProperty("spring.security.oauth2.resourceserver.jwt.issuer-uri") + "/protocol/openid-connect/token";
-        //System.setProperty("javax.net.ssl.trustStore", trustore.getAbsolutePath());
-
         HttpClient httpClient = HttpClientBuilder.create().setSSLContext(theContext).build();
 
         HttpPost httpPost = new HttpPost(targetUrl);
         // Needed to send it as a form
         httpPost.setHeader("Content-type", "application/x-www-form-urlencoded");
+        httpPost.setEntity(new UrlEncodedFormEntity(params));
 
-        try {
-            httpPost.setEntity(new UrlEncodedFormEntity(params));
-            HttpResponse response = httpClient.execute(httpPost);
-            String responseString = EntityUtils.toString(response.getEntity(), "UTF-8");
-            AccessTokenResponse accessTokenResponse = new ObjectMapper().readValue(responseString, AccessTokenResponse.class);
-            this.accessToken = accessTokenResponse.getToken();
-        } catch (Exception e) {
-            this.accessToken = "";
-            throw new RuntimeException(e);
-        }
-
-        return this.accessToken;
+        HttpResponse response = httpClient.execute(httpPost);
+        String responseString = EntityUtils.toString(response.getEntity(), "UTF-8");
+        return new ObjectMapper().readValue(responseString, AccessTokenResponse.class).getToken();
     }
 
     /**
@@ -754,7 +754,7 @@ public class AssertWebRequestService {
     protected List<DomainDTO> assertEqualsListDomainHierarchyLength(int expectedLength) throws Exception {
 
         // Unauthorized tests for getting this list
-        this.assertBadRequestRequest("listDomainHierarchyBadRequest", get("/api/domains/hierarchy"), null, null, "");
+        this.assertUnauthorizedRequest("listDomainHierarchyNoToken", get("/api/domains/hierarchy"), null, null, "");
         this.assertUnauthorizedRequest("listDomainHierarchyUnauth", get("/api/domains/hierarchy"), null, null, "SomeToken");
 
         MockHttpServletResponse response = this.assertOkRequest("listDomainHierarchy", get("/api/domains/hierarchy"), null, null, this.getAccessToken());
@@ -842,7 +842,7 @@ public class AssertWebRequestService {
         }};
 
         // Unauthorized tests for updating a domain
-        this.assertBadRequestRequest("updateDomainBadRequestComplete", put("/api/domains/complete"), updateParameterChange, null, "");
+        this.assertUnauthorizedRequest("updateDomainCompleteNoToken", put("/api/domains/complete"), updateParameterChange, null, "");
         this.assertUnauthorizedRequest("updateDomainUnauthComplete", put("/api/domains/complete"), updateParameterChange, null, "SomeToken");
 
         this.assertOkRequest("commonUpdateDomainComplete", put("/api/domains/complete"), updateParameterChange, domainDTO, this.getAccessToken());
@@ -865,7 +865,7 @@ public class AssertWebRequestService {
         }};
 
         // Unauthorized tests for updating a domain
-        this.assertBadRequestRequest("updateDomainBadRequest", put("/api/domains"), updateParamterChange, null, "");
+        this.assertUnauthorizedRequest("updateDomainNoToken", put("/api/domains"), updateParamterChange, null, "");
         this.assertUnauthorizedRequest("updateDomainUnauth", put("/api/domains"), updateParamterChange, null, "SomeToken");
 
         this.assertOkRequest("commonUpdateDomain", put("/api/domains"), updateParamterChange, domainDTO, this.getAccessToken());
@@ -914,7 +914,7 @@ public class AssertWebRequestService {
         }};
 
         // Unauthorized tests for delete domain
-        this.assertBadRequestRequest("deleteDomainBadRequest", delete("/api/domains"), deleteParameter, null, "");
+        this.assertUnauthorizedRequest("deleteDomainNoToken", delete("/api/domains"), deleteParameter, null, "");
         this.assertUnauthorizedRequest("deleteDomainUnauth", delete("/api/domains"), deleteParameter, null, "SomeToken");
 
         this.assertNoContent("deleteDomain", delete("/api/domains"), deleteParameter, null, this.getAccessToken());
