@@ -50,8 +50,9 @@ public class GenSalt2 extends AbstractRoutine<String> {
     /**
      * Set the <code>_1</code> parameter IN value to the routine
      */
-    public void set__1(String value) {
+    public GenSalt2 set__1(String value) {
         setValue(_1, value);
+        return this;
     }
 
     /**
@@ -66,8 +67,9 @@ public class GenSalt2 extends AbstractRoutine<String> {
     /**
      * Set the <code>_2</code> parameter IN value to the routine
      */
-    public void set__2(Integer value) {
+    public GenSalt2 set__2(Integer value) {
         setValue(_2, value);
+        return this;
     }
 
     /**

@@ -5,20 +5,24 @@ package org.trustdeck.jooq.generated.tables;
 
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
-import java.util.function.Function;
 
 import org.jooq.Check;
+import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
-import org.jooq.Function5;
 import org.jooq.Identity;
+import org.jooq.InverseForeignKey;
 import org.jooq.Name;
+import org.jooq.Path;
+import org.jooq.PlainSQL;
+import org.jooq.QueryPart;
 import org.jooq.Record;
-import org.jooq.Records;
-import org.jooq.Row5;
+import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.SelectField;
+import org.jooq.Select;
+import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
 import org.jooq.TableOptions;
@@ -29,6 +33,7 @@ import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 import org.trustdeck.jooq.generated.Keys;
 import org.trustdeck.jooq.generated.Public;
+import org.trustdeck.jooq.generated.tables.Project.ProjectPath;
 import org.trustdeck.jooq.generated.tables.records.ProjectImageRecord;
 
 
@@ -79,11 +84,11 @@ public class ProjectImage extends TableImpl<ProjectImageRecord> {
     public final TableField<ProjectImageRecord, String> MIME_TYPE = createField(DSL.name("mime_type"), SQLDataType.CLOB, this, "");
 
     private ProjectImage(Name alias, Table<ProjectImageRecord> aliased) {
-        this(alias, aliased, null);
+        this(alias, aliased, (Field<?>[]) null, null);
     }
 
-    private ProjectImage(Name alias, Table<ProjectImageRecord> aliased, Field<?>[] parameters) {
-        super(alias, null, aliased, parameters, DSL.comment(""), TableOptions.table());
+    private ProjectImage(Name alias, Table<ProjectImageRecord> aliased, Field<?>[] parameters, Condition where) {
+        super(alias, null, aliased, parameters, DSL.comment(""), TableOptions.table(), where);
     }
 
     /**
@@ -107,8 +112,37 @@ public class ProjectImage extends TableImpl<ProjectImageRecord> {
         this(DSL.name("project_image"), null);
     }
 
-    public <O extends Record> ProjectImage(Table<O> child, ForeignKey<O, ProjectImageRecord> key) {
-        super(child, key, PROJECT_IMAGE);
+    public <O extends Record> ProjectImage(Table<O> path, ForeignKey<O, ProjectImageRecord> childPath, InverseForeignKey<O, ProjectImageRecord> parentPath) {
+        super(path, childPath, parentPath, PROJECT_IMAGE);
+    }
+
+    /**
+     * A subtype implementing {@link Path} for simplified path-based joins.
+     */
+    public static class ProjectImagePath extends ProjectImage implements Path<ProjectImageRecord> {
+
+        private static final long serialVersionUID = 1L;
+        public <O extends Record> ProjectImagePath(Table<O> path, ForeignKey<O, ProjectImageRecord> childPath, InverseForeignKey<O, ProjectImageRecord> parentPath) {
+            super(path, childPath, parentPath);
+        }
+        private ProjectImagePath(Name alias, Table<ProjectImageRecord> aliased) {
+            super(alias, aliased);
+        }
+
+        @Override
+        public ProjectImagePath as(String alias) {
+            return new ProjectImagePath(DSL.name(alias), this);
+        }
+
+        @Override
+        public ProjectImagePath as(Name alias) {
+            return new ProjectImagePath(alias, this);
+        }
+
+        @Override
+        public ProjectImagePath as(Table<?> alias) {
+            return new ProjectImagePath(alias.getQualifiedName(), this);
+        }
     }
 
     @Override
@@ -136,14 +170,14 @@ public class ProjectImage extends TableImpl<ProjectImageRecord> {
         return Arrays.asList(Keys.PROJECT_IMAGE__PROJECT_IMAGE_PROJECT_ID_FKEY);
     }
 
-    private transient Project _project;
+    private transient ProjectPath _project;
 
     /**
      * Get the implicit join path to the <code>public.project</code> table.
      */
-    public Project project() {
+    public ProjectPath project() {
         if (_project == null)
-            _project = new Project(this, Keys.PROJECT_IMAGE__PROJECT_IMAGE_PROJECT_ID_FKEY);
+            _project = new ProjectPath(this, Keys.PROJECT_IMAGE__PROJECT_IMAGE_PROJECT_ID_FKEY, null);
 
         return _project;
     }
@@ -196,27 +230,87 @@ public class ProjectImage extends TableImpl<ProjectImageRecord> {
         return new ProjectImage(name.getQualifiedName(), null);
     }
 
-    // -------------------------------------------------------------------------
-    // Row5 type methods
-    // -------------------------------------------------------------------------
-
+    /**
+     * Create an inline derived table from this table
+     */
     @Override
-    public Row5<Integer, Integer, byte[], Integer, String> fieldsRow() {
-        return (Row5) super.fieldsRow();
+    public ProjectImage where(Condition condition) {
+        return new ProjectImage(getQualifiedName(), aliased() ? this : null, null, condition);
     }
 
     /**
-     * Convenience mapping calling {@link SelectField#convertFrom(Function)}.
+     * Create an inline derived table from this table
      */
-    public <U> SelectField<U> mapping(Function5<? super Integer, ? super Integer, ? super byte[], ? super Integer, ? super String, ? extends U> from) {
-        return convertFrom(Records.mapping(from));
+    @Override
+    public ProjectImage where(Collection<? extends Condition> conditions) {
+        return where(DSL.and(conditions));
     }
 
     /**
-     * Convenience mapping calling {@link SelectField#convertFrom(Class,
-     * Function)}.
+     * Create an inline derived table from this table
      */
-    public <U> SelectField<U> mapping(Class<U> toType, Function5<? super Integer, ? super Integer, ? super byte[], ? super Integer, ? super String, ? extends U> from) {
-        return convertFrom(toType, Records.mapping(from));
+    @Override
+    public ProjectImage where(Condition... conditions) {
+        return where(DSL.and(conditions));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    public ProjectImage where(Field<Boolean> condition) {
+        return where(DSL.condition(condition));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    @PlainSQL
+    public ProjectImage where(SQL condition) {
+        return where(DSL.condition(condition));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    @PlainSQL
+    public ProjectImage where(@Stringly.SQL String condition) {
+        return where(DSL.condition(condition));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    @PlainSQL
+    public ProjectImage where(@Stringly.SQL String condition, Object... binds) {
+        return where(DSL.condition(condition, binds));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    @PlainSQL
+    public ProjectImage where(@Stringly.SQL String condition, QueryPart... parts) {
+        return where(DSL.condition(condition, parts));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    public ProjectImage whereExists(Select<?> select) {
+        return where(DSL.exists(select));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    public ProjectImage whereNotExists(Select<?> select) {
+        return where(DSL.notExists(select));
     }
 }

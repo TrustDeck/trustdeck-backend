@@ -6,30 +6,37 @@ package org.trustdeck.jooq.generated.tables;
 
 import java.time.OffsetDateTime;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
-import java.util.function.Function;
 
+import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
-import org.jooq.Function11;
 import org.jooq.Identity;
+import org.jooq.InverseForeignKey;
 import org.jooq.JSONB;
 import org.jooq.Name;
+import org.jooq.Path;
+import org.jooq.PlainSQL;
+import org.jooq.QueryPart;
 import org.jooq.Record;
-import org.jooq.Records;
-import org.jooq.Row11;
+import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.SelectField;
+import org.jooq.Select;
+import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.DefaultDataType;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 import org.trustdeck.jooq.generated.Keys;
 import org.trustdeck.jooq.generated.Public;
+import org.trustdeck.jooq.generated.tables.EntityType.EntityTypePath;
+import org.trustdeck.jooq.generated.tables.Project.ProjectPath;
 import org.trustdeck.jooq.generated.tables.records.EntityRecord;
 
 
@@ -88,7 +95,7 @@ public class Entity extends TableImpl<EntityRecord> {
      * configuration.
      */
     @Deprecated
-    public final TableField<EntityRecord, Object> FULL_TEXT_SEARCH_VECTOR = createField(DSL.name("full_text_search_vector"), org.jooq.impl.DefaultDataType.getDefaultDataType("\"pg_catalog\".\"tsvector\""), this, "");
+    public final TableField<EntityRecord, Object> FULL_TEXT_SEARCH_VECTOR = createField(DSL.name("full_text_search_vector"), DefaultDataType.getDefaultDataType("\"pg_catalog\".\"tsvector\""), this, "");
 
     /**
      * The column <code>public.entity.data_text</code>.
@@ -116,11 +123,11 @@ public class Entity extends TableImpl<EntityRecord> {
     public final TableField<EntityRecord, OffsetDateTime> UPDATED_AT = createField(DSL.name("updated_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "");
 
     private Entity(Name alias, Table<EntityRecord> aliased) {
-        this(alias, aliased, null);
+        this(alias, aliased, (Field<?>[]) null, null);
     }
 
-    private Entity(Name alias, Table<EntityRecord> aliased, Field<?>[] parameters) {
-        super(alias, null, aliased, parameters, DSL.comment(""), TableOptions.table());
+    private Entity(Name alias, Table<EntityRecord> aliased, Field<?>[] parameters, Condition where) {
+        super(alias, null, aliased, parameters, DSL.comment(""), TableOptions.table(), where);
     }
 
     /**
@@ -144,8 +151,37 @@ public class Entity extends TableImpl<EntityRecord> {
         this(DSL.name("entity"), null);
     }
 
-    public <O extends Record> Entity(Table<O> child, ForeignKey<O, EntityRecord> key) {
-        super(child, key, ENTITY);
+    public <O extends Record> Entity(Table<O> path, ForeignKey<O, EntityRecord> childPath, InverseForeignKey<O, EntityRecord> parentPath) {
+        super(path, childPath, parentPath, ENTITY);
+    }
+
+    /**
+     * A subtype implementing {@link Path} for simplified path-based joins.
+     */
+    public static class EntityPath extends Entity implements Path<EntityRecord> {
+
+        private static final long serialVersionUID = 1L;
+        public <O extends Record> EntityPath(Table<O> path, ForeignKey<O, EntityRecord> childPath, InverseForeignKey<O, EntityRecord> parentPath) {
+            super(path, childPath, parentPath);
+        }
+        private EntityPath(Name alias, Table<EntityRecord> aliased) {
+            super(alias, aliased);
+        }
+
+        @Override
+        public EntityPath as(String alias) {
+            return new EntityPath(DSL.name(alias), this);
+        }
+
+        @Override
+        public EntityPath as(Name alias) {
+            return new EntityPath(alias, this);
+        }
+
+        @Override
+        public EntityPath as(Table<?> alias) {
+            return new EntityPath(alias.getQualifiedName(), this);
+        }
     }
 
     @Override
@@ -170,30 +206,31 @@ public class Entity extends TableImpl<EntityRecord> {
 
     @Override
     public List<ForeignKey<EntityRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.ENTITY__ENTITY_PROJECT_ID_FKEY, Keys.ENTITY__ENTITY_ENTITY_TYPE_ID_FKEY);
+        return Arrays.asList(Keys.ENTITY__ENTITY_ENTITY_TYPE_ID_FKEY, Keys.ENTITY__ENTITY_PROJECT_ID_FKEY);
     }
 
-    private transient Project _project;
-    private transient EntityType _entityType;
-
-    /**
-     * Get the implicit join path to the <code>public.project</code> table.
-     */
-    public Project project() {
-        if (_project == null)
-            _project = new Project(this, Keys.ENTITY__ENTITY_PROJECT_ID_FKEY);
-
-        return _project;
-    }
+    private transient EntityTypePath _entityType;
 
     /**
      * Get the implicit join path to the <code>public.entity_type</code> table.
      */
-    public EntityType entityType() {
+    public EntityTypePath entityType() {
         if (_entityType == null)
-            _entityType = new EntityType(this, Keys.ENTITY__ENTITY_ENTITY_TYPE_ID_FKEY);
+            _entityType = new EntityTypePath(this, Keys.ENTITY__ENTITY_ENTITY_TYPE_ID_FKEY, null);
 
         return _entityType;
+    }
+
+    private transient ProjectPath _project;
+
+    /**
+     * Get the implicit join path to the <code>public.project</code> table.
+     */
+    public ProjectPath project() {
+        if (_project == null)
+            _project = new ProjectPath(this, Keys.ENTITY__ENTITY_PROJECT_ID_FKEY, null);
+
+        return _project;
     }
 
     @Override
@@ -235,27 +272,87 @@ public class Entity extends TableImpl<EntityRecord> {
         return new Entity(name.getQualifiedName(), null);
     }
 
-    // -------------------------------------------------------------------------
-    // Row11 type methods
-    // -------------------------------------------------------------------------
-
+    /**
+     * Create an inline derived table from this table
+     */
     @Override
-    public Row11<Long, UUID, Integer, Integer, JSONB, Object, String, byte[], Boolean, OffsetDateTime, OffsetDateTime> fieldsRow() {
-        return (Row11) super.fieldsRow();
+    public Entity where(Condition condition) {
+        return new Entity(getQualifiedName(), aliased() ? this : null, null, condition);
     }
 
     /**
-     * Convenience mapping calling {@link SelectField#convertFrom(Function)}.
+     * Create an inline derived table from this table
      */
-    public <U> SelectField<U> mapping(Function11<? super Long, ? super UUID, ? super Integer, ? super Integer, ? super JSONB, ? super Object, ? super String, ? super byte[], ? super Boolean, ? super OffsetDateTime, ? super OffsetDateTime, ? extends U> from) {
-        return convertFrom(Records.mapping(from));
+    @Override
+    public Entity where(Collection<? extends Condition> conditions) {
+        return where(DSL.and(conditions));
     }
 
     /**
-     * Convenience mapping calling {@link SelectField#convertFrom(Class,
-     * Function)}.
+     * Create an inline derived table from this table
      */
-    public <U> SelectField<U> mapping(Class<U> toType, Function11<? super Long, ? super UUID, ? super Integer, ? super Integer, ? super JSONB, ? super Object, ? super String, ? super byte[], ? super Boolean, ? super OffsetDateTime, ? super OffsetDateTime, ? extends U> from) {
-        return convertFrom(toType, Records.mapping(from));
+    @Override
+    public Entity where(Condition... conditions) {
+        return where(DSL.and(conditions));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    public Entity where(Field<Boolean> condition) {
+        return where(DSL.condition(condition));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    @PlainSQL
+    public Entity where(SQL condition) {
+        return where(DSL.condition(condition));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    @PlainSQL
+    public Entity where(@Stringly.SQL String condition) {
+        return where(DSL.condition(condition));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    @PlainSQL
+    public Entity where(@Stringly.SQL String condition, Object... binds) {
+        return where(DSL.condition(condition, binds));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    @PlainSQL
+    public Entity where(@Stringly.SQL String condition, QueryPart... parts) {
+        return where(DSL.condition(condition, parts));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    public Entity whereExists(Select<?> select) {
+        return where(DSL.exists(select));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    public Entity whereNotExists(Select<?> select) {
+        return where(DSL.notExists(select));
     }
 }

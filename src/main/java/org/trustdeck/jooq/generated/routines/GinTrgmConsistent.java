@@ -7,6 +7,7 @@ package org.trustdeck.jooq.generated.routines;
 import org.jooq.Field;
 import org.jooq.Parameter;
 import org.jooq.impl.AbstractRoutine;
+import org.jooq.impl.DefaultDataType;
 import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.trustdeck.jooq.generated.Public;
@@ -34,7 +35,7 @@ public class GinTrgmConsistent extends AbstractRoutine<Boolean> {
      * configuration.
      */
     @Deprecated
-    public static final Parameter<Object> _1 = Internal.createParameter("_1", org.jooq.impl.DefaultDataType.getDefaultDataType("\"pg_catalog\".\"internal\""), false, true);
+    public static final Parameter<Object> _1 = Internal.createParameter("_1", DefaultDataType.getDefaultDataType("\"pg_catalog\".\"internal\""), false, true);
 
     /**
      * The parameter <code>public.gin_trgm_consistent._2</code>.
@@ -60,7 +61,7 @@ public class GinTrgmConsistent extends AbstractRoutine<Boolean> {
      * configuration.
      */
     @Deprecated
-    public static final Parameter<Object> _5 = Internal.createParameter("_5", org.jooq.impl.DefaultDataType.getDefaultDataType("\"pg_catalog\".\"internal\""), false, true);
+    public static final Parameter<Object> _5 = Internal.createParameter("_5", DefaultDataType.getDefaultDataType("\"pg_catalog\".\"internal\""), false, true);
 
     /**
      * @deprecated Unknown data type. If this is a qualified, user-defined type,
@@ -71,7 +72,7 @@ public class GinTrgmConsistent extends AbstractRoutine<Boolean> {
      * configuration.
      */
     @Deprecated
-    public static final Parameter<Object> _6 = Internal.createParameter("_6", org.jooq.impl.DefaultDataType.getDefaultDataType("\"pg_catalog\".\"internal\""), false, true);
+    public static final Parameter<Object> _6 = Internal.createParameter("_6", DefaultDataType.getDefaultDataType("\"pg_catalog\".\"internal\""), false, true);
 
     /**
      * @deprecated Unknown data type. If this is a qualified, user-defined type,
@@ -82,7 +83,7 @@ public class GinTrgmConsistent extends AbstractRoutine<Boolean> {
      * configuration.
      */
     @Deprecated
-    public static final Parameter<Object> _7 = Internal.createParameter("_7", org.jooq.impl.DefaultDataType.getDefaultDataType("\"pg_catalog\".\"internal\""), false, true);
+    public static final Parameter<Object> _7 = Internal.createParameter("_7", DefaultDataType.getDefaultDataType("\"pg_catalog\".\"internal\""), false, true);
 
     /**
      * @deprecated Unknown data type. If this is a qualified, user-defined type,
@@ -93,7 +94,7 @@ public class GinTrgmConsistent extends AbstractRoutine<Boolean> {
      * configuration.
      */
     @Deprecated
-    public static final Parameter<Object> _8 = Internal.createParameter("_8", org.jooq.impl.DefaultDataType.getDefaultDataType("\"pg_catalog\".\"internal\""), false, true);
+    public static final Parameter<Object> _8 = Internal.createParameter("_8", DefaultDataType.getDefaultDataType("\"pg_catalog\".\"internal\""), false, true);
 
     /**
      * Create a new routine call instance
@@ -115,8 +116,9 @@ public class GinTrgmConsistent extends AbstractRoutine<Boolean> {
     /**
      * Set the <code>_1</code> parameter IN value to the routine
      */
-    public void set__1(Object value) {
+    public GinTrgmConsistent set__1(Object value) {
         setValue(_1, value);
+        return this;
     }
 
     /**
@@ -131,8 +133,9 @@ public class GinTrgmConsistent extends AbstractRoutine<Boolean> {
     /**
      * Set the <code>_2</code> parameter IN value to the routine
      */
-    public void set__2(Short value) {
+    public GinTrgmConsistent set__2(Short value) {
         setValue(_2, value);
+        return this;
     }
 
     /**
@@ -147,8 +150,9 @@ public class GinTrgmConsistent extends AbstractRoutine<Boolean> {
     /**
      * Set the <code>_3</code> parameter IN value to the routine
      */
-    public void set__3(String value) {
+    public GinTrgmConsistent set__3(String value) {
         setValue(_3, value);
+        return this;
     }
 
     /**
@@ -163,8 +167,9 @@ public class GinTrgmConsistent extends AbstractRoutine<Boolean> {
     /**
      * Set the <code>_4</code> parameter IN value to the routine
      */
-    public void set__4(Integer value) {
+    public GinTrgmConsistent set__4(Integer value) {
         setValue(_4, value);
+        return this;
     }
 
     /**
@@ -179,8 +184,9 @@ public class GinTrgmConsistent extends AbstractRoutine<Boolean> {
     /**
      * Set the <code>_5</code> parameter IN value to the routine
      */
-    public void set__5(Object value) {
+    public GinTrgmConsistent set__5(Object value) {
         setValue(_5, value);
+        return this;
     }
 
     /**
@@ -195,8 +201,9 @@ public class GinTrgmConsistent extends AbstractRoutine<Boolean> {
     /**
      * Set the <code>_6</code> parameter IN value to the routine
      */
-    public void set__6(Object value) {
+    public GinTrgmConsistent set__6(Object value) {
         setValue(_6, value);
+        return this;
     }
 
     /**
@@ -211,8 +218,9 @@ public class GinTrgmConsistent extends AbstractRoutine<Boolean> {
     /**
      * Set the <code>_7</code> parameter IN value to the routine
      */
-    public void set__7(Object value) {
+    public GinTrgmConsistent set__7(Object value) {
         setValue(_7, value);
+        return this;
     }
 
     /**
@@ -227,8 +235,9 @@ public class GinTrgmConsistent extends AbstractRoutine<Boolean> {
     /**
      * Set the <code>_8</code> parameter IN value to the routine
      */
-    public void set__8(Object value) {
+    public GinTrgmConsistent set__8(Object value) {
         setValue(_8, value);
+        return this;
     }
 
     /**

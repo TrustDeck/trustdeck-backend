@@ -7,6 +7,7 @@ package org.trustdeck.jooq.generated.routines;
 import org.jooq.Field;
 import org.jooq.Parameter;
 import org.jooq.impl.AbstractRoutine;
+import org.jooq.impl.DefaultDataType;
 import org.jooq.impl.Internal;
 import org.trustdeck.jooq.generated.Public;
 
@@ -34,7 +35,7 @@ public class GtrgmCompress extends AbstractRoutine<Object> {
      * configuration.
      */
     @Deprecated
-    public static final Parameter<Object> RETURN_VALUE = Internal.createParameter("RETURN_VALUE", org.jooq.impl.DefaultDataType.getDefaultDataType("\"pg_catalog\".\"internal\""), false, false);
+    public static final Parameter<Object> RETURN_VALUE = Internal.createParameter("RETURN_VALUE", DefaultDataType.getDefaultDataType("\"pg_catalog\".\"internal\""), false, false);
 
     /**
      * @deprecated Unknown data type. If this is a qualified, user-defined type,
@@ -45,13 +46,13 @@ public class GtrgmCompress extends AbstractRoutine<Object> {
      * configuration.
      */
     @Deprecated
-    public static final Parameter<Object> _1 = Internal.createParameter("_1", org.jooq.impl.DefaultDataType.getDefaultDataType("\"pg_catalog\".\"internal\""), false, true);
+    public static final Parameter<Object> _1 = Internal.createParameter("_1", DefaultDataType.getDefaultDataType("\"pg_catalog\".\"internal\""), false, true);
 
     /**
      * Create a new routine call instance
      */
     public GtrgmCompress() {
-        super("gtrgm_compress", Public.PUBLIC, org.jooq.impl.DefaultDataType.getDefaultDataType("\"pg_catalog\".\"internal\""));
+        super("gtrgm_compress", Public.PUBLIC, DefaultDataType.getDefaultDataType("\"pg_catalog\".\"internal\""));
 
         setReturnParameter(RETURN_VALUE);
         addInParameter(_1);
@@ -60,8 +61,9 @@ public class GtrgmCompress extends AbstractRoutine<Object> {
     /**
      * Set the <code>_1</code> parameter IN value to the routine
      */
-    public void set__1(Object value) {
+    public GtrgmCompress set__1(Object value) {
         setValue(_1, value);
+        return this;
     }
 
     /**

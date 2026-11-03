@@ -52,8 +52,9 @@ public class StrictWordSimilarityCommutatorOp extends AbstractRoutine<Boolean> {
     /**
      * Set the <code>_1</code> parameter IN value to the routine
      */
-    public void set__1(String value) {
+    public StrictWordSimilarityCommutatorOp set__1(String value) {
         setValue(_1, value);
+        return this;
     }
 
     /**
@@ -68,8 +69,9 @@ public class StrictWordSimilarityCommutatorOp extends AbstractRoutine<Boolean> {
     /**
      * Set the <code>_2</code> parameter IN value to the routine
      */
-    public void set__2(String value) {
+    public StrictWordSimilarityCommutatorOp set__2(String value) {
         setValue(_2, value);
+        return this;
     }
 
     /**
