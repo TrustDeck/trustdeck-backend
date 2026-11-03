@@ -271,6 +271,36 @@ public class ProjectDBService {
     }
 
     /**
+     * Checks whether a project is in use, i.e. whether domains, entity types, or entities reference it.
+     * The abbreviation of a project in use cannot be changed, since it is part of its domains' names
+     * and of external configurations.
+     * 
+     * @param projectId the ID of the project
+     * @return {@code true} if the project is in use, {@code false} if not, or {@code null} if the check failed
+     */
+    @Transactional(readOnly = true)
+    public Boolean isProjectInUse(Integer projectId) {
+    	try {
+    		int usedBy = dsl.select(
+			DSL.field(dsl.selectCount()
+    	                     .from(ENTITY_TYPE)
+    	                     .where(ENTITY_TYPE.PROJECT_ID.eq(projectId)))
+			.add(DSL.field(dsl.selectCount()
+    	                     .from(ENTITY)
+	                     .where(ENTITY.PROJECT_ID.eq(projectId)))
+                    .add(DSL.field(dsl.selectCount()
+                            .from(DOMAIN)
+                            .where(DOMAIN.PROJECT_ID.eq(projectId)))))
+    				).fetchOne(0, int.class);
+    		
+    		return usedBy != 0;
+    	} catch (DataAccessException e) {
+    		log.debug("Searching for references to the project in the database failed.", e);
+    		return null;
+    	}
+    }
+
+    /**
      * This method updates a project identified by its name.
      * 
      * @param oldProject the project object containing information of the project that should be updated
@@ -291,32 +321,20 @@ public class ProjectDBService {
 			return null;
 		}
 		
-		// Check if the project is in use (find project_id mentions in the type, entity, and domain tables)
-		int usedBy = 0;
-    	try {
-    		usedBy = dsl.select(
-			DSL.field(dsl.selectCount()
-    	                     .from(ENTITY_TYPE)
-    	                     .where(ENTITY_TYPE.PROJECT_ID.eq(oldProject.getId())))
-			.add(DSL.field(dsl.selectCount()
-    	                     .from(ENTITY)
-	                     .where(ENTITY.PROJECT_ID.eq(oldProject.getId())))
-                    .add(DSL.field(dsl.selectCount()
-                            .from(DOMAIN)
-                            .where(DOMAIN.PROJECT_ID.eq(oldProject.getId())))))
-    				).fetchOne(0, int.class);
-    	} catch (DataAccessException e) {
-    		log.debug("Searching for entity type references in the database failed.", e);
-    		return null;
-    	}
+		// Check if the project is in use
+		Boolean inUse = isProjectInUse(oldProject.getId());
+		if (inUse == null) {
+			return null;
+		}
     	
     	// Built update object with sanitized values, depending on if the project is in use or not
 		ProjectRecord updatedProjectRecord;
 		String newAbbreviation = null;
 		try {
-			if (usedBy != 0) {
-				log.debug("The project is currently in use and can therefore only be partially updated.");
+			if (inUse) {
+				log.debug("The project is currently in use, so its abbreviation and storage settings are kept.");
 
+				String newName = Assertion.isNotNullOrEmpty(updatedProject.getName()) ? updatedProject.getName() : oldProject.getName();
 				OffsetDateTime newStart = updatedProject.getStartDate() != null ? updatedProject.getStartDate() : oldProject.getStartDate();
 				OffsetDateTime newEnd = updatedProject.getEndDate() != null ? updatedProject.getEndDate() : oldProject.getEndDate();
 
@@ -328,6 +346,7 @@ public class ProjectDBService {
 
 				// Do the actual update
 				updatedProjectRecord = dsl.update(PROJECT)
+						.set(PROJECT.NAME, newName)
 						.set(PROJECT.START_DATE, newStart)
 						.set(PROJECT.END_DATE, newEnd)
 						.set(PROJECT.DESCRIPTION, newDescription)
