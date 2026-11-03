@@ -989,13 +989,15 @@ public class DomainController {
      * @return {@code true} if the input is a valid salt value, {@code false} if not.
      */
     private boolean validateSalt(String salt, Boolean allowEmpty) {
-        if (salt.isBlank() && !allowEmpty) {
-            // The salt was empty when a non-empty salt was expected.
-            log.debug("The new salt given by the user was empty.");
-            return false;
+        if (salt.isBlank()) {
+            // An empty salt is only valid when it was explicitly allowed.
+            if (!allowEmpty) {
+                log.debug("The new salt given by the user was empty.");
+            }
+            return allowEmpty;
         }
 
-        if (salt.length() < MINIMUM_SALT_LENGTH && !allowEmpty) {
+        if (salt.length() < MINIMUM_SALT_LENGTH) {
             // The new salt is too short.
             log.debug("The new salt given by the user was too short. It should be at least " + MINIMUM_SALT_LENGTH + " characters long.");
             return false;

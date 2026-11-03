@@ -374,6 +374,16 @@ public class TestsDomainServiceIT extends AssertWebRequestService {
         };
         this.assertBadRequestRequest("updateDomainSaltEmptyNotAllowed", put("/api/domains/" + domainName + "/salt"), emptySaltParameter, null, this.getAccessToken());
 
+        // A too short salt must be rejected, even when empty salts are allowed
+        Map<String, String> shortSaltParameter = new HashMap<>() {
+            private static final long serialVersionUID = -2071695419812644583L;
+            {
+                put("salt", "ab");
+                put("allowEmpty", "true");
+            }
+        };
+        this.assertBadRequestRequest("updateDomainSaltTooShort", put("/api/domains/" + domainName + "/salt"), shortSaltParameter, null, this.getAccessToken());
+
         // Update to a new non-empty salt
         Map<String, String> saltParameter = new HashMap<>() {
             private static final long serialVersionUID = -4380158238715462307L;
