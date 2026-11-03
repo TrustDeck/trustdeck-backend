@@ -21,13 +21,14 @@ import org.jooq.QueryPart;
 import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.Select;
 import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
+import org.jooq.TableLike;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 import org.trustdeck.jooq.generated.Indexes;
@@ -61,7 +62,7 @@ public class Algorithm extends TableImpl<AlgorithmRecord> {
     /**
      * The column <code>public.algorithm.id</code>.
      */
-    public final TableField<AlgorithmRecord, Integer> ID = createField(DSL.name("id"), SQLDataType.INTEGER.nullable(false).identity(true), this, "");
+    public final TableField<AlgorithmRecord, Integer> ID = createField(DSL.name("id"), SQLDataType.INTEGER.nullable(false).generatedByDefaultAsIdentity(), this, "");
 
     /**
      * The column <code>public.algorithm.name</code>.
@@ -263,7 +264,7 @@ public class Algorithm extends TableImpl<AlgorithmRecord> {
      */
     @Override
     public Algorithm where(Condition condition) {
-        return new Algorithm(getQualifiedName(), aliased() ? this : null, null, condition);
+        return new Algorithm(getQualifiedName(), aliased() ? this : null, null, Internal.condition(this, condition));
     }
 
     /**
@@ -330,7 +331,7 @@ public class Algorithm extends TableImpl<AlgorithmRecord> {
      * Create an inline derived table from this table
      */
     @Override
-    public Algorithm whereExists(Select<?> select) {
+    public Algorithm whereExists(TableLike<?> select) {
         return where(DSL.exists(select));
     }
 
@@ -338,7 +339,7 @@ public class Algorithm extends TableImpl<AlgorithmRecord> {
      * Create an inline derived table from this table
      */
     @Override
-    public Algorithm whereNotExists(Select<?> select) {
+    public Algorithm whereNotExists(TableLike<?> select) {
         return where(DSL.notExists(select));
     }
 }

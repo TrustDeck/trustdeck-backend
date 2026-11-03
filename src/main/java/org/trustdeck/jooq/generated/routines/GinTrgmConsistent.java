@@ -7,6 +7,7 @@ package org.trustdeck.jooq.generated.routines;
 import org.jooq.Field;
 import org.jooq.Parameter;
 import org.jooq.impl.AbstractRoutine;
+import org.jooq.impl.DSL;
 import org.jooq.impl.DefaultDataType;
 import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
@@ -24,7 +25,7 @@ public class GinTrgmConsistent extends AbstractRoutine<Boolean> {
     /**
      * The parameter <code>public.gin_trgm_consistent.RETURN_VALUE</code>.
      */
-    public static final Parameter<Boolean> RETURN_VALUE = Internal.createParameter("RETURN_VALUE", SQLDataType.BOOLEAN, false, false);
+    public static final Parameter<Boolean> RETURN_VALUE = Internal.createParameter("RETURN_VALUE", SQLDataType.BOOLEAN, false);
 
     /**
      * @deprecated Unknown data type. If this is a qualified, user-defined type,
@@ -35,22 +36,22 @@ public class GinTrgmConsistent extends AbstractRoutine<Boolean> {
      * configuration.
      */
     @Deprecated
-    public static final Parameter<Object> _1 = Internal.createParameter("_1", DefaultDataType.getDefaultDataType("\"pg_catalog\".\"internal\""), false, true);
+    public static final Parameter<Object> _1 = Internal.createParameter("_1", DefaultDataType.getDefaultDataType("\"pg_catalog\".\"internal\""), true);
 
     /**
      * The parameter <code>public.gin_trgm_consistent._2</code>.
      */
-    public static final Parameter<Short> _2 = Internal.createParameter("_2", SQLDataType.SMALLINT, false, true);
+    public static final Parameter<Short> _2 = Internal.createParameter("_2", SQLDataType.SMALLINT, true);
 
     /**
      * The parameter <code>public.gin_trgm_consistent._3</code>.
      */
-    public static final Parameter<String> _3 = Internal.createParameter("_3", SQLDataType.CLOB, false, true);
+    public static final Parameter<String> _3 = Internal.createParameter("_3", SQLDataType.CLOB, true);
 
     /**
      * The parameter <code>public.gin_trgm_consistent._4</code>.
      */
-    public static final Parameter<Integer> _4 = Internal.createParameter("_4", SQLDataType.INTEGER, false, true);
+    public static final Parameter<Integer> _4 = Internal.createParameter("_4", SQLDataType.INTEGER, true);
 
     /**
      * @deprecated Unknown data type. If this is a qualified, user-defined type,
@@ -61,7 +62,7 @@ public class GinTrgmConsistent extends AbstractRoutine<Boolean> {
      * configuration.
      */
     @Deprecated
-    public static final Parameter<Object> _5 = Internal.createParameter("_5", DefaultDataType.getDefaultDataType("\"pg_catalog\".\"internal\""), false, true);
+    public static final Parameter<Object> _5 = Internal.createParameter("_5", DefaultDataType.getDefaultDataType("\"pg_catalog\".\"internal\""), true);
 
     /**
      * @deprecated Unknown data type. If this is a qualified, user-defined type,
@@ -72,7 +73,7 @@ public class GinTrgmConsistent extends AbstractRoutine<Boolean> {
      * configuration.
      */
     @Deprecated
-    public static final Parameter<Object> _6 = Internal.createParameter("_6", DefaultDataType.getDefaultDataType("\"pg_catalog\".\"internal\""), false, true);
+    public static final Parameter<Object> _6 = Internal.createParameter("_6", DefaultDataType.getDefaultDataType("\"pg_catalog\".\"internal\""), true);
 
     /**
      * @deprecated Unknown data type. If this is a qualified, user-defined type,
@@ -83,7 +84,7 @@ public class GinTrgmConsistent extends AbstractRoutine<Boolean> {
      * configuration.
      */
     @Deprecated
-    public static final Parameter<Object> _7 = Internal.createParameter("_7", DefaultDataType.getDefaultDataType("\"pg_catalog\".\"internal\""), false, true);
+    public static final Parameter<Object> _7 = Internal.createParameter("_7", DefaultDataType.getDefaultDataType("\"pg_catalog\".\"internal\""), true);
 
     /**
      * @deprecated Unknown data type. If this is a qualified, user-defined type,
@@ -94,13 +95,13 @@ public class GinTrgmConsistent extends AbstractRoutine<Boolean> {
      * configuration.
      */
     @Deprecated
-    public static final Parameter<Object> _8 = Internal.createParameter("_8", DefaultDataType.getDefaultDataType("\"pg_catalog\".\"internal\""), false, true);
+    public static final Parameter<Object> _8 = Internal.createParameter("_8", DefaultDataType.getDefaultDataType("\"pg_catalog\".\"internal\""), true);
 
     /**
      * Create a new routine call instance
      */
     public GinTrgmConsistent() {
-        super("gin_trgm_consistent", Public.PUBLIC, SQLDataType.BOOLEAN);
+        super("gin_trgm_consistent", Public.PUBLIC, DSL.comment(""), SQLDataType.BOOLEAN);
 
         setReturnParameter(RETURN_VALUE);
         addInParameter(_1);

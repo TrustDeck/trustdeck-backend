@@ -7,6 +7,7 @@ package org.trustdeck.jooq.generated.routines;
 import org.jooq.Field;
 import org.jooq.Parameter;
 import org.jooq.impl.AbstractRoutine;
+import org.jooq.impl.DSL;
 import org.jooq.impl.DefaultDataType;
 import org.jooq.impl.Internal;
 import org.trustdeck.jooq.generated.Public;
@@ -35,7 +36,7 @@ public class GtrgmUnion extends AbstractRoutine<Object> {
      * configuration.
      */
     @Deprecated
-    public static final Parameter<Object> RETURN_VALUE = Internal.createParameter("RETURN_VALUE", DefaultDataType.getDefaultDataType("\"public\".\"gtrgm\""), false, false);
+    public static final Parameter<Object> RETURN_VALUE = Internal.createParameter("RETURN_VALUE", DefaultDataType.getDefaultDataType("\"public\".\"gtrgm\""), false);
 
     /**
      * @deprecated Unknown data type. If this is a qualified, user-defined type,
@@ -46,7 +47,7 @@ public class GtrgmUnion extends AbstractRoutine<Object> {
      * configuration.
      */
     @Deprecated
-    public static final Parameter<Object> _1 = Internal.createParameter("_1", DefaultDataType.getDefaultDataType("\"pg_catalog\".\"internal\""), false, true);
+    public static final Parameter<Object> _1 = Internal.createParameter("_1", DefaultDataType.getDefaultDataType("\"pg_catalog\".\"internal\""), true);
 
     /**
      * @deprecated Unknown data type. If this is a qualified, user-defined type,
@@ -57,13 +58,13 @@ public class GtrgmUnion extends AbstractRoutine<Object> {
      * configuration.
      */
     @Deprecated
-    public static final Parameter<Object> _2 = Internal.createParameter("_2", DefaultDataType.getDefaultDataType("\"pg_catalog\".\"internal\""), false, true);
+    public static final Parameter<Object> _2 = Internal.createParameter("_2", DefaultDataType.getDefaultDataType("\"pg_catalog\".\"internal\""), true);
 
     /**
      * Create a new routine call instance
      */
     public GtrgmUnion() {
-        super("gtrgm_union", Public.PUBLIC, DefaultDataType.getDefaultDataType("\"public\".\"gtrgm\""));
+        super("gtrgm_union", Public.PUBLIC, DSL.comment(""), DefaultDataType.getDefaultDataType("\"public\".\"gtrgm\""));
 
         setReturnParameter(RETURN_VALUE);
         addInParameter(_1);

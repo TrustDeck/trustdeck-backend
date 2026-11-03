@@ -206,7 +206,7 @@ public class LinkageTokenRecord extends UpdatableRecordImpl<LinkageTokenRecord> 
         setTokenValue(from.getTokenValue());
         setWeight(from.getWeight());
         setCreatedAt(from.getCreatedAt());
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 
     @Override
@@ -241,13 +241,13 @@ public class LinkageTokenRecord extends UpdatableRecordImpl<LinkageTokenRecord> 
         setTokenValue(tokenValue);
         setWeight(weight);
         setCreatedAt(createdAt);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 
     /**
      * Create a detached, initialised LinkageTokenRecord
      */
-    public LinkageTokenRecord(org.trustdeck.jooq.generated.tables.pojos.LinkageToken value) {
+    public LinkageTokenRecord(ILinkageToken value) {
         super(LinkageToken.LINKAGE_TOKEN);
 
         if (value != null) {
@@ -260,7 +260,7 @@ public class LinkageTokenRecord extends UpdatableRecordImpl<LinkageTokenRecord> 
             setTokenValue(value.getTokenValue());
             setWeight(value.getWeight());
             setCreatedAt(value.getCreatedAt());
-            resetChangedOnNotNull();
+            resetTouchedOnNotNull();
         }
     }
 }

@@ -23,12 +23,16 @@ spring:
     type: com.zaxxer.hikari.HikariDataSource
   autoconfigure:
     exclude:
-      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
   main:
     allow-circular-references: true
   servlet:
     multipart:
       enabled: true
+  http:
+    converters:
+      # Keep Jackson 2 for HTTP message conversion until the code base is migrated to Jackson 3.
+      preferred-json-mapper: jackson2
   security:
     oauth2:
       resourceserver:

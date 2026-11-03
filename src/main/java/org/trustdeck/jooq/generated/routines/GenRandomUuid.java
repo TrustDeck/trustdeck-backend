@@ -8,6 +8,7 @@ import java.util.UUID;
 
 import org.jooq.Parameter;
 import org.jooq.impl.AbstractRoutine;
+import org.jooq.impl.DSL;
 import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.trustdeck.jooq.generated.Public;
@@ -24,13 +25,13 @@ public class GenRandomUuid extends AbstractRoutine<UUID> {
     /**
      * The parameter <code>public.gen_random_uuid.RETURN_VALUE</code>.
      */
-    public static final Parameter<UUID> RETURN_VALUE = Internal.createParameter("RETURN_VALUE", SQLDataType.UUID, false, false);
+    public static final Parameter<UUID> RETURN_VALUE = Internal.createParameter("RETURN_VALUE", SQLDataType.UUID, false);
 
     /**
      * Create a new routine call instance
      */
     public GenRandomUuid() {
-        super("gen_random_uuid", Public.PUBLIC, SQLDataType.UUID);
+        super("gen_random_uuid", Public.PUBLIC, DSL.comment(""), SQLDataType.UUID);
 
         setReturnParameter(RETURN_VALUE);
     }

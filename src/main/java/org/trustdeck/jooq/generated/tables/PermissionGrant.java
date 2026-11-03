@@ -18,13 +18,14 @@ import org.jooq.PlainSQL;
 import org.jooq.QueryPart;
 import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.Select;
 import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
+import org.jooq.TableLike;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 import org.trustdeck.jooq.generated.Indexes;
@@ -57,7 +58,7 @@ public class PermissionGrant extends TableImpl<PermissionGrantRecord> {
     /**
      * The column <code>public.permission_grant.id</code>.
      */
-    public final TableField<PermissionGrantRecord, Integer> ID = createField(DSL.name("id"), SQLDataType.INTEGER.nullable(false).identity(true), this, "");
+    public final TableField<PermissionGrantRecord, Integer> ID = createField(DSL.name("id"), SQLDataType.INTEGER.nullable(false).generatedByDefaultAsIdentity(), this, "");
 
     /**
      * The column <code>public.permission_grant.subject_id</code>.
@@ -207,7 +208,7 @@ public class PermissionGrant extends TableImpl<PermissionGrantRecord> {
      */
     @Override
     public PermissionGrant where(Condition condition) {
-        return new PermissionGrant(getQualifiedName(), aliased() ? this : null, null, condition);
+        return new PermissionGrant(getQualifiedName(), aliased() ? this : null, null, Internal.condition(this, condition));
     }
 
     /**
@@ -274,7 +275,7 @@ public class PermissionGrant extends TableImpl<PermissionGrantRecord> {
      * Create an inline derived table from this table
      */
     @Override
-    public PermissionGrant whereExists(Select<?> select) {
+    public PermissionGrant whereExists(TableLike<?> select) {
         return where(DSL.exists(select));
     }
 
@@ -282,7 +283,7 @@ public class PermissionGrant extends TableImpl<PermissionGrantRecord> {
      * Create an inline derived table from this table
      */
     @Override
-    public PermissionGrant whereNotExists(Select<?> select) {
+    public PermissionGrant whereNotExists(TableLike<?> select) {
         return where(DSL.notExists(select));
     }
 }

@@ -7,6 +7,7 @@ package org.trustdeck.jooq.generated.routines;
 import org.jooq.Field;
 import org.jooq.Parameter;
 import org.jooq.impl.AbstractRoutine;
+import org.jooq.impl.DSL;
 import org.jooq.impl.DefaultDataType;
 import org.jooq.impl.Internal;
 import org.trustdeck.jooq.generated.Public;
@@ -35,7 +36,7 @@ public class GtrgmOut extends AbstractRoutine<Object> {
      * configuration.
      */
     @Deprecated
-    public static final Parameter<Object> RETURN_VALUE = Internal.createParameter("RETURN_VALUE", DefaultDataType.getDefaultDataType("\"pg_catalog\".\"cstring\""), false, false);
+    public static final Parameter<Object> RETURN_VALUE = Internal.createParameter("RETURN_VALUE", DefaultDataType.getDefaultDataType("\"pg_catalog\".\"cstring\""), false);
 
     /**
      * @deprecated Unknown data type. If this is a qualified, user-defined type,
@@ -46,13 +47,13 @@ public class GtrgmOut extends AbstractRoutine<Object> {
      * configuration.
      */
     @Deprecated
-    public static final Parameter<Object> _1 = Internal.createParameter("_1", DefaultDataType.getDefaultDataType("\"public\".\"gtrgm\""), false, true);
+    public static final Parameter<Object> _1 = Internal.createParameter("_1", DefaultDataType.getDefaultDataType("\"public\".\"gtrgm\""), true);
 
     /**
      * Create a new routine call instance
      */
     public GtrgmOut() {
-        super("gtrgm_out", Public.PUBLIC, DefaultDataType.getDefaultDataType("\"pg_catalog\".\"cstring\""));
+        super("gtrgm_out", Public.PUBLIC, DSL.comment(""), DefaultDataType.getDefaultDataType("\"pg_catalog\".\"cstring\""));
 
         setReturnParameter(RETURN_VALUE);
         addInParameter(_1);

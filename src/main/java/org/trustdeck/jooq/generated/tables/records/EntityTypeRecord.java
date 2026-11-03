@@ -235,7 +235,7 @@ public class EntityTypeRecord extends UpdatableRecordImpl<EntityTypeRecord> impl
         setAssociatedDomainId(from.getAssociatedDomainId());
         setProjectId(from.getProjectId());
         setFullTextSearchVector(from.getFullTextSearchVector());
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 
     @Override
@@ -271,13 +271,13 @@ public class EntityTypeRecord extends UpdatableRecordImpl<EntityTypeRecord> impl
         setAssociatedDomainId(associatedDomainId);
         setProjectId(projectId);
         setFullTextSearchVector(fullTextSearchVector);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 
     /**
      * Create a detached, initialised EntityTypeRecord
      */
-    public EntityTypeRecord(org.trustdeck.jooq.generated.tables.pojos.EntityType value) {
+    public EntityTypeRecord(IEntityType value) {
         super(EntityType.ENTITY_TYPE);
 
         if (value != null) {
@@ -291,7 +291,7 @@ public class EntityTypeRecord extends UpdatableRecordImpl<EntityTypeRecord> impl
             setAssociatedDomainId(value.getAssociatedDomainId());
             setProjectId(value.getProjectId());
             setFullTextSearchVector(value.getFullTextSearchVector());
-            resetChangedOnNotNull();
+            resetTouchedOnNotNull();
         }
     }
 }

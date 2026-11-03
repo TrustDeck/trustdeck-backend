@@ -7,6 +7,7 @@ package org.trustdeck.jooq.generated.routines;
 import org.jooq.Field;
 import org.jooq.Parameter;
 import org.jooq.impl.AbstractRoutine;
+import org.jooq.impl.DSL;
 import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.trustdeck.jooq.generated.Public;
@@ -23,18 +24,18 @@ public class Armor1 extends AbstractRoutine<String> {
     /**
      * The parameter <code>public.armor.RETURN_VALUE</code>.
      */
-    public static final Parameter<String> RETURN_VALUE = Internal.createParameter("RETURN_VALUE", SQLDataType.CLOB, false, false);
+    public static final Parameter<String> RETURN_VALUE = Internal.createParameter("RETURN_VALUE", SQLDataType.CLOB, false);
 
     /**
      * The parameter <code>public.armor._1</code>.
      */
-    public static final Parameter<byte[]> _1 = Internal.createParameter("_1", SQLDataType.BLOB, false, true);
+    public static final Parameter<byte[]> _1 = Internal.createParameter("_1", SQLDataType.BLOB, true);
 
     /**
      * Create a new routine call instance
      */
     public Armor1() {
-        super("armor", Public.PUBLIC, SQLDataType.CLOB);
+        super("armor", Public.PUBLIC, DSL.comment(""), SQLDataType.CLOB);
 
         setReturnParameter(RETURN_VALUE);
         addInParameter(_1);

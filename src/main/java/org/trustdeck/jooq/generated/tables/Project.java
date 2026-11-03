@@ -22,10 +22,10 @@ import org.jooq.QueryPart;
 import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.Select;
 import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
+import org.jooq.TableLike;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
@@ -65,7 +65,7 @@ public class Project extends TableImpl<ProjectRecord> {
     /**
      * The column <code>public.project.id</code>.
      */
-    public final TableField<ProjectRecord, Integer> ID = createField(DSL.name("id"), SQLDataType.INTEGER.nullable(false).identity(true), this, "");
+    public final TableField<ProjectRecord, Integer> ID = createField(DSL.name("id"), SQLDataType.INTEGER.nullable(false).generatedByDefaultAsIdentity(), this, "");
 
     /**
      * The column <code>public.project.name</code>.
@@ -287,7 +287,7 @@ public class Project extends TableImpl<ProjectRecord> {
      */
     @Override
     public Project where(Condition condition) {
-        return new Project(getQualifiedName(), aliased() ? this : null, null, condition);
+        return new Project(getQualifiedName(), aliased() ? this : null, null, Internal.condition(this, condition));
     }
 
     /**
@@ -354,7 +354,7 @@ public class Project extends TableImpl<ProjectRecord> {
      * Create an inline derived table from this table
      */
     @Override
-    public Project whereExists(Select<?> select) {
+    public Project whereExists(TableLike<?> select) {
         return where(DSL.exists(select));
     }
 
@@ -362,7 +362,7 @@ public class Project extends TableImpl<ProjectRecord> {
      * Create an inline derived table from this table
      */
     @Override
-    public Project whereNotExists(Select<?> select) {
+    public Project whereNotExists(TableLike<?> select) {
         return where(DSL.notExists(select));
     }
 }

@@ -6,6 +6,7 @@ package org.trustdeck.jooq.generated.routines;
 
 import org.jooq.Parameter;
 import org.jooq.impl.AbstractRoutine;
+import org.jooq.impl.DSL;
 import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.trustdeck.jooq.generated.Public;
@@ -22,13 +23,13 @@ public class ShowLimit extends AbstractRoutine<Float> {
     /**
      * The parameter <code>public.show_limit.RETURN_VALUE</code>.
      */
-    public static final Parameter<Float> RETURN_VALUE = Internal.createParameter("RETURN_VALUE", SQLDataType.REAL, false, false);
+    public static final Parameter<Float> RETURN_VALUE = Internal.createParameter("RETURN_VALUE", SQLDataType.REAL, false);
 
     /**
      * Create a new routine call instance
      */
     public ShowLimit() {
-        super("show_limit", Public.PUBLIC, SQLDataType.REAL);
+        super("show_limit", Public.PUBLIC, DSL.comment(""), SQLDataType.REAL);
 
         setReturnParameter(RETURN_VALUE);
     }

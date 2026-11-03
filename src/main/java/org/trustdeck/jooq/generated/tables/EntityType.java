@@ -23,10 +23,10 @@ import org.jooq.QueryPart;
 import org.jooq.Record;
 import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.Select;
 import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
+import org.jooq.TableLike;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
@@ -39,7 +39,6 @@ import org.trustdeck.jooq.generated.Keys;
 import org.trustdeck.jooq.generated.Public;
 import org.trustdeck.jooq.generated.tables.Domain.DomainPath;
 import org.trustdeck.jooq.generated.tables.Entity.EntityPath;
-import org.trustdeck.jooq.generated.tables.EntityType.EntityTypePath;
 import org.trustdeck.jooq.generated.tables.Project.ProjectPath;
 import org.trustdeck.jooq.generated.tables.records.EntityTypeRecord;
 
@@ -68,7 +67,7 @@ public class EntityType extends TableImpl<EntityTypeRecord> {
     /**
      * The column <code>public.entity_type.id</code>.
      */
-    public final TableField<EntityTypeRecord, Integer> ID = createField(DSL.name("id"), SQLDataType.INTEGER.nullable(false).identity(true), this, "");
+    public final TableField<EntityTypeRecord, Integer> ID = createField(DSL.name("id"), SQLDataType.INTEGER.nullable(false).generatedByDefaultAsIdentity(), this, "");
 
     /**
      * The column <code>public.entity_type.name</code>.
@@ -309,7 +308,7 @@ public class EntityType extends TableImpl<EntityTypeRecord> {
      */
     @Override
     public EntityType where(Condition condition) {
-        return new EntityType(getQualifiedName(), aliased() ? this : null, null, condition);
+        return new EntityType(getQualifiedName(), aliased() ? this : null, null, Internal.condition(this, condition));
     }
 
     /**
@@ -376,7 +375,7 @@ public class EntityType extends TableImpl<EntityTypeRecord> {
      * Create an inline derived table from this table
      */
     @Override
-    public EntityType whereExists(Select<?> select) {
+    public EntityType whereExists(TableLike<?> select) {
         return where(DSL.exists(select));
     }
 
@@ -384,7 +383,7 @@ public class EntityType extends TableImpl<EntityTypeRecord> {
      * Create an inline derived table from this table
      */
     @Override
-    public EntityType whereNotExists(Select<?> select) {
+    public EntityType whereNotExists(TableLike<?> select) {
         return where(DSL.notExists(select));
     }
 }

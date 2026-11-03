@@ -266,7 +266,7 @@ public class PermissionGrantRecord extends UpdatableRecordImpl<PermissionGrantRe
         setCreatedBy(from.getCreatedBy());
         setUpdatedAt(from.getUpdatedAt());
         setUpdatedBy(from.getUpdatedBy());
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 
     @Override
@@ -304,13 +304,13 @@ public class PermissionGrantRecord extends UpdatableRecordImpl<PermissionGrantRe
         setCreatedBy(createdBy);
         setUpdatedAt(updatedAt);
         setUpdatedBy(updatedBy);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 
     /**
      * Create a detached, initialised PermissionGrantRecord
      */
-    public PermissionGrantRecord(org.trustdeck.jooq.generated.tables.pojos.PermissionGrant value) {
+    public PermissionGrantRecord(IPermissionGrant value) {
         super(PermissionGrant.PERMISSION_GRANT);
 
         if (value != null) {
@@ -326,7 +326,7 @@ public class PermissionGrantRecord extends UpdatableRecordImpl<PermissionGrantRe
             setCreatedBy(value.getCreatedBy());
             setUpdatedAt(value.getUpdatedAt());
             setUpdatedBy(value.getUpdatedBy());
-            resetChangedOnNotNull();
+            resetTouchedOnNotNull();
         }
     }
 }

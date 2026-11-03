@@ -188,7 +188,7 @@ public class ProjectRecord extends UpdatableRecordImpl<ProjectRecord> implements
         setStoreEntities(from.getStoreEntities());
         setStorePseudonyms(from.getStorePseudonyms());
         setDescription(from.getDescription());
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 
     @Override
@@ -222,13 +222,13 @@ public class ProjectRecord extends UpdatableRecordImpl<ProjectRecord> implements
         setStoreEntities(storeEntities);
         setStorePseudonyms(storePseudonyms);
         setDescription(description);
-        resetChangedOnNotNull();
+        resetTouchedOnNotNull();
     }
 
     /**
      * Create a detached, initialised ProjectRecord
      */
-    public ProjectRecord(org.trustdeck.jooq.generated.tables.pojos.Project value) {
+    public ProjectRecord(IProject value) {
         super(Project.PROJECT);
 
         if (value != null) {
@@ -240,7 +240,7 @@ public class ProjectRecord extends UpdatableRecordImpl<ProjectRecord> implements
             setStoreEntities(value.getStoreEntities());
             setStorePseudonyms(value.getStorePseudonyms());
             setDescription(value.getDescription());
-            resetChangedOnNotNull();
+            resetTouchedOnNotNull();
         }
     }
 }
