@@ -12,6 +12,7 @@
         <lz4.version>1.11.4</lz4.version>
         <springdoc.version>3.1.1</springdoc.version>
         <commons-io.version>2.22.0</commons-io.version>
+        <json-schema-validator.version>3.0.8</json-schema-validator.version>
         <jar.finalName>trustdeck</jar.finalName>
         <jooq.skip>false</jooq.skip>
     </properties>
@@ -53,10 +54,6 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-aspectj</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-configuration-processor</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -143,14 +140,14 @@
 	        <version>${springdoc.version}</version>
 	    </dependency>
 	    <dependency>
-        	<!-- Needed for enitity type definition validation. -->
+        	<!-- Needed for entity type definition validation. -->
         	<!-- License: Apache 2.0 -->
 		    <groupId>com.networknt</groupId>
 		    <artifactId>json-schema-validator</artifactId>
-		    <version>3.0.8</version>
+		    <version>${json-schema-validator.version}</version>
 		</dependency>
 	    <dependency>
-        	<!-- Needed for enitity type definition validation. -->
+        	<!-- Needed for receiving records via Kafka. -->
         	<!-- License: Apache 2.0 -->
 		    <groupId>org.springframework.boot</groupId>
 		    <artifactId>spring-boot-starter-kafka</artifactId>
@@ -203,11 +200,7 @@
             <plugin>
                 <groupId>org.jooq</groupId>
                 <artifactId>jooq-codegen-maven</artifactId>
-                <version>${jooq.version}</version><!--$NO-MVN-MAN-VER$-->
-                <!--
-                    plugin must have the same version as in spring-boot-starter-jooq is defnied
-                    otherwhise this would fail with some class error
-                -->
+                <!-- The version is managed by Spring Boot and thereby matches the jOOQ version of spring-boot-starter-jooq. -->
                 <executions>
                     <execution>
                         <id>jooq-codegen</id>
@@ -306,7 +299,6 @@
             <plugin>
                 <groupId>io.github.git-commit-id</groupId>
                 <artifactId>git-commit-id-maven-plugin</artifactId>
-                <version>9.0.1</version>
                 <executions>
                     <execution>
                         <id>git-properties</id>
@@ -330,11 +322,16 @@
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<configuration>
+					<!-- Takes the processors' versions from the dependency management of Spring Boot. -->
+					<annotationProcessorPathsUseDepMgmt>true</annotationProcessorPathsUseDepMgmt>
 					<annotationProcessorPaths>
 						<path>
 							<groupId>org.projectlombok</groupId>
 							<artifactId>lombok</artifactId>
-							<version>${lombok.version}</version>
+						</path>
+						<path>
+							<groupId>org.springframework.boot</groupId>
+							<artifactId>spring-boot-configuration-processor</artifactId>
 						</path>
 					</annotationProcessorPaths>
 				</configuration>
