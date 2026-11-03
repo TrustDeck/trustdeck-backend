@@ -53,6 +53,7 @@ import java.net.URISyntaxException;
 import java.security.SecureRandom;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -192,7 +193,7 @@ public class DomainController {
         ProjectDTO project = projectDBService.getProjectByAbbreviation(dto.getProjectAbbreviation());
         if (project == null) {
             return responseService.notFound(responseContentType);
-        } else if (project.getEndDate() != null && project.getEndDate().isBefore(java.time.OffsetDateTime.now())) {
+        } else if (project.getEndDate() != null && project.getEndDate().isBefore(OffsetDateTime.now())) {
             return responseService.gone(responseContentType);
         }
 

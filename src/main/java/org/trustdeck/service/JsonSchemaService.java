@@ -47,6 +47,7 @@ import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.cfg.JsonNodeFeature;
 import tools.jackson.databind.node.ArrayNode;
 import tools.jackson.databind.node.ObjectNode;
+import com.networknt.schema.Error;
 import com.networknt.schema.Schema;
 import com.networknt.schema.SchemaRegistry;
 import com.networknt.schema.SpecificationVersion;
@@ -106,11 +107,11 @@ public class JsonSchemaService {
 	 */
 	public List<String> validateDefinition(JsonNode definition) {
 		// Validate the given schema and collect all messages (errors)
-		List<com.networknt.schema.Error> msgs = metaSchema.validate(definition);
+		List<Error> msgs = metaSchema.validate(definition);
 
 		// Check if there are any messages in the set
 		if (!msgs.isEmpty()) {
-			return msgs.stream().map(com.networknt.schema.Error::getMessage).collect(Collectors.toList());
+			return msgs.stream().map(Error::getMessage).collect(Collectors.toList());
 		}
 
 		// Check additional constraints that cannot (easily) be defined in the schema
@@ -291,8 +292,8 @@ public class JsonSchemaService {
 		Schema compiled = schemaRegistry.getSchema(instanceSchema);
 
 		// Validate and return possible error messages to the caller
-		List<com.networknt.schema.Error> msgs = compiled.validate(instance);
-		return msgs.stream().map(com.networknt.schema.Error::getMessage).collect(Collectors.toList());
+		List<Error> msgs = compiled.validate(instance);
+		return msgs.stream().map(Error::getMessage).collect(Collectors.toList());
 	}
 
 	/**
@@ -333,8 +334,8 @@ public class JsonSchemaService {
 		}
 	
 		// Validate and return any encountered errors
-		List<com.networknt.schema.Error> msgs = compiledInstanceSchema.validate(instance);
-        return msgs.stream().map(com.networknt.schema.Error::getMessage).collect(Collectors.toList());
+		List<Error> msgs = compiledInstanceSchema.validate(instance);
+        return msgs.stream().map(Error::getMessage).collect(Collectors.toList());
 	}
 
 	/**
@@ -346,8 +347,8 @@ public class JsonSchemaService {
 	 */
 	public List<String> validateInstance(JsonNode data, Schema compiledInstanceSchema) {
 		// Validate and return any encountered errors
-		List<com.networknt.schema.Error> msgs = compiledInstanceSchema.validate(data);
-        return msgs.stream().map(com.networknt.schema.Error::getMessage).collect(Collectors.toList());
+		List<Error> msgs = compiledInstanceSchema.validate(data);
+        return msgs.stream().map(Error::getMessage).collect(Collectors.toList());
 	}
 
 	/**
