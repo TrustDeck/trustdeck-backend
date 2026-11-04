@@ -168,6 +168,36 @@ public class TestsProjectServiceIT extends AssertWebRequestService {
     }
 
     /**
+     * Tests that a project in use, i.e. with domains, can be renamed, but keeps its abbreviation.
+     *
+     * @throws Exception forwards any internally thrown exceptions
+     */
+    @Test
+    @DisplayName("renameProjectInUseTest")
+    public void renameProjectInUseTest() throws Exception {
+        // The test project has a domain, so it is in use; the frontend always sends the abbreviation along
+        ProjectDTO rename = new ProjectDTO();
+        rename.setName("Renamed Study");
+        rename.setAbbreviation(PROJECT);
+        MockHttpServletResponse response = this.assertOkRequest("renameProjectInUse", put("/api/projects/" + PROJECT), null, rename, this.getAccessToken());
+        assertEquals("Renamed Study", this.applySingleJsonContentToClass(response.getContentAsString(), ProjectDTO.class).getName());
+
+        response = this.assertOkRequest("getRenamedProject", get("/api/projects/" + PROJECT), null, null, this.getAccessToken());
+        assertEquals("Renamed Study", this.applySingleJsonContentToClass(response.getContentAsString(), ProjectDTO.class).getName());
+
+        // Changing the abbreviation of a project in use is refused and changes nothing
+        ProjectDTO newAbbreviation = new ProjectDTO();
+        newAbbreviation.setName("Another Name");
+        newAbbreviation.setAbbreviation("OTHER");
+        this.assertRequestFromRequestBuilder("changeAbbreviationInUse", put("/api/projects/" + PROJECT), null, newAbbreviation, this.getAccessToken(), status().isConflict());
+
+        response = this.assertOkRequest("getProjectAfterConflict", get("/api/projects/" + PROJECT), null, null, this.getAccessToken());
+        ProjectDTO unchanged = this.applySingleJsonContentToClass(response.getContentAsString(), ProjectDTO.class);
+        assertEquals("Renamed Study", unchanged.getName());
+        assertEquals(PROJECT, unchanged.getAbbreviation());
+    }
+
+    /**
      * Tests retrieving the domains of a project.
      *
      * @throws Exception forwards any internally thrown exceptions

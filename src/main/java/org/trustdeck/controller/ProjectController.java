@@ -333,6 +333,8 @@ public class ProjectController {
 	 * @param responseContentType (optional) the response content type
      * @return <li>a <b>200-OK</b> status with the updated project on success</li>
      * 		   <li>a <b>404-NOT_FOUND</b> status when the project does not exist</li>
+     *         <li>a <b>409-CONFLICT</b> status when the abbreviation should be changed while the 
+     *         project is in use, i.e. has domains, entity types, or entities</li>
      *         <li>a <b>422-UNPROCESSABLE_ENTITY</b> status when the update failed</li>
 	 */
 	@PutMapping("/projects/{projectAbbreviation}")
@@ -357,6 +359,18 @@ public class ProjectController {
 		String name = Assertion.isNullOrEmpty(newProjectDTO.getName()) ? null : newProjectDTO.getName();
 		newProjectDTO.setAbbreviation(abbr);
 		newProjectDTO.setName(name);
+		
+		// The abbreviation of a project in use is part of its domains' names and of external configurations
+		if (abbr != null && !abbr.equals(oldProjectDTO.getAbbreviation())) {
+			Boolean inUse = projectDBService.isProjectInUse(oldProjectDTO.getId());
+			if (inUse == null) {
+				log.debug("Checking whether the project is in use failed.");
+				return responseService.unprocessableEntity(responseContentType);
+			} else if (inUse) {
+				log.debug("The abbreviation of a project in use cannot be changed.");
+				return responseService.conflict(responseContentType);
+			}
+		}
 		
 		// Send the DTO to the database service
 		ProjectDTO updatedDTO = projectDBService.updateProject(oldProjectDTO, newProjectDTO);
