@@ -155,6 +155,7 @@ public class PseudonymDTO implements IObjectDTO<IPseudonym, PseudonymDTO> {
     @Override
     @JsonIgnore
     public Boolean validate() {
-        return this.getIdentifierItem().isNotNullNorEmpty();
+        // A request body without an identifier item is invalid, not a server error
+        return this.getIdentifierItem() != null && this.getIdentifierItem().isNotNullNorEmpty();
     }
 }
