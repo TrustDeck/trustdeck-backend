@@ -320,13 +320,6 @@ CREATE INDEX ididtypeidx ON public.pseudonym USING btree (identifier, idtype);
 
 
 --
--- Name: idpsnidx; Type: INDEX; Schema: public; Owner: trustdeck-manager
---
-
-CREATE UNIQUE INDEX idpsnidx ON public.pseudonym USING btree (identifier, pseudonym);
-
-
---
 -- Name: metadataidx; Type: INDEX; Schema: public; Owner: trustdeck-manager
 --
 
