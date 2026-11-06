@@ -78,6 +78,8 @@ app:
       random-desired-size: 1000000000
       random-desired-success-probability: 0.999999998
       random-alphabet: ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789
+      # How old a cached domain pseudonym count may be before the filling-rate warning recounts it
+      filling-rate-check-interval: 10m
       consecutive-value-counter: 1
       pseudonym-length: 16
       random-pseudonym-length: 10
