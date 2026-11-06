@@ -44,6 +44,7 @@ import org.trustdeck.security.audittrail.annotation.Audit;
 import org.trustdeck.service.AuthorizationService;
 import org.trustdeck.service.AlgorithmDBService;
 import org.trustdeck.service.DomainDBAccessService;
+import org.trustdeck.service.DomainFillingRateMonitor;
 import org.trustdeck.service.PseudonymDBAccessService;
 import org.trustdeck.service.ResponseService;
 import org.trustdeck.utils.Assertion;
@@ -97,6 +98,10 @@ public class PseudonymController {
     @Autowired
     private DefaultProperties defaults;
 
+    /** Warns when a random-algorithm domain approaches its filling point, without blocking requests. */
+    @Autowired
+    private DomainFillingRateMonitor fillingRateMonitor;
+
     /**
      * Returns the algorithm used in a domain.
      *
@@ -106,41 +111,6 @@ public class PseudonymController {
     private Algorithm algorithm(Domain domain) {
         return algorithmDBService.getAlgorithmByID(domain.getAlgorithmId());
     }
-	
-    /**
-     * Method to check if the current domain's filling rate exceeds a point where the generation of unseen
-     * pseudonyms is not anymore reasonably probable.
-     * 
-     * @param domain the domain to check
-     */
-	private void checkDomainFillingRate(Domain domain) {
-		Algorithm algo = algorithm(domain);
-		
-		/* A high filling rate of the domain can result in too few possible pseudonyms left for generation.
-		* We can calculate a threshold for which we can reasonably probable generate pseudonyms using this formula: 
-		* 1-(1-((k-n)/k))^m > T => n < k*(1-T)^(1/m); with k being the number of theoretically possible pseudonyms 
-		* (here number of alphabet-symbols a and psnLength characters, so k=a^psnLength); n being the number of 
-		* reasonable probable pseudonyms; m being the number of retries; and T being the probability threshold which 
-		* we deem to be reasonable probable (here: 99.999998% (probability of not getting struck by lightning), 
-		* meaning that we want to successfully generate a pseudonym in a maximum of m=3 tries in 99.999998% of all 
-		* cases).
-		* --> Warn the user, if the domain is too full
-		*/
-		Double T = algo.getRandomAlgorithmDesiredSuccessProbability();
-		Double k = Math.pow(10.0d, (double) algo.getPseudonymLength());
-		Double n = k * Math.pow((1.0d - T), (1.0d / (double) defaults.getAlgorithm().getNumberOfRetries()));
-		
-		Integer existingPseudonyms = domainDBAccessService.getAmountOfPseudonymsInDomain(domain.getName());
-		existingPseudonyms = existingPseudonyms == null ? 0 : existingPseudonyms; // Ignore unsuccessful database retrieval
-		
-		if (existingPseudonyms > n) {
-			// The domain reached it's filling point (~49%) at which the probability to generate a 
-			// previously unseen pseudonym in m tries is no longer greater than 99.999998%.
-			log.warn("The number of reasonably probable generated pseudonyms for this domain is exhausted. The probability "
-					+ "to generate collisions will rise and at some point prevent the generation of non-colliding pseudonyms "
-					+ "in a certain number of retries.");
-		}
-	}
 
     /**
      * This method creates new pseudonymization-pseudonyms in batches.
@@ -503,15 +473,20 @@ public class PseudonymController {
         // Insert the pseudonym into the database
         String result = pseudonymDBAccessService.createPseudonyms(List.of(p), domain.getId(), domain.getMultiplepsnallowed()).getFirst();
         
-        // If a random algorithm is used, check if we generated a duplicate. If so, retry.
-        if (algorithm(domain).getName().toUpperCase().startsWith("RANDOM")) {
+        // If a random algorithm generated a pseudonym that already exists, retry with a new one.
+        // A supplied pseudonym is never replaced: if it is taken, the request is a conflict (422 below),
+        // since storing a different pseudonym would silently create a mapping the caller did not ask for.
+        boolean generated = psn == null || psn.isBlank();
+        if (generated && algorithm(domain).getName().toUpperCase().startsWith("RANDOM")) {
+        	// Check the domain's filling rate once per request; the check never waits for the database
+        	if (result.equals(PseudonymDBAccessService.INSERTION_DUPLICATE_PSEUDONYM)) {
+        		fillingRateMonitor.checkAfterCollision(domain, algorithm(domain));
+        	}
+
 	        // Retry DEFAULT_NUMBER_OF_RETRIES - 1 times
             for (int i = 1; i < defaults.getAlgorithm().getNumberOfRetries(); i++) {
 	        	// Check if its actually a duplicate
         		if (result.equals(PseudonymDBAccessService.INSERTION_DUPLICATE_PSEUDONYM)) {
-					// Check the domain's filling rate
-        			checkDomainFillingRate(domain);
-	        		
 	        		// Retry
 	        		p.setPsn(pseudonymize(identifier, idType, domain, omitPrefix));
 	        		result = pseudonymDBAccessService.createPseudonyms(List.of(p), domain.getId(), domain.getMultiplepsnallowed()).getFirst();
