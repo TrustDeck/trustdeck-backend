@@ -157,6 +157,24 @@ class DomainFillingRateMonitorTest {
 		assertFalse(monitor.warnIfFull(domain, algorithm, 400));
 	}
 
+	/** A check digit that replaces the last character leaves one random character less. */
+	@Test
+	void subtractsCheckDigitThatReplacesLastCharacter() {
+		// 10 digits and length 3, of which the check digit replaces one: k = 10^2 = 100, threshold 100 * 0.5 = 50
+		algorithm.setAddCheckDigit(true);
+		algorithm.setLengthIncludesCheckDigit(true);
+
+		assertFalse(monitor.warnIfFull(domain, algorithm, 50));
+		assertTrue(monitor.warnIfFull(domain, algorithm, 51));
+
+		// An appended check digit keeps all three characters random: k = 1000, threshold 500
+		Domain other = new Domain();
+		other.setId(9);
+		other.setName("other-domain");
+		algorithm.setLengthIncludesCheckDigit(false);
+		assertFalse(monitor.warnIfFull(other, algorithm, 51));
+	}
+
 	/** The number of possible pseudonyms uses the algorithm's alphabet size, not always ten symbols. */
 	@Test
 	void usesAlphabetSizeForPossiblePseudonyms() {

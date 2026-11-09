@@ -195,8 +195,14 @@ public class DomainFillingRateMonitor {
 		*/
 		// Every algorithm stores its alphabet (see Utility.generateAlphabet); fall back to the ten digits if it is missing
 		int a = algorithm.getAlphabet() == null || algorithm.getAlphabet().isEmpty() ? 10 : algorithm.getAlphabet().length();
+
+		// When the check digit replaces the last character, that character is not random and does not add pseudonyms
+		boolean checkDigitReplacesLastCharacter = Boolean.TRUE.equals(algorithm.getAddCheckDigit())
+				&& Boolean.TRUE.equals(algorithm.getLengthIncludesCheckDigit());
+		int psnLength = algorithm.getPseudonymLength() - (checkDigitReplacesLastCharacter ? 1 : 0);
+
 		Double T = algorithm.getRandomAlgorithmDesiredSuccessProbability();
-		Double k = Math.pow((double) a, (double) algorithm.getPseudonymLength());
+		Double k = Math.pow((double) a, (double) psnLength);
 		Double n = k * Math.pow((1.0d - T), (1.0d / (double) defaults.getAlgorithm().getNumberOfRetries()));
 
 		if (!(count > n)) {
