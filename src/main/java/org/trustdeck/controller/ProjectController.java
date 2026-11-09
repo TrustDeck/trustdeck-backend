@@ -292,8 +292,11 @@ public class ProjectController {
 	
 	/**
 	 * Method to retrieve statistics about a certain project identified by it's abbreviation.
+	 * Entities and pseudonyms are only counted with {@code exact=true}, as that scans large
+	 * tables; otherwise their counts are {@code null}.
 	 * 
 	 * @param projectAbbreviation the project's abbreviation
+	 * @param exact (optional) whether to count entities and pseudonyms exactly; defaults to {@code false}
 	 * @param responseContentType (optional) the response content type
      * @return <li>a <b>200-OK</b> status with the project statistics</li>
      * 		   <li>a <b>400-BAD_REQUEST</b> status when the given abbreviation was null or empty
@@ -303,6 +306,7 @@ public class ProjectController {
     @PreAuthorize("isAuthenticated() and @auth.hasProjectPermission(#root, #projectAbbreviation, 'project:statistics')")
     @Audit
     public ResponseEntity<?> getProjectStatistics(@PathVariable("projectAbbreviation") String projectAbbreviation,
+                                				  @RequestParam(name = "exact", required = false, defaultValue = "false") Boolean exact,
                                 				  @RequestHeader(name = "accept", required = false) String responseContentType) {
 		
 		if (Assertion.isNullOrEmpty(projectAbbreviation)) {
@@ -311,7 +315,7 @@ public class ProjectController {
 
 		ProjectStatisticsDTO statistics;
 		try {
-			statistics = projectStatisticsService.getStatistics(projectAbbreviation);
+			statistics = projectStatisticsService.getStatistics(projectAbbreviation, Boolean.TRUE.equals(exact));
 		} catch (Exception e) {
 			log.error("Retrieving project statistics failed.", e);
 			return responseService.internalServerError(responseContentType);

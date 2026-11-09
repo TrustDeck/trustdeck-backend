@@ -86,10 +86,13 @@ public class SystemStatisticsService {
                    pg_class.reltoastrelid::bigint,
                    pg_table_size(d.relation_oid) AS table_size_with_toast,
                    pg_indexes_size(d.relation_oid) AS index_size,
-                   pg_total_relation_size(d.relation_oid) AS total_size
+                   pg_total_relation_size(d.relation_oid) AS total_size,
+                   COALESCE(s.n_live_tup, 0) AS live_tuples,
+                   COALESCE(s.n_tup_ins, 0) AS inserted_tuples
             FROM roots r
             JOIN descendants d ON d.root_oid = r.root_oid
             JOIN pg_class ON pg_class.oid = d.relation_oid
+            LEFT JOIN pg_stat_user_tables s ON s.relid = d.relation_oid
             WHERE NOT EXISTS (
                 SELECT 1 FROM pg_inherits leaf_check WHERE leaf_check.inhparent  = d.relation_oid
             )
@@ -103,6 +106,22 @@ public class SystemStatisticsService {
      */
     @Transactional(readOnly = true)
     public SystemStatisticsDTO getStatistics() {
+        return getStatistics(false);
+    }
+
+    /**
+     * Gathers the system statistics.
+     *
+     * Without {@code exact}, row counts are PostgreSQL's live-row estimates from the
+     * activity statistics, which cost no table access; this keeps frequent sampling cheap
+     * even for tables with hundreds of millions of rows. With {@code exact}, every table is
+     * counted with {@code COUNT(*)}, which scans each table completely.
+     *
+     * @param exact whether to count every table exactly
+     * @return the system statistics
+     */
+    @Transactional(readOnly = true)
+    public SystemStatisticsDTO getStatistics(boolean exact) {
     	// Get database time and size
         OffsetDateTime databaseTime = dsl.select(DSL.field("current_timestamp", OffsetDateTime.class)).fetchOne(0, OffsetDateTime.class);
         long databaseSize = dsl.select(DSL.field("pg_database_size(current_database())", Long.class)).fetchOne(0, Long.class);
@@ -110,6 +129,7 @@ public class SystemStatisticsService {
         // Gather relation sizes
         Map<Long, TableSize> sizesByRoot = new LinkedHashMap<>();
         Map<Long, TableIdentity> identities = new LinkedHashMap<>();
+        Map<Long, long[]> tupleStatistics = new LinkedHashMap<>();
         Result<Record> relationRows = dsl.fetch(TABLE_RELATIONS_SQL);
         for (Record row : relationRows) {
             long rootOid = row.get("root_oid", Long.class);
@@ -121,17 +141,24 @@ public class SystemStatisticsService {
                     row.get("index_size", Long.class), toastSize, row.get("total_size", Long.class));
             
             sizesByRoot.merge(rootOid, physicalSize, TableSize::add);
+
+            // Live-row estimate and insert counter, summed over the partitions of a table
+            long[] tuples = tupleStatistics.computeIfAbsent(rootOid, ignored -> new long[2]);
+            tuples[0] += row.get("live_tuples", Long.class);
+            tuples[1] += row.get("inserted_tuples", Long.class);
         }
 
         // Gather table sizes and counts
         List<TableInfo> tables = new ArrayList<>();
         for (Map.Entry<Long, TableIdentity> entry : identities.entrySet()) {
             TableIdentity identity = entry.getValue();
-            long count = dsl.fetchCount(DSL.table(DSL.name(identity.schemaName(), identity.tableName())));
+            long[] tuples = tupleStatistics.getOrDefault(entry.getKey(), new long[2]);
+            long count = exact ? dsl.fetchCount(DSL.table(DSL.name(identity.schemaName(), identity.tableName()))) : tuples[0];
             TableSize size = sizesByRoot.getOrDefault(entry.getKey(), new TableSize(0, 0, 0, 0));
             
-            tables.add(new TableInfo(identity.schemaName(), identity.tableName(), count, true,
-                    size.tableSizeBytes(), size.indexSizeBytes(), size.toastSizeBytes(), size.totalRelationSizeBytes()));
+            tables.add(new TableInfo(identity.schemaName(), identity.tableName(), count, exact,
+                    size.tableSizeBytes(), size.indexSizeBytes(), size.toastSizeBytes(), size.totalRelationSizeBytes(),
+                    tuples[1]));
         }
 
         // Gather connection pool info

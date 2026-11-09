@@ -88,7 +88,10 @@ public class SystemStatisticsDTO {
         /** The name of the logical database table. */
         private String tableName;
 
-        /** The exact number of records stored in the table. */
+        /**
+         * The number of records in the table: exact when {@link #recordCountExact} is {@code true}, otherwise
+         * PostgreSQL's live-row estimate ({@code pg_stat_user_tables.n_live_tup}), which needs no table scan.
+         */
         private long recordCount;
 
         /** Indicates whether the reported record count is exact rather than estimated. */
@@ -105,6 +108,13 @@ public class SystemStatisticsDTO {
 
         /** The complete size of the table relation, including indexes and TOAST storage, in bytes. */
         private long totalRelationSizeBytes;
+
+        /**
+         * Running number of rows inserted into the table since the PostgreSQL statistics were last reset
+         * ({@code pg_stat_user_tables.n_tup_ins}, summed over partitions). The difference between two
+         * samples is the insert rate. Rows of rolled-back transactions are included.
+         */
+        private Long insertedRecordCount;
     }
 
     /** TrustDeck Hikari connection-pool usage. */

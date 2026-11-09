@@ -25,6 +25,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.trustdeck.security.audittrail.annotation.Audit;
 import org.trustdeck.service.ResponseService;
@@ -52,15 +53,20 @@ public class SystemController {
     /**
      * Retrieves current system statistics.
      *
+     * Row counts are cheap live-row estimates unless {@code exact=true} is given, which
+     * counts every table completely and can take long on large tables.
+     *
+     * @param exact (optional) whether to count every table exactly; defaults to {@code false}
      * @param responseContentType the requested response content type
      * @return the system statistics or an internal server error (500)
      */
     @GetMapping("/system/statistics")
     @PreAuthorize("isAuthenticated() and @auth.hasGlobalPermission(#root, 'system:statistics')")
     @Audit
-    public ResponseEntity<?> getSystemStatistics(@RequestHeader(name = "accept", required = false) String responseContentType) {
+    public ResponseEntity<?> getSystemStatistics(@RequestParam(name = "exact", required = false, defaultValue = "false") Boolean exact,
+                                                 @RequestHeader(name = "accept", required = false) String responseContentType) {
         try {
-            return responseService.ok(responseContentType, systemStatisticsService.getStatistics());
+            return responseService.ok(responseContentType, systemStatisticsService.getStatistics(Boolean.TRUE.equals(exact)));
         } catch (Exception e) {
             log.error("Retrieving system statistics failed.", e);
             return responseService.internalServerError(responseContentType);
