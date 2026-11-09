@@ -193,17 +193,21 @@ public class DomainFillingRateMonitor {
 		* cases).
 		* --> Warn the user, if the domain is too full
 		*/
+		// Every algorithm stores its alphabet (see Utility.generateAlphabet); fall back to the ten digits if it is missing
+		int a = algorithm.getAlphabet() == null || algorithm.getAlphabet().isEmpty() ? 10 : algorithm.getAlphabet().length();
 		Double T = algorithm.getRandomAlgorithmDesiredSuccessProbability();
-		Double k = Math.pow(10.0d, (double) algorithm.getPseudonymLength());
+		Double k = Math.pow((double) a, (double) algorithm.getPseudonymLength());
 		Double n = k * Math.pow((1.0d - T), (1.0d / (double) defaults.getAlgorithm().getNumberOfRetries()));
 
 		if (!(count > n)) {
 			return false;
 		}
 
-		// Warn at most once per interval. compute() decides atomically per domain; the lambda cannot assign a
-		// local boolean (captured variables must be effectively final), so it reports the decision through
-		// a mutable holder.
+		// Warn at most once per interval. compute() decides atomically per domain, so the decision has to be made
+		// inside its lambda. A plain "boolean due" cannot be used for the result: Java lambdas may only read local
+		// variables that are effectively final, i.e. never reassigned, so "due = true" inside the lambda does not
+		// compile. The AtomicBoolean reference stays final while its value can change, which lets the lambda
+		// report the decision back. (A one-element boolean array would work the same way but reads less clearly.)
 		Instant now = clock.instant();
 		AtomicBoolean due = new AtomicBoolean(false);
 		lastWarnings.compute(domain.getId(), (id, last) -> {

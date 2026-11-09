@@ -64,9 +64,10 @@ class DomainFillingRateMonitorTest {
 
 		domain = new Domain();
 		domain.setId(7);
-		domain.setName("ishmed");
+		domain.setName("test-domain");
 
-		// 10^3 possible pseudonyms; with T = 0.875 and 3 retries the threshold is 1000 * 0.125^(1/3) = 500
+		// Without an alphabet the ten digits are assumed: 10^3 possible pseudonyms; with T = 0.875 and 3 retries
+		// the threshold is 1000 * 0.125^(1/3) = 500
 		algorithm = new Algorithm();
 		algorithm.setPseudonymLength(3);
 		algorithm.setRandomAlgorithmDesiredSuccessProbability(0.875d);
@@ -75,21 +76,21 @@ class DomainFillingRateMonitorTest {
 	/** The first collision only schedules the count; the request thread does not touch the database. */
 	@Test
 	void firstCollisionCountsInBackground() {
-		when(database.getAmountOfPseudonymsInDomain("ishmed")).thenReturn(100);
+		when(database.getAmountOfPseudonymsInDomain("test-domain")).thenReturn(100);
 
 		monitor.checkAfterCollision(domain, algorithm);
 
-		verify(database, never()).getAmountOfPseudonymsInDomain("ishmed");
+		verify(database, never()).getAmountOfPseudonymsInDomain("test-domain");
 		assertEquals(1, background.size());
 
 		background.getFirst().run();
-		verify(database).getAmountOfPseudonymsInDomain("ishmed");
+		verify(database).getAmountOfPseudonymsInDomain("test-domain");
 	}
 
 	/** Within the interval the cached count is used without another database count. */
 	@Test
 	void reusesCachedCountWithinInterval() {
-		when(database.getAmountOfPseudonymsInDomain("ishmed")).thenReturn(100);
+		when(database.getAmountOfPseudonymsInDomain("test-domain")).thenReturn(100);
 		monitor.checkAfterCollision(domain, algorithm);
 		background.removeFirst().run();
 
@@ -97,7 +98,7 @@ class DomainFillingRateMonitorTest {
 		monitor.checkAfterCollision(domain, algorithm);
 
 		assertTrue(background.isEmpty());
-		verify(database, times(1)).getAmountOfPseudonymsInDomain("ishmed");
+		verify(database, times(1)).getAmountOfPseudonymsInDomain("test-domain");
 	}
 
 	/** Collisions while a count is running do not start a second count for the same domain. */
@@ -113,7 +114,7 @@ class DomainFillingRateMonitorTest {
 	/** An outdated count triggers a recount in the background. */
 	@Test
 	void recountsAfterInterval() {
-		when(database.getAmountOfPseudonymsInDomain("ishmed")).thenReturn(100, 200);
+		when(database.getAmountOfPseudonymsInDomain("test-domain")).thenReturn(100, 200);
 		monitor.checkAfterCollision(domain, algorithm);
 		background.removeFirst().run();
 
@@ -122,13 +123,13 @@ class DomainFillingRateMonitorTest {
 
 		assertEquals(1, background.size());
 		background.removeFirst().run();
-		verify(database, times(2)).getAmountOfPseudonymsInDomain("ishmed");
+		verify(database, times(2)).getAmountOfPseudonymsInDomain("test-domain");
 	}
 
 	/** A failed count does not block later attempts. */
 	@Test
 	void retriesAfterFailedCount() {
-		when(database.getAmountOfPseudonymsInDomain("ishmed")).thenReturn(null, 100);
+		when(database.getAmountOfPseudonymsInDomain("test-domain")).thenReturn(null, 100);
 		monitor.checkAfterCollision(domain, algorithm);
 		background.removeFirst().run();
 
@@ -154,6 +155,23 @@ class DomainFillingRateMonitorTest {
 	@Test
 	void doesNotWarnBelowThreshold() {
 		assertFalse(monitor.warnIfFull(domain, algorithm, 400));
+	}
+
+	/** The number of possible pseudonyms uses the algorithm's alphabet size, not always ten symbols. */
+	@Test
+	void usesAlphabetSizeForPossiblePseudonyms() {
+		// 2 symbols and length 3 give k = 2^3 = 8 possible pseudonyms; with T = 0.875 and 3 retries the threshold is 8 * 0.5 = 4
+		algorithm.setAlphabet("AB");
+
+		assertFalse(monitor.warnIfFull(domain, algorithm, 4));
+		assertTrue(monitor.warnIfFull(domain, algorithm, 5));
+
+		// With 36 symbols, k = 36^3 = 46656 and the threshold is 23328; 600 pseudonyms are far below it
+		Domain other = new Domain();
+		other.setId(8);
+		other.setName("other-domain");
+		algorithm.setAlphabet("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
+		assertFalse(monitor.warnIfFull(other, algorithm, 600));
 	}
 
 	/** Clock that tests can move forward. */

@@ -106,13 +106,13 @@ class PseudonymControllerCollisionTest {
 
 	@BeforeEach
 	void setUp() {
-		Domain domain = new Domain().setId(7).setName("ishmed").setPrefix("ISH-").setAlgorithmId(1)
+		Domain domain = new Domain().setId(7).setName("test-domain").setPrefix("TST-").setAlgorithmId(1)
 				.setValidfrom(LocalDateTime.now().minusYears(1)).setValidto(LocalDateTime.now().plusYears(10))
 				.setEnforcestartdatevalidity(true).setEnforceenddatevalidity(true).setMultiplepsnallowed(false);
-		when(domainDBAccessService.getDomainByName("ishmed")).thenReturn(domain);
+		when(domainDBAccessService.getDomainByName("test-domain")).thenReturn(domain);
 		when(algorithmDBService.getAlgorithmByID(1)).thenReturn(algorithm);
 		when(pseudonymizationFactory.getPseudonymizer(algorithm)).thenReturn(pseudonymizer);
-		when(pseudonymizer.pseudonymize(anyString(), anyString())).thenReturn("ISH-1", "ISH-2", "ISH-3");
+		when(pseudonymizer.pseudonymize(anyString(), anyString())).thenReturn("TST-1", "TST-2", "TST-3");
 		when(responseService.unprocessableEntity(any())).thenReturn(ResponseEntity.unprocessableEntity().build());
 		when(responseService.created(any(), any(PseudonymDTO.class))).thenReturn(ResponseEntity.status(201).build());
 		when(responseService.insufficientStorage(any())).thenReturn(ResponseEntity.status(507).build());
@@ -127,7 +127,7 @@ class PseudonymControllerCollisionTest {
 		when(pseudonymDBAccessService.createPseudonyms(anyList(), anyInt(), anyBoolean()))
 				.thenReturn(List.of(PseudonymDBAccessService.INSERTION_DUPLICATE_PSEUDONYM));
 
-		ResponseEntity<?> response = controller.createPseudonym("ishmed", request("supplied-psn"), false, null);
+		ResponseEntity<?> response = controller.createPseudonym("test-domain", request("supplied-psn"), false, null);
 
 		assertEquals(422, response.getStatusCode().value());
 		verify(pseudonymDBAccessService, times(1)).createPseudonyms(anyList(), anyInt(), anyBoolean());
@@ -143,7 +143,7 @@ class PseudonymControllerCollisionTest {
 						List.of(PseudonymDBAccessService.INSERTION_DUPLICATE_PSEUDONYM),
 						List.of(PseudonymDBAccessService.INSERTION_SUCCESS));
 
-		ResponseEntity<?> response = controller.createPseudonym("ishmed", request(null), false, null);
+		ResponseEntity<?> response = controller.createPseudonym("test-domain", request(null), false, null);
 
 		assertEquals(201, response.getStatusCode().value());
 		verify(pseudonymDBAccessService, times(3)).createPseudonyms(anyList(), anyInt(), anyBoolean());
@@ -157,7 +157,7 @@ class PseudonymControllerCollisionTest {
 		when(pseudonymDBAccessService.createPseudonyms(anyList(), anyInt(), anyBoolean()))
 				.thenReturn(List.of(PseudonymDBAccessService.INSERTION_DUPLICATE_PSEUDONYM));
 
-		ResponseEntity<?> response = controller.createPseudonym("ishmed", request(null), false, null);
+		ResponseEntity<?> response = controller.createPseudonym("test-domain", request(null), false, null);
 
 		assertEquals(507, response.getStatusCode().value());
 		verify(pseudonymDBAccessService, times(defaults.getAlgorithm().getNumberOfRetries()))
