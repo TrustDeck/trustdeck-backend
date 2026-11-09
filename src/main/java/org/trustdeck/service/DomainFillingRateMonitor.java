@@ -27,6 +27,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
@@ -172,50 +173,57 @@ public class DomainFillingRateMonitor {
 	 * Logs the filling-rate warning if the count exceeds the domain's threshold and
 	 * the last warning for the domain is older than {@link #WARNING_INTERVAL}.
 	 *
-	 * A high filling rate leaves too few unused pseudonyms for generation. The
-	 * threshold follows from 1-(1-((k-n)/k))^m > T, i.e. n < k*(1-T)^(1/m), with
-	 * k = 10^pseudonymLength theoretically possible pseudonyms, n the number of
-	 * pseudonyms that can still be generated with reasonable probability, m the
-	 * number of retries, and T the desired success probability.
-	 *
 	 * @param domain domain to evaluate
 	 * @param algorithm the domain's algorithm
 	 * @param count number of pseudonyms in the domain
 	 * @return {@code true} if the warning was logged
 	 */
 	boolean warnIfFull(Domain domain, Algorithm algorithm, int count) {
-		Double successProbability = algorithm.getRandomAlgorithmDesiredSuccessProbability();
-		Integer length = algorithm.getPseudonymLength();
-		if (successProbability == null || length == null) {
+		if (algorithm.getRandomAlgorithmDesiredSuccessProbability() == null || algorithm.getPseudonymLength() == null) {
 			return false;
 		}
 
-		double possible = Math.pow(10.0d, length);
-		double threshold = possible * Math.pow(1.0d - successProbability, 1.0d / defaults.getAlgorithm().getNumberOfRetries());
-		if (count <= threshold) {
+		/* A high filling rate of the domain can result in too few possible pseudonyms left for generation.
+		* We can calculate a threshold for which we can reasonably probable generate pseudonyms using this formula: 
+		* 1-(1-((k-n)/k))^m > T => n < k*(1-T)^(1/m); with k being the number of theoretically possible pseudonyms 
+		* (here number of alphabet-symbols a and psnLength characters, so k=a^psnLength); n being the number of 
+		* reasonable probable pseudonyms; m being the number of retries; and T being the probability threshold which 
+		* we deem to be reasonable probable (here: 99.999998% (probability of not getting struck by lightning), 
+		* meaning that we want to successfully generate a pseudonym in a maximum of m=3 tries in 99.999998% of all 
+		* cases).
+		* --> Warn the user, if the domain is too full
+		*/
+		Double T = algorithm.getRandomAlgorithmDesiredSuccessProbability();
+		Double k = Math.pow(10.0d, (double) algorithm.getPseudonymLength());
+		Double n = k * Math.pow((1.0d - T), (1.0d / (double) defaults.getAlgorithm().getNumberOfRetries()));
+
+		if (!(count > n)) {
 			return false;
 		}
 
+		// Warn at most once per interval. compute() decides atomically per domain; the lambda cannot assign a
+		// local boolean (captured variables must be effectively final), so it reports the decision through
+		// a mutable holder.
 		Instant now = clock.instant();
-		boolean[] due = {false};
+		AtomicBoolean due = new AtomicBoolean(false);
 		lastWarnings.compute(domain.getId(), (id, last) -> {
 			if (last == null || !last.plus(WARNING_INTERVAL).isAfter(now)) {
-				due[0] = true;
+				due.set(true);
 				return now;
 			}
 
 			return last;
 		});
 
-		if (due[0]) {
-			// The domain reached its filling point (~49%) at which the probability to generate a
-			// previously unseen pseudonym in m tries is no longer greater than the desired probability.
+		if (due.get()) {
+			// The domain reached it's filling point (~49%) at which the probability to generate a 
+			// previously unseen pseudonym in m tries is no longer greater than 99.999998%.
 			log.warn("The number of reasonably probable generated pseudonyms for domain \"" + domain.getName() + "\" is exhausted. "
 					+ "The probability to generate collisions will rise and at some point prevent the generation of "
 					+ "non-colliding pseudonyms in a certain number of retries.");
 		}
 
-		return due[0];
+		return due.get();
 	}
 
 	/** Stops the background thread when the application shuts down. */
