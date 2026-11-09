@@ -49,6 +49,14 @@ import org.trustdeck.dto.SystemStatisticsDTO.TableInfo;
 /**
  * Provides database, build, connection-pool, and JVM statistics.
  *
+ * <p><b>PostgreSQL only:</b> the database statistics are read from PostgreSQL's system catalogs
+ * ({@code pg_class}, {@code pg_namespace}, {@code pg_inherits}), its activity statistics
+ * ({@code pg_stat_user_tables}), and its size functions ({@code pg_database_size},
+ * {@code pg_table_size}, {@code pg_indexes_size}, {@code pg_total_relation_size}), using
+ * PostgreSQL syntax such as {@code ::} casts and {@code regclass}. TrustDeck ships with and is tested
+ * against PostgreSQL; with another database vendor these queries fail and the system statistics
+ * endpoint answers with an error.</p>
+ *
  * @author Armin Müller
  */
 @Service
@@ -68,7 +76,14 @@ public class SystemStatisticsService {
     /** Optional Git metadata, absent when built outside a Git checkout. */
     private final ObjectProvider<GitProperties> gitProperties;
 
-    /** Query mapping every non-partitioned logical table to its physical leaf relations and retrieves their storage sizes. */
+    /**
+     * Query mapping every non-partitioned logical table to its physical leaf relations and retrieves their storage sizes,
+     * live-row estimates, and insert counters.
+     *
+     * PostgreSQL only: relies on the PostgreSQL system catalogs and activity statistics ({@code pg_class},
+     * {@code pg_namespace}, {@code pg_inherits}, {@code pg_stat_user_tables}), the PostgreSQL size functions, and
+     * PostgreSQL-specific syntax ({@code ::bigint} casts, table partitioning via {@code pg_inherits}).
+     */
     private static final String TABLE_RELATIONS_SQL = """
             WITH RECURSIVE roots AS (
                 SELECT c.oid AS root_oid, n.nspname AS schema_name, c.relname AS table_name
@@ -112,8 +127,8 @@ public class SystemStatisticsService {
     /**
      * Gathers the system statistics.
      *
-     * Without {@code exact}, row counts are PostgreSQL's live-row estimates from the
-     * activity statistics, which cost no table access; this keeps frequent sampling cheap
+     * Requires PostgreSQL (see the class documentation). Without {@code exact}, row counts are
+     * PostgreSQL's live-row estimates from the activity statistics, which cost no table access; this keeps frequent sampling cheap
      * even for tables with hundreds of millions of rows. With {@code exact}, every table is
      * counted with {@code COUNT(*)}, which scans each table completely.
      *
@@ -122,7 +137,7 @@ public class SystemStatisticsService {
      */
     @Transactional(readOnly = true)
     public SystemStatisticsDTO getStatistics(boolean exact) {
-    	// Get database time and size
+    	// Get database time and size; pg_database_size() and current_database() are PostgreSQL functions
         OffsetDateTime databaseTime = dsl.select(DSL.field("current_timestamp", OffsetDateTime.class)).fetchOne(0, OffsetDateTime.class);
         long databaseSize = dsl.select(DSL.field("pg_database_size(current_database())", Long.class)).fetchOne(0, Long.class);
 
@@ -191,6 +206,8 @@ public class SystemStatisticsService {
 
     /**
      * Retrieves the complete storage size of a PostgreSQL relation.
+     *
+     * PostgreSQL only: uses {@code pg_total_relation_size} and the PostgreSQL casts {@code ::oid::regclass}.
      *
      * @param relationOid the PostgreSQL object identifier of the relation
      * @return the relation size in bytes, or {@code 0} when the identifier is missing, zero, or no size was returned
