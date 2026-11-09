@@ -56,7 +56,11 @@ public class AlgorithmDTO implements IObjectDTO<Algorithm, AlgorithmDTO> {
 	/** The current value of the counter when using a consecutive value-based algorithm or when multiple pseudonyms per identifier are allowed. */
     private Long consecutiveValueCounter;
 	
-	/** The length the pseudonym should have. */
+	/**
+	 * The length the pseudonym should have. For random algorithms, leave it empty to use the shortest length that
+	 * still allows the desired number of pseudonyms with the desired success probability (one character more when
+	 * the check digit replaces the last character); a shorter requested length is raised to that minimum.
+	 */
     private Integer pseudonymLength;
 	
 	/** The character that should be used for padding if needed. */

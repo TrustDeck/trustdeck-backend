@@ -80,7 +80,6 @@ app:
       random-alphabet: ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789
       consecutive-value-counter: 1
       pseudonym-length: 16
-      random-pseudonym-length: 10
       number-of-retries: 3
       padding-character: "0"
       add-check-digit: true

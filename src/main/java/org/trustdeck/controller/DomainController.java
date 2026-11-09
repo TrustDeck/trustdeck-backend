@@ -288,8 +288,8 @@ public class DomainController {
      * persisted by this method.
      *
      * @return a newly created algorithm DTO containing the default algorithm,
-     *         alphabet, pseudonym length, random-generation settings, check-digit
-     *         settings and salt
+     *         alphabet, random-generation settings, check-digit settings and salt,
+     *         but no pseudonym length, so that it is calculated
      */
     private AlgorithmDTO defaultAlgorithm() {
         AlgorithmDTO algorithm = new AlgorithmDTO();
@@ -298,7 +298,7 @@ public class DomainController {
         algorithm.setRandomAlgorithmDesiredSize(defaults.getAlgorithm().getRandomDesiredSize());
         algorithm.setRandomAlgorithmDesiredSuccessProbability(defaults.getAlgorithm().getRandomDesiredSuccessProbability());
         algorithm.setConsecutiveValueCounter(defaults.getAlgorithm().getConsecutiveValueCounter());
-        algorithm.setPseudonymLength(defaults.getAlgorithm().getPseudonymLength());
+        // No pseudonym length: random algorithms calculate the shortest suitable one, others fall back to the default
         algorithm.setPaddingCharacter(defaults.getAlgorithm().getPaddingCharacter());
         algorithm.setAddCheckDigit(defaults.getAlgorithm().isAddCheckDigit());
         algorithm.setLengthIncludesCheckDigit(defaults.getAlgorithm().isLengthIncludesCheckDigit());

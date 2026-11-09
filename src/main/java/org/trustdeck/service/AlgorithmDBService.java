@@ -64,28 +64,45 @@ public class AlgorithmDBService {
 	private static final int MAXIMUM_SALT_LENGTH = 256;
 	
 	/**
-	 * Calculate the length the pseudonyms need to be so that the desired number of pseudonyms can be stored.
-	 * 
-	 * @param desiredSize the desired number of pseudonyms that can be generated for the domain in question
-	 * @param desiredSuccessProbability the desired probability of successful pseudonym generation
-	 * @param alphabet the alphabet used for generating the pseudonyms
-	 * @return the minimal length the pseudonyms must have so that the desired amount can be generated
+	 * Calculates the shortest pseudonym length for which the desired number of pseudonyms can still be
+	 * generated with the desired success probability within the configured number of retries.
+	 *
+	 * A generation attempt succeeds with probability (k-n)/k when n of k possible pseudonyms are taken, so
+	 * at least one of m attempts succeeds with 1-(1-((k-n)/k))^m = 1-(n/k)^m. Requiring this to exceed T gives
+	 * k > n/((1-T)^(1/m)); with k = alphabetSize^length the length is ceil(log(k)/log(alphabetSize)).
+	 *
+	 * The calculation is a closed formula with constant effort. It works in log space, ln(k) = ln(n) - ln(1-T)/m,
+	 * using {@code log1p} so that success probabilities very close to 1 neither lose precision nor divide by
+	 * zero, and corrects floating-point rounding at exact powers of the alphabet size by at most one step.
+	 *
+	 * @param desiredSize the desired number of pseudonyms (n), at least 1
+	 * @param desiredSuccessProbability the desired success probability (T), strictly between 0 and 1
+	 * @param alphabetSize the number of symbols the pseudonyms are generated from, at least 2
+	 * @param retries the number of generation attempts (m), at least 1
+	 * @return the minimal number of random characters
+	 * @throws IllegalArgumentException if a parameter is outside its valid range
 	 */
-	private int calculatePseudonymLength(Long desiredSize, Double desiredSuccessProbability, String alphabet) {
-		// Collect variables
-		int m = defaults.getAlgorithm().getNumberOfRetries();
-		double T = desiredSuccessProbability;
-		long n = desiredSize;
-		
-		// Calculate the amount of possible pseudonyms needed so that the desired amount of pseudonyms will be 
-		// reasonably probable created: (1-(1-((k-n)/k))^m)>T -->
-		// k > n/((1-T)^(1/m)) --> k = ⌈n/((1-T)^(1/m))⌉
-		double k = Math.ceil(n/Math.pow((1.0-T), (1.0/m)));
-		
-		// Calculate length of the pseudonyms: k = alphabet.length^psn_length
-		double psnLength = Math.ceil(Math.log(k)/Math.log(alphabet.length()));
-		
-		return (int) psnLength;
+	static int calculatePseudonymLength(long desiredSize, double desiredSuccessProbability, int alphabetSize, int retries) {
+		if (desiredSize < 1 || !(desiredSuccessProbability > 0.0d && desiredSuccessProbability < 1.0d) || alphabetSize < 2 || retries < 1) {
+			throw new IllegalArgumentException("Invalid parameters for the pseudonym length calculation.");
+		}
+
+		// ln(k) = ln(n) - ln(1-T)/m; ln(1-T) is negative, so the term increases k
+		double lnK = Math.log(desiredSize) - Math.log1p(-desiredSuccessProbability) / retries;
+		double lnA = Math.log(alphabetSize);
+		int length = Math.max(1, (int) Math.ceil(lnK / lnA));
+
+		// Rounding can push log(k)/log(a) just above or below an integer: the length must suffice, the next shorter one must not
+		double tolerance = 1e-12;
+		while (length > 1 && (length - 1) * lnA >= lnK - tolerance) {
+			length--;
+		}
+
+		while (length * lnA < lnK - tolerance) {
+			length++;
+		}
+
+		return length;
 	}
     
 	/**
@@ -134,14 +151,14 @@ public class AlgorithmDBService {
      * @param algorithm the requested algorithm configuration
      * @return a fully populated algorithm record ready for lookup or persistence
      */
-	private AlgorithmRecord normalizeAlgorithm(Algorithm algorithm) {
+	AlgorithmRecord normalizeAlgorithm(Algorithm algorithm) {
 		int saltLength = (algorithm.getSaltLength() >= MINIMUM_SALT_LENGTH && algorithm.getSaltLength() <= MAXIMUM_SALT_LENGTH) ? algorithm.getSaltLength() : defaults.getAlgorithm().getSaltLength();
 		
 		AlgorithmRecord algoRecord = dsl.newRecord(ALGORITHM);
         algoRecord.setName(algorithm.getName() != null ? algorithm.getName() : defaults.getAlgorithm().getName());
         algoRecord.setAlphabet(Utility.generateAlphabet(algoRecord.getName(), algorithm.getAlphabet()));
 		algoRecord.setRandomAlgorithmDesiredSize(algorithm.getRandomAlgorithmDesiredSize() != null && algorithm.getRandomAlgorithmDesiredSize() > 1 ? algorithm.getRandomAlgorithmDesiredSize() : defaults.getAlgorithm().getRandomDesiredSize());
-        algoRecord.setRandomAlgorithmDesiredSuccessProbability(algorithm.getRandomAlgorithmDesiredSuccessProbability() != null && algorithm.getRandomAlgorithmDesiredSuccessProbability() > 0 ? algorithm.getRandomAlgorithmDesiredSuccessProbability() : defaults.getAlgorithm().getRandomDesiredSuccessProbability());
+        algoRecord.setRandomAlgorithmDesiredSuccessProbability(algorithm.getRandomAlgorithmDesiredSuccessProbability() != null && algorithm.getRandomAlgorithmDesiredSuccessProbability() > 0 && algorithm.getRandomAlgorithmDesiredSuccessProbability() < 1 ? algorithm.getRandomAlgorithmDesiredSuccessProbability() : defaults.getAlgorithm().getRandomDesiredSuccessProbability());
         algoRecord.setConsecutiveValueCounter(algorithm.getConsecutiveValueCounter() != null && algorithm.getConsecutiveValueCounter() > 0 ? algorithm.getConsecutiveValueCounter() : defaults.getAlgorithm().getConsecutiveValueCounter());
 		algoRecord.setPseudonymLength(algorithm.getPseudonymLength() != null && algorithm.getPseudonymLength() >= 4  ? algorithm.getPseudonymLength() : defaults.getAlgorithm().getPseudonymLength());
 		algoRecord.setPaddingCharacter(algorithm.getPaddingCharacter() != null ? algorithm.getPaddingCharacter() : defaults.getAlgorithm().getPaddingCharacter());
@@ -150,30 +167,60 @@ public class AlgorithmDBService {
 		algoRecord.setSalt(sanitizeOrGenerateSalt(algorithm.getSalt(), saltLength));
 		algoRecord.setSaltLength(saltLength);
 		
-		// Calculate pseudonym length, if a randomness algorithm is used
+		// Random algorithms: use the requested length unless it is too short for the desired number of pseudonyms
 		if (algoRecord.getName().trim().toUpperCase().startsWith("RANDOM")) {
-			// Check if the parameters for the algorithm are the default ones 
-			if (algoRecord.getRandomAlgorithmDesiredSize() == defaults.getAlgorithm().getRandomDesiredSize()
-					&& algoRecord.getRandomAlgorithmDesiredSuccessProbability() == defaults.getAlgorithm().getRandomDesiredSuccessProbability()
-					&& defaults.getAlgorithm().getRandomAlphabet().equals(algoRecord.getAlphabet())) {
-				// Defaults are used --> use default length
-				algoRecord.setPseudonymLength(defaults.getAlgorithm().getRandomPseudonymLength());
-			} else {
-				// Not all parameters are defaults --> calculate the length
-				int calculatedLength = calculatePseudonymLength(algoRecord.getRandomAlgorithmDesiredSize(), algoRecord.getRandomAlgorithmDesiredSuccessProbability(), algoRecord.getAlphabet());
-				
-				// Use the calculated length if it is longer than the user-given one
-				if (algorithm.getPseudonymLength() != null && calculatedLength < algorithm.getPseudonymLength()) {
-					algoRecord.setPseudonymLength(algorithm.getPseudonymLength());
-				} else {
-					log.debug("Used automatically calculated pseudonym length.");
-					algoRecord.setPseudonymLength(calculatedLength);
-				}
-			}
+			algoRecord.setPseudonymLength(randomPseudonymLength(algoRecord, algorithm.getPseudonymLength()));
 		}
 
 		return algoRecord;
     }
+
+	/**
+	 * Determines the pseudonym length of a random algorithm.
+	 *
+	 * The minimum is calculated from the desired number of pseudonyms, the desired success probability, and the
+	 * alphabet size. When the check digit replaces the last character, only the remaining characters are random,
+	 * so the minimum grows by one. Without a requested length the minimum is used; a requested length is kept if
+	 * it reaches the minimum and otherwise raised to it with a warning.
+	 *
+	 * @param algoRecord the normalized algorithm, providing name, alphabet, size, probability, and check-digit settings
+	 * @param requestedLength the length requested by the user, or {@code null} to use the minimum
+	 * @return the pseudonym length to store
+	 */
+	private int randomPseudonymLength(AlgorithmRecord algoRecord, Integer requestedLength) {
+		String alphabet = algoRecord.getAlphabet();
+		if (alphabet == null || alphabet.length() < 2) {
+			// Without at least two symbols no length can be calculated
+			int fallback = requestedLength != null && requestedLength >= 4 ? requestedLength : defaults.getAlgorithm().getPseudonymLength();
+			log.warn("The alphabet of algorithm \"" + algoRecord.getName() + "\" has fewer than two symbols; using pseudonym length " + fallback + ".");
+			return fallback;
+		}
+
+		int minimum = calculatePseudonymLength(algoRecord.getRandomAlgorithmDesiredSize(), algoRecord.getRandomAlgorithmDesiredSuccessProbability(),
+				alphabet.length(), defaults.getAlgorithm().getNumberOfRetries());
+
+		// The check digit overwrites the last generated character, which then no longer adds randomness
+		boolean checkDigitReplacesLastCharacter = Boolean.TRUE.equals(algoRecord.getAddCheckDigit())
+				&& Boolean.TRUE.equals(algoRecord.getLengthIncludesCheckDigit());
+		if (checkDigitReplacesLastCharacter) {
+			minimum++;
+		}
+
+		if (requestedLength == null) {
+			log.debug("Using the calculated minimal pseudonym length " + minimum + ".");
+			return minimum;
+		}
+
+		if (requestedLength < minimum) {
+			log.warn("The requested pseudonym length " + requestedLength + " is too short for " + algoRecord.getRandomAlgorithmDesiredSize()
+					+ " pseudonyms with a success probability of " + algoRecord.getRandomAlgorithmDesiredSuccessProbability()
+					+ " using " + alphabet.length() + " symbols" + (checkDigitReplacesLastCharacter ? " and a check digit replacing the last character" : "")
+					+ ". The length was automatically adjusted to the minimum of " + minimum + ".");
+			return minimum;
+		}
+
+		return requestedLength;
+	}
     
 	/**
      * Creates an algorithm object in the database if it does not already exist.
