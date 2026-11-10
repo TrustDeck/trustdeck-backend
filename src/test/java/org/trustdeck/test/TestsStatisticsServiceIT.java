@@ -19,6 +19,7 @@ package org.trustdeck.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get;
 
@@ -37,14 +38,14 @@ import org.trustdeck.service.AssertWebRequestService;
 public class TestsStatisticsServiceIT extends AssertWebRequestService {
 
     /**
-     * Checks project identity, UTC generation time, counts, and not-found behavior.
+     * Checks project identity, UTC generation time, exact and omitted counts, and not-found behavior.
      *
      * @throws Exception forwards any internally thrown exceptions
      */
     @Test
     public void projectStatisticsTest() throws Exception {
         MockHttpServletResponse response = assertOkRequest("projectStatistics", 
-        		get("/api/projects/TEST/statistics"), null, null, getAccessToken());
+        		get("/api/projects/TEST/statistics").param("exact", "true"), null, null, getAccessToken());
         ProjectStatisticsDTO statistics = applySingleJsonContentToClass(response.getContentAsString(), ProjectStatisticsDTO.class);
 
         assertNotNull(statistics);
@@ -61,6 +62,18 @@ public class TestsStatisticsServiceIT extends AssertWebRequestService {
         assertEquals(1, statistics.getPseudonymsByDomain().size());
         assertEquals(1L, statistics.getPseudonymsByDomain().getFirst().getCount());
 
+        // Without exact, the large entity and pseudonym tables are not counted
+        MockHttpServletResponse estimatedResponse = assertOkRequest("projectStatisticsEstimated",
+        		get("/api/projects/TEST/statistics"), null, null, getAccessToken());
+        ProjectStatisticsDTO estimated = applySingleJsonContentToClass(estimatedResponse.getContentAsString(), ProjectStatisticsDTO.class);
+        assertEquals(1L, estimated.getCounts().getDomains());
+        assertEquals(0L, estimated.getCounts().getEntityTypes());
+        assertNull(estimated.getCounts().getEntities());
+        assertNull(estimated.getCounts().getPseudonyms());
+        assertEquals(1, estimated.getPseudonymsByDomain().size());
+        assertEquals(statistics.getPseudonymsByDomain().getFirst().getName(), estimated.getPseudonymsByDomain().getFirst().getName());
+        assertNull(estimated.getPseudonymsByDomain().getFirst().getCount());
+
         // Requests on non-existing projects are forbidden, so that their existence is not revealed
         assertForbiddenRequest("projectStatisticsNotFound", get("/api/projects/UNKNOWN/statistics"), null, null, getAccessToken());
         assertUnauthorizedRequest("projectStatisticsWithoutToken", get("/api/projects/TEST/statistics"), null, null, "");
@@ -68,14 +81,14 @@ public class TestsStatisticsServiceIT extends AssertWebRequestService {
     }
 
     /**
-     * Checks system metadata, exact table counts, and that the legacy endpoint is absent.
+     * Checks system metadata, exact and estimated table counts, the insert counters, and that the legacy endpoint is absent.
      *
      * @throws Exception forwards any internally thrown exceptions
      */
     @Test
     public void systemStatisticsTest() throws Exception {
         MockHttpServletResponse response = assertOkRequest("systemStatistics",
-                get("/api/system/statistics"), null, null, getAccessToken());
+                get("/api/system/statistics").param("exact", "true"), null, null, getAccessToken());
         SystemStatisticsDTO statistics = applySingleJsonContentToClass(response.getContentAsString(), SystemStatisticsDTO.class);
 
         assertNotNull(statistics.getApplication());
@@ -94,6 +107,17 @@ public class TestsStatisticsServiceIT extends AssertWebRequestService {
         assertTrue(statistics.getConnectionPool().getTotalConnections() >= 0);
         assertTrue(statistics.getJvmMemory().getHeapUsedBytes() >= 0);
         assertTrue(statistics.getJvmMemory().getNonHeapUsedBytes() >= 0);
+
+        assertTrue(statistics.getDatabase().getTables().stream()
+                .allMatch(table -> table.getInsertedRecordCount() != null && table.getInsertedRecordCount() >= 0));
+
+        // Without exact, counts are live-row estimates from PostgreSQL's activity statistics
+        MockHttpServletResponse estimatedResponse = assertOkRequest("systemStatisticsEstimated",
+                get("/api/system/statistics"), null, null, getAccessToken());
+        SystemStatisticsDTO estimated = applySingleJsonContentToClass(estimatedResponse.getContentAsString(), SystemStatisticsDTO.class);
+        assertEquals(statistics.getDatabase().getTables().size(), estimated.getDatabase().getTables().size());
+        assertTrue(estimated.getDatabase().getTables().stream().allMatch(table -> !table.isRecordCountExact()
+                && table.getRecordCount() >= 0 && table.getInsertedRecordCount() != null && table.getInsertedRecordCount() >= 0));
 
         assertNotFoundRequest("legacyTableStorageRemoved", get("/api/tables/project/storage"), null, null, getAccessToken());
     }
