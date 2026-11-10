@@ -46,7 +46,6 @@ import org.trustdeck.jooq.generated.tables.pojos.Domain;
 import org.trustdeck.jooq.generated.tables.pojos.PermissionGrant;
 import org.trustdeck.jooq.generated.tables.records.PermissionGrantRecord;
 import org.trustdeck.security.audittrail.context.AuditInformationObject;
-import org.trustdeck.security.audittrail.context.AuditSourceSystem;
 import org.trustdeck.security.audittrail.context.AuditTriggerContext;
 import org.trustdeck.utils.Assertion;
 import org.trustdeck.utils.Utility;
@@ -1628,8 +1627,6 @@ public class PermissionDBService {
 	    AuditInformationObject aio = AuditTriggerContext.get();
 	    if (aio != null && Assertion.isNotNullOrEmpty(aio.getUsername())) {
 	        return aio.getUsername();
-	    } else if (aio != null && aio.getAuditSourceSystem() == AuditSourceSystem.KAFKA) {
-	        return "KAFKA";
 	    }
 		
 		// The subject ID could not be found

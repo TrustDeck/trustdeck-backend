@@ -146,12 +146,6 @@
 		    <artifactId>json-schema-validator</artifactId>
 		    <version>${json-schema-validator.version}</version>
 		</dependency>
-	    <dependency>
-        	<!-- Needed for receiving records via Kafka. -->
-        	<!-- License: Apache 2.0 -->
-		    <groupId>org.springframework.boot</groupId>
-		    <artifactId>spring-boot-starter-kafka</artifactId>
-		</dependency>
 
         <!-- Dependencies for tests -->
         <dependency>

@@ -48,18 +48,9 @@ public class AuditInformationObject {
     /** The requester's IP, if available. */
     private String requesterIp;
 
-    /** Request target, e.g. URL or Kafka topic metadata. */
+    /** Request target, i.e. the HTTP method and URL. */
     private String target;
 
-    /** Request body or message payload. */
+    /** Request body. */
     private String payload;
-
-    /** Kafka topic if available. */
-    private String topic;
-
-    /** Kafka partition if available. */
-    private Integer partition;
-
-    /** Kafka record offset if available. */
-    private Long recordOffset;
 }
