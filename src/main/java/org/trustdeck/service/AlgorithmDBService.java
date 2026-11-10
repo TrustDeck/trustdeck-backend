@@ -26,6 +26,7 @@ import org.jooq.impl.DSL;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.trustdeck.algorithms.PseudonymLengthCalculator;
 import org.trustdeck.exception.UnexpectedResultSizeException;
 import org.trustdeck.configuration.DefaultProperties;
 import org.trustdeck.jooq.generated.tables.pojos.Algorithm;
@@ -63,48 +64,6 @@ public class AlgorithmDBService {
     /** The maximum length a salt value given by the user is allowed to be. */
 	private static final int MAXIMUM_SALT_LENGTH = 256;
 	
-	/**
-	 * Calculates the shortest pseudonym length for which the desired number of pseudonyms can still be
-	 * generated with the desired success probability within the configured number of retries.
-	 *
-	 * A generation attempt succeeds with probability (k-n)/k when n of k possible pseudonyms are taken, so
-	 * at least one of m attempts succeeds with 1-(1-((k-n)/k))^m = 1-(n/k)^m. Requiring this to exceed T gives
-	 * k > n/((1-T)^(1/m)); with k = alphabetSize^length the length is ceil(log(k)/log(alphabetSize)).
-	 *
-	 * The calculation is a closed formula with constant effort. It works in log space, ln(k) = ln(n) - ln(1-T)/m,
-	 * using {@code log1p} so that success probabilities very close to 1 neither lose precision nor divide by
-	 * zero, and corrects floating-point rounding at exact powers of the alphabet size by at most one step.
-	 *
-	 * @param desiredSize the desired number of pseudonyms (n), at least 1
-	 * @param desiredSuccessProbability the desired success probability (T), strictly between 0 and 1
-	 * @param alphabetSize the number of symbols the pseudonyms are generated from, at least 2
-	 * @param retries the number of generation attempts (m), at least 1
-	 * @return the minimal number of random characters
-	 * @throws IllegalArgumentException if a parameter is outside its valid range
-	 */
-	static int calculatePseudonymLength(long desiredSize, double desiredSuccessProbability, int alphabetSize, int retries) {
-		if (desiredSize < 1 || !(desiredSuccessProbability > 0.0d && desiredSuccessProbability < 1.0d) || alphabetSize < 2 || retries < 1) {
-			throw new IllegalArgumentException("Invalid parameters for the pseudonym length calculation.");
-		}
-
-		// ln(k) = ln(n) - ln(1-T)/m; ln(1-T) is negative, so the term increases k
-		double lnK = Math.log(desiredSize) - Math.log1p(-desiredSuccessProbability) / retries;
-		double lnA = Math.log(alphabetSize);
-		int length = Math.max(1, (int) Math.ceil(lnK / lnA));
-
-		// Rounding can push log(k)/log(a) just above or below an integer: the length must suffice, the next shorter one must not
-		double tolerance = 1e-12;
-		while (length > 1 && (length - 1) * lnA >= lnK - tolerance) {
-			length--;
-		}
-
-		while (length * lnA < lnK - tolerance) {
-			length++;
-		}
-
-		return length;
-	}
-    
 	/**
      * Creates an algorithm object in the database.
      * 
@@ -157,7 +116,7 @@ public class AlgorithmDBService {
 		AlgorithmRecord algoRecord = dsl.newRecord(ALGORITHM);
         algoRecord.setName(algorithm.getName() != null ? algorithm.getName() : defaults.getAlgorithm().getName());
         algoRecord.setAlphabet(Utility.generateAlphabet(algoRecord.getName(), algorithm.getAlphabet()));
-		algoRecord.setRandomAlgorithmDesiredSize(algorithm.getRandomAlgorithmDesiredSize() != null && algorithm.getRandomAlgorithmDesiredSize() > 1 ? algorithm.getRandomAlgorithmDesiredSize() : defaults.getAlgorithm().getRandomDesiredSize());
+		algoRecord.setRandomAlgorithmDesiredSize(algorithm.getRandomAlgorithmDesiredSize() != null && algorithm.getRandomAlgorithmDesiredSize() >= 1 ? algorithm.getRandomAlgorithmDesiredSize() : defaults.getAlgorithm().getRandomDesiredSize());
         algoRecord.setRandomAlgorithmDesiredSuccessProbability(algorithm.getRandomAlgorithmDesiredSuccessProbability() != null && algorithm.getRandomAlgorithmDesiredSuccessProbability() > 0 && algorithm.getRandomAlgorithmDesiredSuccessProbability() < 1 ? algorithm.getRandomAlgorithmDesiredSuccessProbability() : defaults.getAlgorithm().getRandomDesiredSuccessProbability());
         algoRecord.setConsecutiveValueCounter(algorithm.getConsecutiveValueCounter() != null && algorithm.getConsecutiveValueCounter() > 0 ? algorithm.getConsecutiveValueCounter() : defaults.getAlgorithm().getConsecutiveValueCounter());
 		algoRecord.setPseudonymLength(algorithm.getPseudonymLength() != null && algorithm.getPseudonymLength() >= 4  ? algorithm.getPseudonymLength() : defaults.getAlgorithm().getPseudonymLength());
@@ -178,8 +137,8 @@ public class AlgorithmDBService {
 	/**
 	 * Determines the pseudonym length of a random algorithm.
 	 *
-	 * The minimum is calculated from the desired number of pseudonyms, the desired success probability, and the
-	 * alphabet size. When the check digit replaces the last character, only the remaining characters are random,
+	 * The minimum is calculated with {@link PseudonymLengthCalculator} from the desired number of pseudonyms, the
+	 * desired success probability, the configured number of attempts, and the alphabet size. When the check digit replaces the last character, only the remaining characters are random,
 	 * so the minimum grows by one. Without a requested length the minimum is used; a requested length is kept if
 	 * it reaches the minimum and otherwise raised to it with a warning.
 	 *
@@ -196,8 +155,9 @@ public class AlgorithmDBService {
 			return fallback;
 		}
 
-		int minimum = calculatePseudonymLength(algoRecord.getRandomAlgorithmDesiredSize(), algoRecord.getRandomAlgorithmDesiredSuccessProbability(),
-				alphabet.length(), defaults.getAlgorithm().getNumberOfRetries());
+		// Minimal number of random characters; the number of retries is the total number of attempts per new pseudonym
+		int minimum = PseudonymLengthCalculator.minimalLength(algoRecord.getRandomAlgorithmDesiredSize(), defaults.getAlgorithm().getNumberOfRetries(),
+				alphabet.length(), 1.0d - algoRecord.getRandomAlgorithmDesiredSuccessProbability());
 
 		// The check digit overwrites the last generated character, which then no longer adds randomness
 		boolean checkDigitReplacesLastCharacter = Boolean.TRUE.equals(algoRecord.getAddCheckDigit())

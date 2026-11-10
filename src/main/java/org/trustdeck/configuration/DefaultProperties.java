@@ -101,8 +101,24 @@ public class DefaultProperties {
         /** Pseudonym length used when none is supplied for a non-random algorithm; random algorithms calculate theirs. */
         private int pseudonymLength = 16;
         
-        /** Number of generation attempts before reporting a collision. */
+        /**
+         * Total number of generation attempts per new random pseudonym (the first attempt included) before
+         * reporting a collision. It also enters the calculation of the pseudonym length of random algorithms.
+         */
         private int numberOfRetries = 3;
+        
+        /**
+         * Sets the total number of generation attempts per new random pseudonym.
+         *
+         * @param numberOfRetries the number of attempts, at least 1
+         * @throws IllegalArgumentException if the number is smaller than 1
+         */
+        public void setNumberOfRetries(int numberOfRetries) {
+            if (numberOfRetries < 1) {
+                throw new IllegalArgumentException("app.defaults.algorithm.number-of-retries must be at least 1, but was " + numberOfRetries + ".");
+            }
+            this.numberOfRetries = numberOfRetries;
+        }
         
         /** Character used to pad pseudonyms. */
         private String paddingCharacter = "0";
