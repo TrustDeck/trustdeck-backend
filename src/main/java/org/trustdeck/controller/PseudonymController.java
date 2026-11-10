@@ -165,6 +165,7 @@ public class PseudonymController {
 
         // Transform the user-given inputs into a list of pseudonym objects.
         List<PseudonymDTO> pseudonyms = new ArrayList<>();
+        List<Boolean> generated = new ArrayList<>();
         for (PseudonymDTO pseudonymDTO : pseudonymDtoList) {
             // Start creating the pseudonym
             PseudonymDTO p = new PseudonymDTO();
@@ -260,8 +261,9 @@ public class PseudonymController {
                 p.setValidToInherited(true);
             }
 
-            // Add the newly created pseudonym to the list
+            // Add the newly created pseudonym to the list and remember whether it was generated or supplied
             pseudonyms.add(p);
+            generated.add(pseudonymDTO.getPsn() == null || pseudonymDTO.getPsn().trim().equals(""));
         }
 
         // Insert the list of pseudonyms in one batch
@@ -272,6 +274,11 @@ public class PseudonymController {
         if (result == null || result.size() != pseudonyms.size()) {
             log.error("The batch pseudonym persistence service returned an invalid result.");
             return responseService.unprocessableEntity(responseContentType);
+        }
+
+        // If a random algorithm is used, regenerate colliding pseudonyms like a single create does
+        if (algorithm(domain).getName().toUpperCase().startsWith("RANDOM")) {
+        	result = retryCollidingPseudonyms(pseudonyms, generated, result, domain, omitPrefix);
         }
 
         // Evaluate the result
@@ -483,8 +490,8 @@ public class PseudonymController {
         		fillingRateMonitor.checkAfterCollision(domain, algorithm(domain));
         	}
 
-	        // Retry DEFAULT_NUMBER_OF_RETRIES - 1 times
-            for (int i = 1; i < defaults.getAlgorithm().getNumberOfRetries(); i++) {
+	        // The first attempt was the insert above; make the remaining attempts
+            for (int i = 1; i < defaults.getAlgorithm().getNumberOfAttempts(); i++) {
 	        	// Check if its actually a duplicate
         		if (result.equals(PseudonymDBAccessService.INSERTION_DUPLICATE_PSEUDONYM)) {
 	        		// Retry
@@ -923,6 +930,67 @@ public class PseudonymController {
             // Nothing found, return a 404-NOT_FOUND
             return responseService.notFound(responseContentType);
         }
+    }
+    
+    /**
+     * Regenerates the generated pseudonyms of a batch that collided with existing pseudonyms and inserts them again,
+     * until each of them had the configured total number of attempts. Supplied pseudonyms are never changed.
+     * 
+     * @param pseudonyms the pseudonyms of the batch, in request order; colliding generated pseudonyms are replaced
+     * @param generated for each position, whether its pseudonym was generated (and not supplied)
+     * @param result the insertion status for each position after the first attempt
+     * @param domain the domain the pseudonyms are created in
+     * @param omitPrefix whether the prefix should be omitted from generated pseudonyms
+     * @return the insertion status for each position after the retries
+     */
+    private List<String> retryCollidingPseudonyms(List<PseudonymDTO> pseudonyms, List<Boolean> generated, List<String> result, Domain domain, Boolean omitPrefix) {
+    	List<String> statuses = new ArrayList<>(result);
+    	
+    	// The first attempt was the batch insert; retry the remaining number of attempts
+    	for (int attempt = 1; attempt < defaults.getAlgorithm().getNumberOfAttempts(); attempt++) {
+    		List<Integer> positions = new ArrayList<>();
+    		List<PseudonymDTO> retries = new ArrayList<>();
+    		for (int i = 0; i < pseudonyms.size(); i++) {
+    			if (generated.get(i) && statuses.get(i).equals(PseudonymDBAccessService.INSERTION_DUPLICATE_PSEUDONYM)) {
+    				PseudonymDTO p = pseudonyms.get(i);
+    				String pseudonym = pseudonymize(p.getIdentifierItem().getIdentifier(), p.getIdentifierItem().getIdType(), domain, omitPrefix);
+    				if (pseudonym != null) {
+    					p.setPsn(pseudonym);
+    					positions.add(i);
+    					retries.add(p);
+    				}
+    			}
+    		}
+    		
+    		if (retries.isEmpty()) {
+    			// No (retryable) collisions left
+    			return statuses;
+    		}
+    		
+    		List<String> retried = pseudonymDBAccessService.createPseudonyms(retries, domain.getId(), domain.getMultiplepsnallowed());
+    		if (retried == null || retried.size() != retries.size()) {
+    			log.error("The batch pseudonym persistence service returned an invalid result while retrying colliding pseudonyms.");
+    			return statuses;
+    		}
+    		
+    		for (int j = 0; j < positions.size(); j++) {
+    			statuses.set(positions.get(j), retried.get(j));
+    		}
+    	}
+    	
+    	long remaining = 0;
+    	for (int i = 0; i < pseudonyms.size(); i++) {
+    		if (generated.get(i) && statuses.get(i).equals(PseudonymDBAccessService.INSERTION_DUPLICATE_PSEUDONYM)) {
+    			remaining++;
+    		}
+    	}
+    	
+    	if (remaining > 0) {
+    		log.warn("Couldn't generate " + remaining + " new pseudonym" + (remaining == 1 ? "" : "s") + " in domain \"" + domain.getName() 
+    				+ "\" due to collisions within " + defaults.getAlgorithm().getNumberOfAttempts() + " attempts.");
+    	}
+    	
+    	return statuses;
     }
     
     /**

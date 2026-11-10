@@ -36,7 +36,7 @@ public class RandomAlphabetPseudonymizer extends Pseudonymizer {
 	
 	/**
 	 * Basic constructor.
-	 * Number of retries is set to default, all other variables are directly retrieved from the algorithm object.
+	 * The number of attempts is set to default, all other variables are directly retrieved from the algorithm object.
 	 * 
 	 * @param paddingWanted whether or not the pseudonyms should be padded to a certain length
 	 * @param algorithm the algorithm object

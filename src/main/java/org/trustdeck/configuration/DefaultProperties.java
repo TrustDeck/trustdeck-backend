@@ -103,14 +103,27 @@ public class DefaultProperties {
         /** Initial value for a consecutive algorithm. */
         private long consecutiveValueCounter = 1L;
         
-        /** Pseudonym length used when none is supplied. */
+        /** Pseudonym length used when none is supplied for a non-random algorithm; random algorithms calculate theirs. */
         private int pseudonymLength = 16;
         
-        /** Pseudonym length used for a default random algorithm. */
-        private int randomPseudonymLength = 10;
+        /**
+         * Total number of generation attempts per new random pseudonym (the first attempt included) before
+         * reporting a collision. It also enters the calculation of the pseudonym length of random algorithms.
+         */
+        private int numberOfAttempts = 3;
         
-        /** Number of generation attempts before reporting a collision. */
-        private int numberOfRetries = 3;
+        /**
+         * Sets the total number of generation attempts per new random pseudonym.
+         *
+         * @param numberOfAttempts the number of attempts, at least 1
+         * @throws IllegalArgumentException if the number is smaller than 1
+         */
+        public void setNumberOfAttempts(int numberOfAttempts) {
+            if (numberOfAttempts < 1) {
+                throw new IllegalArgumentException("app.defaults.algorithm.number-of-attempts must be at least 1, but was " + numberOfAttempts + ".");
+            }
+            this.numberOfAttempts = numberOfAttempts;
+        }
         
         /** Character used to pad pseudonyms. */
         private String paddingCharacter = "0";

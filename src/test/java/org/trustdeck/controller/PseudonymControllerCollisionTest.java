@@ -151,16 +151,16 @@ class PseudonymControllerCollisionTest {
 		verify(fillingRateMonitor, times(1)).checkAfterCollision(any(), any());
 	}
 
-	/** Exhausted retries for a generated pseudonym still answer 507, as before. */
+	/** Exhausted attempts for a generated pseudonym still answer 507, as before. */
 	@Test
-	void exhaustedRetriesForGeneratedPseudonymReportInsufficientStorage() {
+	void exhaustedAttemptsForGeneratedPseudonymReportInsufficientStorage() {
 		when(pseudonymDBAccessService.createPseudonyms(anyList(), anyInt(), anyBoolean()))
 				.thenReturn(List.of(PseudonymDBAccessService.INSERTION_DUPLICATE_PSEUDONYM));
 
 		ResponseEntity<?> response = controller.createPseudonym("test-domain", request(null), false, null);
 
 		assertEquals(507, response.getStatusCode().value());
-		verify(pseudonymDBAccessService, times(defaults.getAlgorithm().getNumberOfRetries()))
+		verify(pseudonymDBAccessService, times(defaults.getAlgorithm().getNumberOfAttempts()))
 				.createPseudonyms(anyList(), anyInt(), anyBoolean());
 		verify(fillingRateMonitor, times(1)).checkAfterCollision(any(), any());
 	}

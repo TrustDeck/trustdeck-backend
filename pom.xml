@@ -19,7 +19,7 @@
 
     <groupId>org.trustdeck</groupId>
     <artifactId>trustdeck</artifactId>
-    <version>v2.5.0</version>
+    <version>v2.6.0</version>
     <packaging>jar</packaging>
     <name>trustdeck</name>
 

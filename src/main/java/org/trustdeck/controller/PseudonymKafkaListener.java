@@ -218,8 +218,8 @@ public class PseudonymKafkaListener {
 		
         // If a random algorithm is used, check if we generated a duplicate. If so, retry.
         if (algorithmDBService.getAlgorithmByID(domain.getAlgorithmId()).getName().toUpperCase().startsWith("RANDOM")) {
-	        // Retry DEFAULT_NUMBER_OF_RETRIES - 1 times
-            for (int i = 1; i < defaults.getAlgorithm().getNumberOfRetries(); i++) {
+	        // The first attempt was the insert above; make the remaining attempts
+            for (int i = 1; i < defaults.getAlgorithm().getNumberOfAttempts(); i++) {
 	        	// Check if its actually a duplicate
         		if (result.equals(PseudonymDBAccessService.INSERTION_DUPLICATE_PSEUDONYM)) {
 	        		// Retry
