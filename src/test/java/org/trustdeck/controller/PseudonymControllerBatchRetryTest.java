@@ -154,7 +154,7 @@ class PseudonymControllerBatchRetryTest {
 		ResponseEntity<?> response = controller.createPseudonymBatch("test-domain", false, List.of(request("id-1", null)), null);
 
 		assertEquals(422, response.getStatusCode().value());
-		assertEquals(defaults.getAlgorithm().getNumberOfRetries(), insertCalls.size());
+		assertEquals(defaults.getAlgorithm().getNumberOfAttempts(), insertCalls.size());
 	}
 
 	/** Without collisions, the batch is inserted once. */

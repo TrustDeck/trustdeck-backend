@@ -66,7 +66,7 @@ class DomainFillingRateMonitorTest {
 		domain.setId(7);
 		domain.setName("test-domain");
 
-		// Without an alphabet the ten digits are assumed: 10^3 possible pseudonyms; with T = 0.875 and 3 retries
+		// Without an alphabet the ten digits are assumed: 10^3 possible pseudonyms; with T = 0.875 and 3 attempts
 		// the threshold is 1000 * 0.125^(1/3) = 500
 		algorithm = new Algorithm();
 		algorithm.setPseudonymLength(3);
@@ -178,7 +178,7 @@ class DomainFillingRateMonitorTest {
 	/** The number of possible pseudonyms uses the algorithm's alphabet size, not always ten symbols. */
 	@Test
 	void usesAlphabetSizeForPossiblePseudonyms() {
-		// 2 symbols and length 3 give k = 2^3 = 8 possible pseudonyms; with T = 0.875 and 3 retries the threshold is 8 * 0.5 = 4
+		// 2 symbols and length 3 give k = 2^3 = 8 possible pseudonyms; with T = 0.875 and 3 attempts the threshold is 8 * 0.5 = 4
 		algorithm.setAlphabet("AB");
 
 		assertFalse(monitor.warnIfFull(domain, algorithm, 4));

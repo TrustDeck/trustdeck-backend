@@ -110,19 +110,19 @@ public class DefaultProperties {
          * Total number of generation attempts per new random pseudonym (the first attempt included) before
          * reporting a collision. It also enters the calculation of the pseudonym length of random algorithms.
          */
-        private int numberOfRetries = 3;
+        private int numberOfAttempts = 3;
         
         /**
          * Sets the total number of generation attempts per new random pseudonym.
          *
-         * @param numberOfRetries the number of attempts, at least 1
+         * @param numberOfAttempts the number of attempts, at least 1
          * @throws IllegalArgumentException if the number is smaller than 1
          */
-        public void setNumberOfRetries(int numberOfRetries) {
-            if (numberOfRetries < 1) {
-                throw new IllegalArgumentException("app.defaults.algorithm.number-of-retries must be at least 1, but was " + numberOfRetries + ".");
+        public void setNumberOfAttempts(int numberOfAttempts) {
+            if (numberOfAttempts < 1) {
+                throw new IllegalArgumentException("app.defaults.algorithm.number-of-attempts must be at least 1, but was " + numberOfAttempts + ".");
             }
-            this.numberOfRetries = numberOfRetries;
+            this.numberOfAttempts = numberOfAttempts;
         }
         
         /** Character used to pad pseudonyms. */

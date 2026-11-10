@@ -490,8 +490,8 @@ public class PseudonymController {
         		fillingRateMonitor.checkAfterCollision(domain, algorithm(domain));
         	}
 
-	        // Retry DEFAULT_NUMBER_OF_RETRIES - 1 times
-            for (int i = 1; i < defaults.getAlgorithm().getNumberOfRetries(); i++) {
+	        // The first attempt was the insert above; make the remaining attempts
+            for (int i = 1; i < defaults.getAlgorithm().getNumberOfAttempts(); i++) {
 	        	// Check if its actually a duplicate
         		if (result.equals(PseudonymDBAccessService.INSERTION_DUPLICATE_PSEUDONYM)) {
 	        		// Retry
@@ -947,7 +947,7 @@ public class PseudonymController {
     	List<String> statuses = new ArrayList<>(result);
     	
     	// The first attempt was the batch insert; retry the remaining number of attempts
-    	for (int attempt = 1; attempt < defaults.getAlgorithm().getNumberOfRetries(); attempt++) {
+    	for (int attempt = 1; attempt < defaults.getAlgorithm().getNumberOfAttempts(); attempt++) {
     		List<Integer> positions = new ArrayList<>();
     		List<PseudonymDTO> retries = new ArrayList<>();
     		for (int i = 0; i < pseudonyms.size(); i++) {
@@ -987,7 +987,7 @@ public class PseudonymController {
     	
     	if (remaining > 0) {
     		log.warn("Couldn't generate " + remaining + " new pseudonym" + (remaining == 1 ? "" : "s") + " in domain \"" + domain.getName() 
-    				+ "\" due to collisions within " + defaults.getAlgorithm().getNumberOfRetries() + " attempts.");
+    				+ "\" due to collisions within " + defaults.getAlgorithm().getNumberOfAttempts() + " attempts.");
     	}
     	
     	return statuses;

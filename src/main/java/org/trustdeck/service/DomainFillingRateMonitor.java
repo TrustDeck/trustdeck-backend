@@ -39,7 +39,7 @@ import org.trustdeck.jooq.generated.tables.pojos.Domain;
 
 /**
  * Warns when a domain with a random algorithm approaches the filling point at
- * which generating an unused pseudonym within the configured retries is no
+ * which generating an unused pseudonym within the configured attempts is no
  * longer reasonably probable.
  *
  * The warning needs the number of pseudonyms in the domain, which is a full
@@ -62,7 +62,7 @@ public class DomainFillingRateMonitor {
 	/** Counts the pseudonyms of a domain. */
 	private final DomainDBAccessService domainDBAccessService;
 
-	/** Provides the number of retries and the cache interval. */
+	/** Provides the number of attempts and the cache interval. */
 	private final DefaultProperties defaults;
 
 	/** Runs the counts outside the request thread. */
@@ -84,7 +84,7 @@ public class DomainFillingRateMonitor {
 	 * Creates the monitor with its own single background thread.
 	 *
 	 * @param domainDBAccessService service used to count the pseudonyms of a domain
-	 * @param defaults default properties containing the retries and the cache interval
+	 * @param defaults default properties containing the number of attempts and the cache interval
 	 */
 	@Autowired
 	public DomainFillingRateMonitor(DomainDBAccessService domainDBAccessService, DefaultProperties defaults) {
@@ -99,7 +99,7 @@ public class DomainFillingRateMonitor {
 	 * Creates the monitor with an explicit executor and clock.
 	 *
 	 * @param domainDBAccessService service used to count the pseudonyms of a domain
-	 * @param defaults default properties containing the retries and the cache interval
+	 * @param defaults default properties containing the number of attempts and the cache interval
 	 * @param executor executor that runs the counts
 	 * @param clock time source
 	 */
@@ -187,7 +187,7 @@ public class DomainFillingRateMonitor {
 		* We can calculate a threshold for which we can reasonably probable generate pseudonyms using this formula: 
 		* 1-(1-((k-n)/k))^m > T => n < k*(1-T)^(1/m); with k being the number of theoretically possible pseudonyms 
 		* (here number of alphabet-symbols a and psnLength characters, so k=a^psnLength); n being the number of 
-		* reasonable probable pseudonyms; m being the number of retries; and T being the probability threshold which 
+		* reasonable probable pseudonyms; m being the number of attempts; and T being the probability threshold which 
 		* we deem to be reasonable probable (here: 99.999998% (probability of not getting struck by lightning), 
 		* meaning that we want to successfully generate a pseudonym in a maximum of m=3 tries in 99.999998% of all 
 		* cases).
@@ -203,7 +203,7 @@ public class DomainFillingRateMonitor {
 
 		Double T = algorithm.getRandomAlgorithmDesiredSuccessProbability();
 		Double k = Math.pow((double) a, (double) psnLength);
-		Double n = k * Math.pow((1.0d - T), (1.0d / (double) defaults.getAlgorithm().getNumberOfRetries()));
+		Double n = k * Math.pow((1.0d - T), (1.0d / (double) defaults.getAlgorithm().getNumberOfAttempts()));
 
 		if (!(count > n)) {
 			return false;
@@ -230,7 +230,7 @@ public class DomainFillingRateMonitor {
 			// previously unseen pseudonym in m tries is no longer greater than 99.999998%.
 			log.warn("The number of reasonably probable generated pseudonyms for domain \"" + domain.getName() + "\" is exhausted. "
 					+ "The probability to generate collisions will rise and at some point prevent the generation of "
-					+ "non-colliding pseudonyms in a certain number of retries.");
+					+ "non-colliding pseudonyms in a certain number of attempts.");
 		}
 
 		return due.get();

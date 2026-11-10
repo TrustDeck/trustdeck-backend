@@ -155,8 +155,8 @@ public class AlgorithmDBService {
 			return fallback;
 		}
 
-		// Minimal number of random characters; the number of retries is the total number of attempts per new pseudonym
-		int minimum = PseudonymLengthCalculator.minimalLength(algoRecord.getRandomAlgorithmDesiredSize(), defaults.getAlgorithm().getNumberOfRetries(),
+		// Minimal number of random characters for the configured total number of attempts per new pseudonym
+		int minimum = PseudonymLengthCalculator.minimalLength(algoRecord.getRandomAlgorithmDesiredSize(), defaults.getAlgorithm().getNumberOfAttempts(),
 				alphabet.length(), 1.0d - algoRecord.getRandomAlgorithmDesiredSuccessProbability());
 
 		// The check digit overwrites the last generated character, which then no longer adds randomness

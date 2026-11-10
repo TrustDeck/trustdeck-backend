@@ -97,7 +97,7 @@ class AlgorithmPseudonymLengthTest {
 	@Test
 	void usesConfiguredNumberOfAttempts() {
 		DefaultProperties defaults = new DefaultProperties();
-		defaults.getAlgorithm().setNumberOfRetries(5);
+		defaults.getAlgorithm().setNumberOfAttempts(5);
 		ReflectionTestUtils.setField(service, "defaults", defaults);
 
 		assertEquals(8, normalizedLength(randomAlgorithm(null, false, false)));
@@ -106,7 +106,7 @@ class AlgorithmPseudonymLengthTest {
 	/** At least one attempt per pseudonym is required. */
 	@Test
 	void rejectsNumberOfAttemptsBelowOne() {
-		assertThrows(IllegalArgumentException.class, () -> new DefaultProperties().getAlgorithm().setNumberOfRetries(0));
+		assertThrows(IllegalArgumentException.class, () -> new DefaultProperties().getAlgorithm().setNumberOfAttempts(0));
 	}
 
 	private int normalizedLength(Algorithm algorithm) {

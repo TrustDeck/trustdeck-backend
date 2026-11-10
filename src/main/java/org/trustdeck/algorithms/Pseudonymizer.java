@@ -60,8 +60,8 @@ public abstract class Pseudonymizer {
 	/** Indicates whether the domain allows multiple pseudonyms for each identifier. */
 	private boolean multiplePsnAllowed;
 	
-	/** The user-given number of retries. */
-	private int numberOfRetries;
+	/** The total number of generation attempts per new pseudonym. */
+	private int numberOfAttempts;
 	
 	/** The character used for padding the pseudonyms. */
 	private char paddingChar;
@@ -89,7 +89,7 @@ public abstract class Pseudonymizer {
 		this.alphabet = algorithm.getAlphabet();
 		this.currentValue = algorithm.getConsecutiveValueCounter();
 		this.multiplePsnAllowed = false;
-		this.numberOfRetries = defaults.getAlgorithm().getNumberOfRetries();
+		this.numberOfAttempts = defaults.getAlgorithm().getNumberOfAttempts();
 		this.paddingChar = algorithm.getPaddingCharacter().charAt(0);
 		this.paddingWanted = paddingWanted;
 		this.pseudonymValueLength = algorithm.getPseudonymLength();

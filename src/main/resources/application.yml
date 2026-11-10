@@ -81,7 +81,7 @@ app:
       filling-rate-check-interval: 10m
       consecutive-value-counter: 1
       pseudonym-length: 16
-      number-of-retries: 3
+      number-of-attempts: 3
       padding-character: "0"
       add-check-digit: true
       length-includes-check-digit: true
