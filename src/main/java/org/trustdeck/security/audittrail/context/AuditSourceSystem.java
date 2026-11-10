@@ -25,8 +25,5 @@ package org.trustdeck.security.audittrail.context;
 public enum AuditSourceSystem {
 	
 	/** REST-based request. */
-	REST,
-	
-	/** Kafka-based message processing. */
-    KAFKA
+	REST
 }

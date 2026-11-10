@@ -65,9 +65,6 @@ public class AuditEventBuilder {
         auditEvent.setRequestUrl(aio.getTarget() != null ? aio.getTarget() : "UNKNOWN");
         auditEvent.setRequestBody(aio.getPayload());
         auditEvent.setSourceSystem(aio.getAuditSourceSystem() != null ? aio.getAuditSourceSystem().name() : "UNKNOWN");
-        auditEvent.setTopic(aio.getTopic());
-        auditEvent.setPartition(aio.getPartition());
-        auditEvent.setRecordOffset(aio.getRecordOffset());
 
         return auditEvent;
     }

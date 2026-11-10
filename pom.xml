@@ -19,7 +19,7 @@
 
     <groupId>org.trustdeck</groupId>
     <artifactId>trustdeck</artifactId>
-    <version>v2.6.0</version>
+    <version>v2.7.0</version>
     <packaging>jar</packaging>
     <name>trustdeck</name>
 
@@ -145,12 +145,6 @@
 		    <groupId>com.networknt</groupId>
 		    <artifactId>json-schema-validator</artifactId>
 		    <version>${json-schema-validator.version}</version>
-		</dependency>
-	    <dependency>
-        	<!-- Needed for receiving records via Kafka. -->
-        	<!-- License: Apache 2.0 -->
-		    <groupId>org.springframework.boot</groupId>
-		    <artifactId>spring-boot-starter-kafka</artifactId>
 		</dependency>
 
         <!-- Dependencies for tests -->

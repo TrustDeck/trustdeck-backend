@@ -90,21 +90,6 @@ public class AuditEvent extends TableImpl<AuditEventRecord> {
      */
     public final TableField<AuditEventRecord, String> SOURCE_SYSTEM = createField(DSL.name("source_system"), SQLDataType.CLOB, this, "");
 
-    /**
-     * The column <code>public.audit_event.topic</code>.
-     */
-    public final TableField<AuditEventRecord, String> TOPIC = createField(DSL.name("topic"), SQLDataType.CLOB, this, "");
-
-    /**
-     * The column <code>public.audit_event.partition</code>.
-     */
-    public final TableField<AuditEventRecord, Integer> PARTITION = createField(DSL.name("partition"), SQLDataType.INTEGER, this, "");
-
-    /**
-     * The column <code>public.audit_event.record_offset</code>.
-     */
-    public final TableField<AuditEventRecord, Long> RECORD_OFFSET = createField(DSL.name("record_offset"), SQLDataType.BIGINT, this, "");
-
     private AuditEvent(Name alias, Table<AuditEventRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
     }

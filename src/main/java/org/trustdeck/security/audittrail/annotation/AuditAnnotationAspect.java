@@ -38,7 +38,7 @@ import lombok.extern.slf4j.Slf4j;
 /**
  * Class that automatically intercepts @Audit annotations and stores 
  * the collected information using the same transaction as the database method.
- * Works for REST endpoints and Kafka consumer methods.
+ * Works for REST endpoints; invocations outside a REST request are not audited.
  * 
  * @author Armin Müller
  */
@@ -83,7 +83,7 @@ public class AuditAnnotationAspect {
     @Transactional(propagation = Propagation.REQUIRED)
     public Object auditMethod(ProceedingJoinPoint joinPoint, Audit auditAnnotation) throws AuditTrailException {
         // Gather information
-        AuditInformationObject aio = auditInformationResolver.resolve(joinPoint);
+        AuditInformationObject aio = auditInformationResolver.resolve();
 
         try {
             // Check if we have any information, or if we should skip auditing
@@ -98,7 +98,7 @@ public class AuditAnnotationAspect {
 	            	this.getAuditeventDao().insert(auditEvent);
 	            }
             } else {
-                log.trace("No REST or Kafka audit information available. Skip auditing.");
+                log.trace("No REST request information available. Skip auditing.");
             }
             
             // Proceed with the original method

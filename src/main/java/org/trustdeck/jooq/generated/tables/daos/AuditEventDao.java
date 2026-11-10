@@ -157,49 +157,4 @@ public class AuditEventDao extends DAOImpl<AuditEventRecord, org.trustdeck.jooq.
     public List<org.trustdeck.jooq.generated.tables.pojos.AuditEvent> fetchBySourceSystem(String... values) {
         return fetch(AuditEvent.AUDIT_EVENT.SOURCE_SYSTEM, values);
     }
-
-    /**
-     * Fetch records that have <code>topic BETWEEN lowerInclusive AND
-     * upperInclusive</code>
-     */
-    public List<org.trustdeck.jooq.generated.tables.pojos.AuditEvent> fetchRangeOfTopic(String lowerInclusive, String upperInclusive) {
-        return fetchRange(AuditEvent.AUDIT_EVENT.TOPIC, lowerInclusive, upperInclusive);
-    }
-
-    /**
-     * Fetch records that have <code>topic IN (values)</code>
-     */
-    public List<org.trustdeck.jooq.generated.tables.pojos.AuditEvent> fetchByTopic(String... values) {
-        return fetch(AuditEvent.AUDIT_EVENT.TOPIC, values);
-    }
-
-    /**
-     * Fetch records that have <code>partition BETWEEN lowerInclusive AND
-     * upperInclusive</code>
-     */
-    public List<org.trustdeck.jooq.generated.tables.pojos.AuditEvent> fetchRangeOfPartition(Integer lowerInclusive, Integer upperInclusive) {
-        return fetchRange(AuditEvent.AUDIT_EVENT.PARTITION, lowerInclusive, upperInclusive);
-    }
-
-    /**
-     * Fetch records that have <code>partition IN (values)</code>
-     */
-    public List<org.trustdeck.jooq.generated.tables.pojos.AuditEvent> fetchByPartition(Integer... values) {
-        return fetch(AuditEvent.AUDIT_EVENT.PARTITION, values);
-    }
-
-    /**
-     * Fetch records that have <code>record_offset BETWEEN lowerInclusive AND
-     * upperInclusive</code>
-     */
-    public List<org.trustdeck.jooq.generated.tables.pojos.AuditEvent> fetchRangeOfRecordOffset(Long lowerInclusive, Long upperInclusive) {
-        return fetchRange(AuditEvent.AUDIT_EVENT.RECORD_OFFSET, lowerInclusive, upperInclusive);
-    }
-
-    /**
-     * Fetch records that have <code>record_offset IN (values)</code>
-     */
-    public List<org.trustdeck.jooq.generated.tables.pojos.AuditEvent> fetchByRecordOffset(Long... values) {
-        return fetch(AuditEvent.AUDIT_EVENT.RECORD_OFFSET, values);
-    }
 }
