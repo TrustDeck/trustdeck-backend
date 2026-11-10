@@ -48,6 +48,7 @@ import org.trustdeck.exception.FailedPseudonymUpdateException;
 import org.trustdeck.exception.PermissionManagementException;
 import org.trustdeck.exception.UnexpectedResultSizeException;
 import org.trustdeck.jooq.generated.tables.daos.DomainDao;
+import org.trustdeck.jooq.generated.tables.pojos.Algorithm;
 import org.trustdeck.jooq.generated.tables.pojos.Domain;
 import org.trustdeck.jooq.generated.tables.pojos.Pseudonym;
 import org.trustdeck.jooq.generated.tables.records.PseudonymRecord;
@@ -92,6 +93,11 @@ public class DomainDBAccessService {
     /** Cache for the permission look-ups. */
     @Autowired
     private CachingService cachingService;
+
+    /** Service to create the algorithms that child domains inherit. */
+    @Autowired
+    @Lazy
+    private AlgorithmDBService algorithmDBService;
 
     /** Represents the duplication status of a requested insertion of a domain into the database. */
     public static final String INSERTION_DUPLICATE = "duplicate";
@@ -892,6 +898,25 @@ public class DomainDBAccessService {
     }
 
     /**
+     * Creates the algorithm a child domain inherits from its parent's algorithm. The child gets the same
+     * configuration (including the pseudonym length) but its own newly generated salt, as on domain creation.
+     *
+     * @param parentAlgorithmId the ID of the parent domain's algorithm
+     * @return the ID of the child's algorithm, or {@code null} if the parent's algorithm could not be found
+     */
+    Integer createInheritedAlgorithm(Integer parentAlgorithmId) {
+        Algorithm parentAlgorithm = algorithmDBService.getAlgorithmByID(parentAlgorithmId);
+        if (parentAlgorithm == null) {
+            return null;
+        }
+
+        Algorithm childAlgorithm = new Algorithm(parentAlgorithm);
+        childAlgorithm.setId(null);
+        childAlgorithm.setSalt(null);
+        return algorithmDBService.createOrGetAlgorithm(childAlgorithm);
+    }
+
+    /**
      * Method to update a domain in the database.
      * Updates only those parameters that aren't {@code null}.
      * Recursive updating of affected child-domains is possible.
@@ -992,7 +1017,15 @@ public class DomainDBAccessService {
                         updateDomain.setEnforcestartdatevalidityinherited(oldChild.getEnforcestartdatevalidityinherited());
                         updateDomain.setEnforceenddatevalidity(oldChild.getEnforceenddatevalidityinherited() ? newDomain.getEnforceenddatevalidity() : oldChild.getEnforceenddatevalidity());
                         updateDomain.setEnforceenddatevalidityinherited(oldChild.getEnforceenddatevalidityinherited());
-                        updateDomain.setAlgorithmId(oldChild.getAlgorithmInherited() ? newDomain.getAlgorithmId() : oldChild.getAlgorithmId());
+                        // An inheriting child gets its own copy of the parent's new algorithm, so parent and child never share a salt
+                        Integer childAlgorithmId = oldChild.getAlgorithmId();
+                        if (oldChild.getAlgorithmInherited() && newDomain.getAlgorithmId() != null) {
+                            childAlgorithmId = createInheritedAlgorithm(newDomain.getAlgorithmId());
+                            if (childAlgorithmId == null) {
+                                throw new FailedChildDomainUpdateException(oldChild.getName());
+                            }
+                        }
+                        updateDomain.setAlgorithmId(childAlgorithmId);
                         updateDomain.setAlgorithmInherited(oldChild.getAlgorithmInherited());
 
                         // Recursive call of the update method
