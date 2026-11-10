@@ -88,11 +88,11 @@ public class ProjectStatisticsDTO {
         /** The exact number of entity types belonging to the project. */
         private long entityTypes;
 
-        /** The exact number of entities stored for the project. */
-        private long entities;
+        /** The exact number of entities stored for the project, or {@code null} unless requested with {@code exact=true}. */
+        private Long entities;
 
-        /** The exact number of pseudonyms contained in project-owned domains. */
-        private long pseudonyms;
+        /** The exact number of pseudonyms in project-owned domains, or {@code null} unless requested with {@code exact=true}. */
+        private Long pseudonyms;
     }
 
     /** A stable resource identity and its count. */
@@ -104,7 +104,7 @@ public class ProjectStatisticsDTO {
         /** The name of the counted resource. */
         private String name;
 
-        /** The exact number of records associated with the resource. */
-        private long count;
+        /** The exact number of records associated with the resource, or {@code null} unless requested with {@code exact=true}. */
+        private Long count;
     }
 }

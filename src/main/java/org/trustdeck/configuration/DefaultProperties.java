@@ -17,6 +17,8 @@
 
 package org.trustdeck.configuration;
 
+import java.time.Duration;
+
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -94,6 +96,9 @@ public class DefaultProperties {
         
         /** Alphabet used for a random algorithm. */
         private String randomAlphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+
+        /** Maximum age of a cached domain pseudonym count used for the random-algorithm filling-rate warning. */
+        private Duration fillingRateCheckInterval = Duration.ofMinutes(10);
         
         /** Initial value for a consecutive algorithm. */
         private long consecutiveValueCounter = 1L;
