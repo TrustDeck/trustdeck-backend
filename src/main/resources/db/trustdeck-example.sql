@@ -134,10 +134,7 @@ CREATE TABLE public.audit_event (
     requester_ip text,
     request_url text,
     request_body text,
-    source_system text,
-    topic text,
-    partition integer,
-    record_offset bigint
+    source_system text
 );
 
 

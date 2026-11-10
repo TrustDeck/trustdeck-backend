@@ -88,36 +88,6 @@ public interface IAuditEvent extends Serializable {
      */
     public String getSourceSystem();
 
-    /**
-     * Setter for <code>public.audit_event.topic</code>.
-     */
-    public IAuditEvent setTopic(String value);
-
-    /**
-     * Getter for <code>public.audit_event.topic</code>.
-     */
-    public String getTopic();
-
-    /**
-     * Setter for <code>public.audit_event.partition</code>.
-     */
-    public IAuditEvent setPartition(Integer value);
-
-    /**
-     * Getter for <code>public.audit_event.partition</code>.
-     */
-    public Integer getPartition();
-
-    /**
-     * Setter for <code>public.audit_event.record_offset</code>.
-     */
-    public IAuditEvent setRecordOffset(Long value);
-
-    /**
-     * Getter for <code>public.audit_event.record_offset</code>.
-     */
-    public Long getRecordOffset();
-
     // -------------------------------------------------------------------------
     // FROM and INTO
     // -------------------------------------------------------------------------

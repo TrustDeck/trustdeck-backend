@@ -143,57 +143,6 @@ public class AuditEventRecord extends UpdatableRecordImpl<AuditEventRecord> impl
         return (String) get(6);
     }
 
-    /**
-     * Setter for <code>public.audit_event.topic</code>.
-     */
-    @Override
-    public AuditEventRecord setTopic(String value) {
-        set(7, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>public.audit_event.topic</code>.
-     */
-    @Override
-    public String getTopic() {
-        return (String) get(7);
-    }
-
-    /**
-     * Setter for <code>public.audit_event.partition</code>.
-     */
-    @Override
-    public AuditEventRecord setPartition(Integer value) {
-        set(8, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>public.audit_event.partition</code>.
-     */
-    @Override
-    public Integer getPartition() {
-        return (Integer) get(8);
-    }
-
-    /**
-     * Setter for <code>public.audit_event.record_offset</code>.
-     */
-    @Override
-    public AuditEventRecord setRecordOffset(Long value) {
-        set(9, value);
-        return this;
-    }
-
-    /**
-     * Getter for <code>public.audit_event.record_offset</code>.
-     */
-    @Override
-    public Long getRecordOffset() {
-        return (Long) get(9);
-    }
-
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -216,9 +165,6 @@ public class AuditEventRecord extends UpdatableRecordImpl<AuditEventRecord> impl
         setRequestUrl(from.getRequestUrl());
         setRequestBody(from.getRequestBody());
         setSourceSystem(from.getSourceSystem());
-        setTopic(from.getTopic());
-        setPartition(from.getPartition());
-        setRecordOffset(from.getRecordOffset());
         resetTouchedOnNotNull();
     }
 
@@ -242,7 +188,7 @@ public class AuditEventRecord extends UpdatableRecordImpl<AuditEventRecord> impl
     /**
      * Create a detached, initialised AuditEventRecord
      */
-    public AuditEventRecord(Long id, LocalDateTime requestTime, String userName, String requesterIp, String requestUrl, String requestBody, String sourceSystem, String topic, Integer partition, Long recordOffset) {
+    public AuditEventRecord(Long id, LocalDateTime requestTime, String userName, String requesterIp, String requestUrl, String requestBody, String sourceSystem) {
         super(AuditEvent.AUDIT_EVENT);
 
         setId(id);
@@ -252,9 +198,6 @@ public class AuditEventRecord extends UpdatableRecordImpl<AuditEventRecord> impl
         setRequestUrl(requestUrl);
         setRequestBody(requestBody);
         setSourceSystem(sourceSystem);
-        setTopic(topic);
-        setPartition(partition);
-        setRecordOffset(recordOffset);
         resetTouchedOnNotNull();
     }
 
@@ -272,9 +215,6 @@ public class AuditEventRecord extends UpdatableRecordImpl<AuditEventRecord> impl
             setRequestUrl(value.getRequestUrl());
             setRequestBody(value.getRequestBody());
             setSourceSystem(value.getSourceSystem());
-            setTopic(value.getTopic());
-            setPartition(value.getPartition());
-            setRecordOffset(value.getRecordOffset());
             resetTouchedOnNotNull();
         }
     }

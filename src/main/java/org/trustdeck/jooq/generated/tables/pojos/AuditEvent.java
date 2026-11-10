@@ -26,9 +26,6 @@ public class AuditEvent implements IAuditEvent {
     private String requestUrl;
     private String requestBody;
     private String sourceSystem;
-    private String topic;
-    private Integer partition;
-    private Long recordOffset;
 
     public AuditEvent() {}
 
@@ -40,9 +37,6 @@ public class AuditEvent implements IAuditEvent {
         this.requestUrl = value.getRequestUrl();
         this.requestBody = value.getRequestBody();
         this.sourceSystem = value.getSourceSystem();
-        this.topic = value.getTopic();
-        this.partition = value.getPartition();
-        this.recordOffset = value.getRecordOffset();
     }
 
     public AuditEvent(
@@ -52,10 +46,7 @@ public class AuditEvent implements IAuditEvent {
         String requesterIp,
         String requestUrl,
         String requestBody,
-        String sourceSystem,
-        String topic,
-        Integer partition,
-        Long recordOffset
+        String sourceSystem
     ) {
         this.id = id;
         this.requestTime = requestTime;
@@ -64,9 +55,6 @@ public class AuditEvent implements IAuditEvent {
         this.requestUrl = requestUrl;
         this.requestBody = requestBody;
         this.sourceSystem = sourceSystem;
-        this.topic = topic;
-        this.partition = partition;
-        this.recordOffset = recordOffset;
     }
 
     /**
@@ -190,57 +178,6 @@ public class AuditEvent implements IAuditEvent {
         return this;
     }
 
-    /**
-     * Getter for <code>public.audit_event.topic</code>.
-     */
-    @Override
-    public String getTopic() {
-        return this.topic;
-    }
-
-    /**
-     * Setter for <code>public.audit_event.topic</code>.
-     */
-    @Override
-    public AuditEvent setTopic(String topic) {
-        this.topic = topic;
-        return this;
-    }
-
-    /**
-     * Getter for <code>public.audit_event.partition</code>.
-     */
-    @Override
-    public Integer getPartition() {
-        return this.partition;
-    }
-
-    /**
-     * Setter for <code>public.audit_event.partition</code>.
-     */
-    @Override
-    public AuditEvent setPartition(Integer partition) {
-        this.partition = partition;
-        return this;
-    }
-
-    /**
-     * Getter for <code>public.audit_event.record_offset</code>.
-     */
-    @Override
-    public Long getRecordOffset() {
-        return this.recordOffset;
-    }
-
-    /**
-     * Setter for <code>public.audit_event.record_offset</code>.
-     */
-    @Override
-    public AuditEvent setRecordOffset(Long recordOffset) {
-        this.recordOffset = recordOffset;
-        return this;
-    }
-
     @Override
     public boolean equals(Object obj) {
         if (this == obj)
@@ -292,24 +229,6 @@ public class AuditEvent implements IAuditEvent {
         }
         else if (!this.sourceSystem.equals(other.sourceSystem))
             return false;
-        if (this.topic == null) {
-            if (other.topic != null)
-                return false;
-        }
-        else if (!this.topic.equals(other.topic))
-            return false;
-        if (this.partition == null) {
-            if (other.partition != null)
-                return false;
-        }
-        else if (!this.partition.equals(other.partition))
-            return false;
-        if (this.recordOffset == null) {
-            if (other.recordOffset != null)
-                return false;
-        }
-        else if (!this.recordOffset.equals(other.recordOffset))
-            return false;
         return true;
     }
 
@@ -324,9 +243,6 @@ public class AuditEvent implements IAuditEvent {
         result = prime * result + ((this.requestUrl == null) ? 0 : this.requestUrl.hashCode());
         result = prime * result + ((this.requestBody == null) ? 0 : this.requestBody.hashCode());
         result = prime * result + ((this.sourceSystem == null) ? 0 : this.sourceSystem.hashCode());
-        result = prime * result + ((this.topic == null) ? 0 : this.topic.hashCode());
-        result = prime * result + ((this.partition == null) ? 0 : this.partition.hashCode());
-        result = prime * result + ((this.recordOffset == null) ? 0 : this.recordOffset.hashCode());
         return result;
     }
 
@@ -341,9 +257,6 @@ public class AuditEvent implements IAuditEvent {
         sb.append(", ").append(requestUrl);
         sb.append(", ").append(requestBody);
         sb.append(", ").append(sourceSystem);
-        sb.append(", ").append(topic);
-        sb.append(", ").append(partition);
-        sb.append(", ").append(recordOffset);
 
         sb.append(")");
         return sb.toString();
@@ -362,9 +275,6 @@ public class AuditEvent implements IAuditEvent {
         setRequestUrl(from.getRequestUrl());
         setRequestBody(from.getRequestBody());
         setSourceSystem(from.getSourceSystem());
-        setTopic(from.getTopic());
-        setPartition(from.getPartition());
-        setRecordOffset(from.getRecordOffset());
     }
 
     @Override
