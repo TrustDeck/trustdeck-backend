@@ -16,13 +16,9 @@
             [%level]\t%d{DEFAULT} %logger{-10}:%line %message%n%exception
         </Property>
 
-        <!-- This allows setting the log level in the application.yml -->
-        <Property name="ROOT_LOG_LEVEL">
-            ${logging.level.root:WARN}
-        </Property>
-        <Property name="TRUSTDECK_LOG_LEVEL">
-            ${logging.level.org.trustdeck:INFO}
-        </Property>
+        <!-- Read the log levels from the Spring environment (application.yml); Log4j separates defaults with ":-" -->
+        <Property name="ROOT_LOG_LEVEL">${spring:logging.level.root:-WARN}</Property>
+        <Property name="TRUSTDECK_LOG_LEVEL">${spring:logging.level.org.trustdeck:-INFO}</Property>
     </Properties>
 
     <Appenders>
