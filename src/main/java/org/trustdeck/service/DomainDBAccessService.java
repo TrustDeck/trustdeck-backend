@@ -22,7 +22,6 @@ import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.jooq.CommonTableExpression;
 import org.jooq.DSLContext;
-import org.jooq.DeleteConditionStep;
 import org.jooq.impl.DSL;
 import org.jooq.JoinType;
 import org.jooq.Record;
@@ -38,20 +37,17 @@ import org.trustdeck.algorithms.PathFinder;
 import org.trustdeck.dto.DomainDTO;
 import org.trustdeck.dto.ProjectDomainDTO;
 import org.trustdeck.dto.PseudonymDTO;
-import org.trustdeck.dto.PseudonymUpdateDTO;
 import org.trustdeck.exception.DomainNotFoundException;
 import org.trustdeck.exception.DuplicateDomainException;
 import org.trustdeck.exception.FailedChildDomainDeletionException;
 import org.trustdeck.exception.FailedChildDomainUpdateException;
 import org.trustdeck.exception.FailedPseudonymDeletionException;
-import org.trustdeck.exception.FailedPseudonymUpdateException;
 import org.trustdeck.exception.PermissionManagementException;
 import org.trustdeck.exception.UnexpectedResultSizeException;
 import org.trustdeck.jooq.generated.tables.daos.DomainDao;
 import org.trustdeck.jooq.generated.tables.pojos.Algorithm;
 import org.trustdeck.jooq.generated.tables.pojos.Domain;
 import org.trustdeck.jooq.generated.tables.pojos.Pseudonym;
-import org.trustdeck.jooq.generated.tables.records.PseudonymRecord;
 import org.trustdeck.model.IdentifierItem;
 import org.trustdeck.utils.Assertion;
 import org.trustdeck.utils.Utility.Pair;
@@ -526,6 +522,29 @@ public class DomainDBAccessService {
     }
 
     /**
+     * Checks whether a domain contains at least one record. Unlike counting, this stops at the first
+     * record, so it stays fast for large domains.
+     *
+     * @param domainName the name of the domain to check
+     * @return {@code true} if the domain contains records or the check failed, {@code false} if it is empty or doesn't exist
+     */
+    public boolean hasPseudonyms(String domainName) {
+        try {
+            Domain d = this.getDomainByName(domainName);
+            if (d == null) {
+                log.debug("Domain \"" + domainName + "\" wasn't found in the database.");
+                return false;
+            }
+
+            return this.dsl.fetchExists(this.dsl.selectOne().from(PSEUDONYM).where(PSEUDONYM.DOMAINID.equal(d.getId())));
+        } catch (Exception e) {
+            // Treat the domain as not empty, so that changes reserved for empty domains are not applied by mistake
+            log.error("Couldn't check whether the domain " + domainName + " contains records: " + e.getMessage());
+            return true;
+        }
+    }
+
+    /**
      * Returns the number of records in a domain
      *
      * @param domainName the name of the domain where the number of records should be retrieved from
@@ -615,38 +634,14 @@ public class DomainDBAccessService {
                  * the "domain-tree". From here the bottom-up deletion starts. First delete the records in
                  * the domain, then delete the domain itself and return one recursion level upward.
                  */
-                // Delete by creating multiple delete statements and executing them as a batch.
-                DSLContext ctx = DSL.using(configuration);
-                
-                // Retrieve a list of all pseudonym-records in the domain
-                List<Pseudonym> pseudonyms = ctx
-                        .selectFrom(PSEUDONYM)
+                // Delete all records of the domain with a single statement, since a domain can hold millions
+                // of pseudonyms. A failure throws and rolls back the whole transaction.
+                int deletedRecords = DSL.using(configuration).deleteFrom(PSEUDONYM)
                         .where(PSEUDONYM.DOMAINID.equal(domain.getId()))
-                        .fetchInto(Pseudonym.class);
-
-                // Create a list of delete statements
-                List<DeleteConditionStep<PseudonymRecord>> deletions = new ArrayList<>();
-                for (Pseudonym p : pseudonyms) {
-                    deletions.add(ctx.delete(PSEUDONYM)
-                            .where(PSEUDONYM.IDENTIFIER.equal(p.getIdentifier()))
-                            .and(PSEUDONYM.IDTYPE.equal(p.getIdtype()))
-                            .and(PSEUDONYM.PSEUDONYM_.equal(p.getPseudonym()))
-                            .and(PSEUDONYM.DOMAINID.equal(p.getDomainid())));
-                }
-
-                // Batch the delete statements and execute the batch
-                int[] result = ctx.batch(deletions).execute();
-
-                // Process the result
-                for (int i = 0; i < result.length; i++) {
-                    if (result[i] != 1) {
-                        // Unexpected result, abort the complete transaction by throwing an exception
-                        throw new UnexpectedResultSizeException(1, result[i]);
-                    }
-                }
+                        .execute();
 
                 // Success; continue with the deletion process
-                log.debug("Successfully deleted all records in the domain \"" + domain.getName() + "\".");
+                log.debug("Successfully deleted all " + deletedRecords + " records in the domain \"" + domain.getName() + "\".");
 
                 // Now delete the domain itself
                 int deletedDomains = DSL.using(configuration).deleteFrom(DOMAIN)
@@ -962,41 +957,10 @@ public class DomainDBAccessService {
                     throw new UnexpectedResultSizeException(1, updatedDomain);
                 }
 
-                // Retrieve a list of all pseudonym-records in the updated domain
-                List<Pseudonym> records = DSL.using(configuration).selectFrom(PSEUDONYM)
-                        .where(PSEUDONYM.DOMAINID.equal(oldDomain.getId()))
-                        .fetchInto(Pseudonym.class);
-
-                // Iterate over the pseudonym-records, if there are any, and create updatable DTOs
-                List<PseudonymUpdateDTO> updates = new ArrayList<>();
-                for (Pseudonym old : records) {
-                    // Create a new record with the necessary changes
-                	IdentifierItem oldIdItem = IdentifierItem.builder().identifier(old.getIdentifier()).idType(old.getIdtype()).build();
-                	
-                    PseudonymUpdateDTO update = new PseudonymUpdateDTO();
-                    update.setOldIdentifierItem(oldIdItem);
-                    update.setOldPsn(old.getPseudonym());
-                    update.setOldDomain(oldDomain);
-                    update.setNewIdentifierItem(oldIdItem);
-                    update.setNewPsn(old.getPseudonym());
-                    // A domain update changes its configuration, not its database identity.
-                    update.setNewDomain(oldDomain);
-                    update.setNewDomainName(newDomain.getName());
-                    update.setValidFrom(old.getValidfrominherited() ? newDomain.getValidfrom() : oldDomain.getValidfrom());
-                    update.setValidFromInherited(old.getValidfrominherited());
-                    update.setValidTo(old.getValidtoinherited() ? newDomain.getValidto() : oldDomain.getValidto());
-                    update.setValidToInherited(old.getValidtoinherited());
-
-                    updates.add(update);
-                }
-                
-                // Update the inheritable variables
-                List<Boolean> results = pseudonymDBAccessService.updatePseudonyms(updates);
-                if (!updates.isEmpty() && (results == null || results.contains(false))) {
-                    // Failed update of a pseudonym-record: use exception to break the transaction
-                    IdentifierItem ii = updates.get(results == null ? 0 : results.indexOf(false)).getNewIdentifierItem();
-                    throw new FailedPseudonymUpdateException((newDomain.getName() != null) ? newDomain.getName() : oldDomain.getName(), ii.getIdentifier(), ii.getIdType());
-                }
+                // Pass a changed validity on to the pseudonyms that inherit it. This is done set-based in the
+                // database, since a domain can hold millions of pseudonyms. Pseudonyms with their own validity
+                // keep it, and nothing is touched when the validity doesn't change.
+                updateInheritedPseudonymValidity(DSL.using(configuration), oldDomain, newDomain);
 
                 // Check if child domains should also be updated
                 if (recursiveChanges) {
@@ -1058,9 +1022,6 @@ public class DomainDBAccessService {
             log.error("The update would have affected an unexpected number of records. It should only affect 1 record, "
                     + "but affected " + f.getActual() + " records.");
             return null;
-        } catch (FailedPseudonymUpdateException g) {
-            log.error("While updating the records in the domain \"" + g.getDomainName() + "\" an error occurred. The update was therefore rolled back.");
-            return null;
         } catch (FailedChildDomainUpdateException h) {
             log.error("Updating the child-domain \"" + h.getChildName() + "\" was unsuccessful and was therefore rolled back.");
             return null;
@@ -1068,6 +1029,35 @@ public class DomainDBAccessService {
             log.error("Couldn't update the domain: " + j.getClass() + ": " + j.getMessage());
             log.trace("", j);
             return null;
+        }
+    }
+
+    /**
+     * Passes a changed domain validity on to the pseudonyms of the domain that inherit it.
+     * Each changed field is updated with a single statement; pseudonyms with their own validity
+     * are left untouched. Nothing is executed when the validity doesn't change.
+     *
+     * @param ctx the DSL context of the surrounding transaction
+     * @param oldDomain the domain before the update
+     * @param newDomain the requested changes; {@code null} fields are not changed
+     */
+    void updateInheritedPseudonymValidity(DSLContext ctx, Domain oldDomain, Domain newDomain) {
+        if (newDomain.getValidfrom() != null && !newDomain.getValidfrom().equals(oldDomain.getValidfrom())) {
+            int updated = ctx.update(PSEUDONYM)
+                    .set(PSEUDONYM.VALIDFROM, newDomain.getValidfrom())
+                    .where(PSEUDONYM.DOMAINID.equal(oldDomain.getId()))
+                    .and(PSEUDONYM.VALIDFROMINHERITED.isTrue())
+                    .execute();
+            log.debug("Passed the new start of validity on to " + updated + " pseudonym(s) in the domain \"" + oldDomain.getName() + "\".");
+        }
+
+        if (newDomain.getValidto() != null && !newDomain.getValidto().equals(oldDomain.getValidto())) {
+            int updated = ctx.update(PSEUDONYM)
+                    .set(PSEUDONYM.VALIDTO, newDomain.getValidto())
+                    .where(PSEUDONYM.DOMAINID.equal(oldDomain.getId()))
+                    .and(PSEUDONYM.VALIDTOINHERITED.isTrue())
+                    .execute();
+            log.debug("Passed the new end of validity on to " + updated + " pseudonym(s) in the domain \"" + oldDomain.getName() + "\".");
         }
     }
 }
