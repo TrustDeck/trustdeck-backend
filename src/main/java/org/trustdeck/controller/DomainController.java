@@ -628,7 +628,7 @@ public class DomainController {
         Boolean multiplePsnAllowed = domainDTO.getMultiplePsnAllowed();
         String description = domainDTO.getDescription();
         
-        if (domainDBAccessService.getAmountOfPseudonymsInDomain(oldDomainName) > 0) {
+        if (domainDBAccessService.hasPseudonyms(oldDomainName)) {
         	log.warn("Changes to the domain configuration can introduce inconsistencies when creating further pseudonyms.");
         }
 
@@ -812,7 +812,7 @@ public class DomainController {
         updated.setDescription(description);
 
         // Allow the following changes only when the domain does not contain any records yet
-        if (domainDBAccessService.getAmountOfPseudonymsInDomain(old.getName()) == 0) {
+        if (!domainDBAccessService.hasPseudonyms(old.getName())) {
             updated.setPrefix((prefix != null && !prefix.trim().equals("")) ? prefix.trim() : null);
             if (algorithm != null) {
                 updated.setAlgorithmId(algorithmDBService.createOrGetAlgorithm(algorithm.convertToPOJO()));
