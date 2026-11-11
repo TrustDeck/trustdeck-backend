@@ -753,6 +753,48 @@ CREATE INDEX ididtypeidx ON public.pseudonym USING btree (identifier, idtype);
 
 
 --
+-- Name: pseudonym_domain_identifier_prefix_idx; Type: INDEX; Schema: public; Owner: trustdeck-manager
+--
+
+CREATE INDEX pseudonym_domain_identifier_prefix_idx ON public.pseudonym USING btree (domainid, lower(identifier) text_pattern_ops);
+
+
+--
+-- Name: pseudonym_domain_idtype_prefix_idx; Type: INDEX; Schema: public; Owner: trustdeck-manager
+--
+
+CREATE INDEX pseudonym_domain_idtype_prefix_idx ON public.pseudonym USING btree (domainid, lower(idtype) text_pattern_ops);
+
+
+--
+-- Name: pseudonym_domain_pseudonym_prefix_idx; Type: INDEX; Schema: public; Owner: trustdeck-manager
+--
+
+CREATE INDEX pseudonym_domain_pseudonym_prefix_idx ON public.pseudonym USING btree (domainid, lower(pseudonym) text_pattern_ops);
+
+
+--
+-- Name: pseudonym_identifier_trgm_idx; Type: INDEX; Schema: public; Owner: trustdeck-manager
+--
+
+CREATE INDEX pseudonym_identifier_trgm_idx ON public.pseudonym USING gin (lower(identifier) public.gin_trgm_ops);
+
+
+--
+-- Name: pseudonym_idtype_trgm_idx; Type: INDEX; Schema: public; Owner: trustdeck-manager
+--
+
+CREATE INDEX pseudonym_idtype_trgm_idx ON public.pseudonym USING gin (lower(idtype) public.gin_trgm_ops);
+
+
+--
+-- Name: pseudonym_pseudonym_trgm_idx; Type: INDEX; Schema: public; Owner: trustdeck-manager
+--
+
+CREATE INDEX pseudonym_pseudonym_trgm_idx ON public.pseudonym USING gin (lower(pseudonym) public.gin_trgm_ops);
+
+
+--
 -- Name: ix_permission_by_resource; Type: INDEX; Schema: public; Owner: trustdeck-manager
 --
 

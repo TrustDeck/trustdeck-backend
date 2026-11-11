@@ -18,12 +18,14 @@
 package org.trustdeck.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -39,6 +41,7 @@ import org.trustdeck.dto.PseudonymDTO;
 import org.trustdeck.model.IdentifierItem;
 import org.trustdeck.service.AssertWebRequestService;
 
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /**
@@ -99,6 +102,68 @@ public class TestsSearchServiceIT extends AssertWebRequestService {
 
         // Searching in non-existing domains is forbidden
         this.assertForbiddenRequest("searchPseudonymsUnknownDomain", get("/api/domains/Unknown/pseudonyms"), Map.of("query", "search"), null, this.getAccessToken());
+    }
+
+    /**
+     * Tests searching pages of pseudonyms, including prefix and contains matching.
+     *
+     * @throws Exception forwards any internally thrown exceptions
+     */
+    @Test
+    @DisplayName("pagedPseudonymSearchTest")
+    public void pagedPseudonymSearchTest() throws Exception {
+        String pseudonymPath = "/api/domains/" + DOMAIN + "/pseudonyms";
+
+        // Create 25 pseudonyms
+        List<PseudonymDTO> pseudonyms = new ArrayList<>();
+        for (int i = 1; i <= 25; i++) {
+            PseudonymDTO pseudonym = new PseudonymDTO();
+            pseudonym.setIdentifierItem(IdentifierItem.builder().identifier("paged-" + i).idType("PAGED-ID").build());
+            pseudonyms.add(pseudonym);
+        }
+        this.assertCreatedRequest("createPseudonymsForPagedSearch", post(pseudonymPath + "/batch"), null, pseudonyms, this.getAccessToken());
+
+        // Pages split the matches, which are counted completely below the count limit
+        JsonNode firstPage = this.searchPseudonymsPage(Map.of("query", "paged-", "page", "0", "size", "10"));
+        assertEquals(10, firstPage.get("items").size());
+        assertEquals(25, firstPage.get("total").asLong());
+        assertFalse(firstPage.get("totalIsLowerBound").asBoolean());
+        JsonNode lastPage = this.searchPseudonymsPage(Map.of("query", "PAGED-", "page", "2", "size", "10"));
+        assertEquals(5, lastPage.get("items").size());
+
+        // Pages do not overlap
+        Set<String> identifiers = new HashSet<>();
+        for (int page = 0; page < 3; page++) {
+            this.searchPseudonymsPage(Map.of("query", "paged-", "page", String.valueOf(page), "size", "10")).get("items")
+                    .forEach(item -> identifiers.add(item.get("identifierItem").get("identifier").asString()));
+        }
+        assertEquals(25, identifiers.size());
+
+        // Prefix matching only finds the beginning of values, contains matching finds any part
+        assertEquals(0, this.searchPseudonymsPage(Map.of("query", "aged-1", "page", "0")).get("total").asLong());
+        assertEquals(11, this.searchPseudonymsPage(Map.of("query", "aged-1", "page", "0", "match", "contains")).get("total").asLong());
+
+        // Wildcards in the query are matched literally
+        assertEquals(0, this.searchPseudonymsPage(Map.of("query", "paged_", "page", "0")).get("total").asLong());
+        assertEquals(0, this.searchPseudonymsPage(Map.of("query", "paged%", "page", "0")).get("total").asLong());
+
+        // Invalid paging and matching parameters are rejected
+        this.assertBadRequestRequest("searchPseudonymsPageNegativePage", get(pseudonymPath), Map.of("query", "*", "page", "-1"), null, this.getAccessToken());
+        this.assertBadRequestRequest("searchPseudonymsPageTooLarge", get(pseudonymPath), Map.of("query", "*", "page", "0", "size", "101"), null, this.getAccessToken());
+        this.assertBadRequestRequest("searchPseudonymsPageUnknownMatch", get(pseudonymPath), Map.of("query", "*", "page", "0", "match", "fuzzy"), null, this.getAccessToken());
+        this.assertBadRequestRequest("searchPseudonymsPageShortContains", get(pseudonymPath), Map.of("query", "pa", "page", "0", "match", "contains"), null, this.getAccessToken());
+    }
+
+    /**
+     * Helper to search one page of pseudonyms in the test domain.
+     *
+     * @param params the request parameters
+     * @return the returned page
+     * @throws Exception forwards any internally thrown exceptions
+     */
+    private JsonNode searchPseudonymsPage(Map<String, String> params) throws Exception {
+        MockHttpServletResponse response = this.assertOkRequest("searchPseudonymsPage", get("/api/domains/" + DOMAIN + "/pseudonyms"), params, null, this.getAccessToken());
+        return om.readTree(response.getContentAsString());
     }
 
     /**

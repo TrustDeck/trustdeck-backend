@@ -35,6 +35,7 @@ import org.trustdeck.algorithms.PseudonymizationFactory;
 import org.trustdeck.algorithms.Pseudonymizer;
 import org.trustdeck.algorithms.RandomNumberPseudonymizer;
 import org.trustdeck.configuration.DefaultProperties;
+import org.trustdeck.dto.PageDTO;
 import org.trustdeck.dto.PseudonymDTO;
 import org.trustdeck.dto.PseudonymUpdateDTO;
 import org.trustdeck.jooq.generated.tables.pojos.Algorithm;
@@ -56,6 +57,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -1541,5 +1543,77 @@ public class PseudonymController {
 			log.debug("Successfully found " + pseudonyms.size() + " pseudonyms.");
 			return responseService.ok(responseContentType, pseudonyms);
 		}
+	}
+
+	/**
+	 * Endpoint to search one page of pseudonyms.
+	 * In contrast to the unpaged search, the database only retrieves the requested page, so that
+	 * this endpoint also works for domains with millions of pseudonyms. The matches are ordered by
+	 * pseudonym and counted only up to a configurable limit.
+	 * 
+	 * @param domainName the name of the domain to which the request is scoped to
+	 * @param query the search string; every whitespace-separated part must match the identifier, 
+	 *        the ID type, or the pseudonym; "*" matches every pseudonym
+	 * @param page the zero-based index of the requested page
+	 * @param size (optional) the maximum number of pseudonyms on the page, 20 by default
+	 * @param match (optional) "prefix" (default) to match the beginning of the values, which uses 
+	 *        the database indexes, or "contains" to match anywhere in the values (needs at least 
+	 *        three characters per part)
+	 * @param responseContentType (optional) the response content type
+	 * @return <li>a <b>200-OK</b> status with the page of matching pseudonyms</li>
+	 *         <li>a <b>400-BAD_REQUEST</b> status when the paging or matching parameters are invalid</li>
+	 *         <li>a <b>404-NOT_FOUND</b> status when the domain cannot be found</li>
+	 *         <li>a <b>410-GONE</b> status when the request is not during the domain's 
+	 *         validity period</li>
+	 *         <li>a <b>500-INTERNAL_SERVER_ERROR</b> status when the search failed</li>
+	 */
+	@GetMapping(value = "/domains/{domainName}/pseudonyms", params = {"query", "page"})
+	@PreAuthorize("isAuthenticated() and @auth.hasDomainPermission(#root, #domainName, 'pseudonym:search')")
+	@Audit
+	public ResponseEntity<?> searchPseudonymsPage(@PathVariable("domainName") String domainName,
+												  @RequestParam(name = "query", required = true) String query,
+												  @RequestParam(name = "page", required = true) Integer page,
+												  @RequestParam(name = "size", required = false, defaultValue = "20") Integer size,
+												  @RequestParam(name = "match", required = false, defaultValue = "prefix") String match,
+												  @RequestHeader(name = "accept", required = false) String responseContentType) {
+		// Validate the paging and matching parameters
+		boolean contains = "contains".equalsIgnoreCase(match);
+		if (page == null || page < 0 || size == null || size < 1 || size > defaults.getPseudonym().getSearchPageSizeLimit()
+				|| (!contains && !"prefix".equalsIgnoreCase(match))) {
+			log.debug("The paging or matching parameters of the pseudonym search are invalid.");
+			return responseService.badRequest(responseContentType);
+		}
+		
+		// Matching anywhere needs a few characters per part to use the trigram indexes
+		String trimmed = query == null ? "" : query.trim();
+		if (contains && !trimmed.equals("*") && !trimmed.isEmpty()
+				&& Arrays.stream(trimmed.split("\\s+")).anyMatch(part -> part.length() < 3)) {
+			log.debug("Every part of a search matching anywhere needs at least three characters.");
+			return responseService.badRequest(responseContentType);
+		}
+		
+		// Check if the domain exists and is still active
+		Domain domain = domainDBAccessService.getDomainByName(domainName);
+		if (domain == null) {
+			log.debug("The domain where the pseudonyms should be searched couldn't be found.");
+			return responseService.notFound(responseContentType);
+		}
+		
+		LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+		if (domain.getValidfrom().isAfter(now) || domain.getValidto().isBefore(now)) {
+			log.debug("The domain's validity period has not yet started or has already ended, so that no pseudonyms can be retrieved from it.");
+			return responseService.gone(responseContentType);
+		}
+		
+		// Retrieve the page from the database
+		PageDTO<PseudonymDTO> result = pseudonymDBAccessService.searchPseudonymsPage(query, domain.getId(), contains, page, size,
+				defaults.getPseudonym().getSearchCountLimit());
+		if (result == null) {
+			log.error("Searching a page of pseudonyms in the domain \"" + domainName + "\" failed.");
+			return responseService.internalServerError(responseContentType);
+		}
+		
+		log.debug("Successfully retrieved " + result.getItems().size() + " pseudonyms of page " + page + ".");
+		return responseService.ok(responseContentType, result);
 	}
 }

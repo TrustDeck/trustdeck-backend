@@ -152,6 +152,12 @@ public class DefaultProperties {
         
         /** Maximum number of pseudonyms returned by a search. */
         private int searchResultLimit = 30;
+        
+        /** Maximum number of pseudonyms on one page of a paged search. */
+        private int searchPageSizeLimit = 100;
+        
+        /** Number up to which the matches of a paged search are counted, so that huge domains are not counted completely. */
+        private int searchCountLimit = 10000;
     }
 
     /**

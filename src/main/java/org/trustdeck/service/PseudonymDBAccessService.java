@@ -36,6 +36,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.interceptor.TransactionAspectSupport;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.trustdeck.dto.PageDTO;
 import org.trustdeck.dto.PseudonymDTO;
 import org.trustdeck.dto.PseudonymUpdateDTO;
 import org.trustdeck.exception.UnexpectedResultSizeException;
@@ -54,6 +55,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -686,6 +688,98 @@ public class PseudonymDBAccessService {
 
         // Return the found types
         return results.stream().map(row -> new PseudonymDTO().assignPojoValues(row)).toList();
+    }
+
+    /**
+     * Searches one page of the currently valid pseudonyms of a domain.
+     * The search runs in the database, so that it also works for domains with millions of
+     * pseudonyms: every whitespace-separated part of the query must match the identifier, the
+     * ID type, or the pseudonym, case-insensitively. A query of "*" matches every pseudonym.
+     * 
+     * The matches are ordered by pseudonym and counted only up to the given count limit.
+     * 
+     * @param query the search query
+     * @param domainId the ID of the domain to search in
+     * @param contains {@code true} to match the parts anywhere in the values, {@code false} to
+     *        match only at their beginning (which the database can look up in its indexes)
+     * @param page the zero-based page index
+     * @param size the maximum number of pseudonyms on the page
+     * @param countLimit the number up to which the matches are counted
+     * @return the page of matching pseudonyms, or {@code null} when the search failed
+     */
+    @Transactional(readOnly = true)
+    public PageDTO<PseudonymDTO> searchPseudonymsPage(String query, int domainId, boolean contains, int page, int size, int countLimit) {
+        Condition condition = buildSearchCondition(query, contains)
+                .and(PSEUDONYM.DOMAINID.eq(domainId))
+                .and(PSEUDONYM.VALIDFROM.le(DSL.currentLocalDateTime()))
+                .and(PSEUDONYM.VALIDTO.gt(DSL.currentLocalDateTime()));
+
+        try {
+            // Count only up to the limit, so that huge domains need not be counted completely
+            int counted = dsl.fetchCount(dsl.select(PSEUDONYM.ID)
+                                            .from(PSEUDONYM)
+                                            .where(condition)
+                                            .limit(countLimit + 1));
+
+            List<PseudonymDTO> items = dsl.selectFrom(PSEUDONYM)
+                    .where(condition)
+                    .orderBy(PSEUDONYM.PSEUDONYM_.asc(), PSEUDONYM.ID.asc())
+                    .limit(size)
+                    .offset((long) page * size)
+                    .fetchInto(Pseudonym.class)
+                    .stream()
+                    .map(row -> new PseudonymDTO().assignPojoValues(row))
+                    .toList();
+
+            boolean totalIsLowerBound = counted > countLimit;
+            return new PageDTO<>(items, page, size, totalIsLowerBound ? countLimit : counted, totalIsLowerBound);
+        } catch (MappingException e) {
+            log.debug("Could not map the pseudonym search result.", e);
+            return null;
+        } catch (DataAccessException e) {
+            log.debug("Searching a page of pseudonyms failed.", e);
+            return null;
+        }
+    }
+
+    /**
+     * Builds the condition of a pseudonym search. Every whitespace-separated part of the query must
+     * match the lowercased identifier, ID type, or pseudonym, so that the expression indexes on
+     * these columns can be used. A query of "*" or an empty query matches every pseudonym.
+     * 
+     * @param query the search query
+     * @param contains {@code true} to match the parts anywhere, {@code false} only at the beginning
+     * @return the search condition
+     */
+    static Condition buildSearchCondition(String query, boolean contains) {
+        String trimmed = query == null ? "" : query.trim();
+        if (trimmed.isEmpty() || trimmed.equals("*")) {
+            return DSL.trueCondition();
+        }
+
+        Condition condition = DSL.trueCondition();
+        for (String part : trimmed.split("\\s+")) {
+            String escaped = escapeLikePattern(part.toLowerCase(Locale.ROOT));
+            String pattern = contains ? "%" + escaped + "%" : escaped + "%";
+
+            condition = condition.and(DSL.lower(PSEUDONYM.IDENTIFIER).like(pattern, LIKE_ESCAPE)
+                    .or(DSL.lower(PSEUDONYM.IDTYPE).like(pattern, LIKE_ESCAPE))
+                    .or(DSL.lower(PSEUDONYM.PSEUDONYM_).like(pattern, LIKE_ESCAPE)));
+        }
+        return condition;
+    }
+
+    /** The escape character for LIKE patterns. */
+    private static final char LIKE_ESCAPE = '\\';
+
+    /**
+     * Escapes the wildcards of a LIKE pattern, so that user input is matched literally.
+     * 
+     * @param value the raw value
+     * @return the value with escaped wildcards
+     */
+    static String escapeLikePattern(String value) {
+        return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     }
 
     /**
