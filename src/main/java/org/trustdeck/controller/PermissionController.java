@@ -23,6 +23,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import jakarta.ws.rs.ProcessingException;
+import jakarta.ws.rs.WebApplicationException;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -145,7 +147,17 @@ public class PermissionController {
 
         // Search the users in keycloak
         int resultLimit = defaults.getPermission().getUserSearchResultLimit();
-        List<UserDTO> users = keycloakService.searchUsers(query, resultLimit + 1);
+        List<UserDTO> users;
+        try {
+        	users = keycloakService.searchUsers(query, resultLimit + 1);
+        } catch (WebApplicationException e) {
+        	log.error("Searching users in Keycloak failed with HTTP status " + e.getResponse().getStatus()
+        			+ ". Check the realm-management roles (query-users, view-users) of TrustDeck's service account.", e);
+        	return responseService.internalServerError(responseContentType);
+        } catch (ProcessingException e) {
+        	log.error("Searching users in Keycloak failed, since Keycloak could not be reached or answered unexpectedly.", e);
+        	return responseService.internalServerError(responseContentType);
+        }
 
         // Add the list of allowed actions for this user (only on resources the requester manages)
         users.forEach(u -> u.setEffectivePermissions(permissionDBService.getCurrentlyAllowedActionsManagedByRequester(u.getUserId())));
