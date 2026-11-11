@@ -61,7 +61,10 @@ public class ErrorController implements org.springframework.boot.webmvc.error.Er
 
 		// Try to retrieve and log the root cause of the error
 		Throwable throwable = (Throwable) request.getAttribute(RequestDispatcher.ERROR_EXCEPTION);
-		if (throwable != null) {
+		if (throwable != null && status.is5xxServerError()) {
+			// Unexpected server errors must be visible in the log, otherwise their cause is lost
+			log.error("Request failed with exception: ", throwable);
+		} else if (throwable != null) {
 			log.trace("Request failed with exception: ", throwable);
 		} else {
 			log.trace("Error occurred but no exception object was found in the request.");

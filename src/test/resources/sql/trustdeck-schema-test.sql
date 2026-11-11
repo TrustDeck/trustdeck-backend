@@ -55,6 +55,13 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
+--
+-- Name: pg_trgm; Type: EXTENSION; Schema: -; Owner: -
+--
+
+CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA public;
+
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
@@ -317,6 +324,48 @@ CREATE INDEX auditusernameidx ON public.auditevent USING btree (username);
 --
 
 CREATE INDEX ididtypeidx ON public.pseudonym USING btree (identifier, idtype);
+
+
+--
+-- Name: pseudonym_domain_identifier_prefix_idx; Type: INDEX; Schema: public; Owner: trustdeck-manager
+--
+
+CREATE INDEX pseudonym_domain_identifier_prefix_idx ON public.pseudonym USING btree (domainid, lower(identifier) text_pattern_ops);
+
+
+--
+-- Name: pseudonym_domain_idtype_prefix_idx; Type: INDEX; Schema: public; Owner: trustdeck-manager
+--
+
+CREATE INDEX pseudonym_domain_idtype_prefix_idx ON public.pseudonym USING btree (domainid, lower(idtype) text_pattern_ops);
+
+
+--
+-- Name: pseudonym_domain_pseudonym_prefix_idx; Type: INDEX; Schema: public; Owner: trustdeck-manager
+--
+
+CREATE INDEX pseudonym_domain_pseudonym_prefix_idx ON public.pseudonym USING btree (domainid, lower(pseudonym) text_pattern_ops);
+
+
+--
+-- Name: pseudonym_identifier_trgm_idx; Type: INDEX; Schema: public; Owner: trustdeck-manager
+--
+
+CREATE INDEX pseudonym_identifier_trgm_idx ON public.pseudonym USING gin (lower(identifier) public.gin_trgm_ops);
+
+
+--
+-- Name: pseudonym_idtype_trgm_idx; Type: INDEX; Schema: public; Owner: trustdeck-manager
+--
+
+CREATE INDEX pseudonym_idtype_trgm_idx ON public.pseudonym USING gin (lower(idtype) public.gin_trgm_ops);
+
+
+--
+-- Name: pseudonym_pseudonym_trgm_idx; Type: INDEX; Schema: public; Owner: trustdeck-manager
+--
+
+CREATE INDEX pseudonym_pseudonym_trgm_idx ON public.pseudonym USING gin (lower(pseudonym) public.gin_trgm_ops);
 
 
 --
