@@ -463,6 +463,8 @@ public class TestsRecordServiceIT extends AssertWebRequestService {
         this.assertEqualsListRecordsLength(3, goodDomainButNotFound, goodDomain);
 
         this.assertOkRequest("readRecordBatch", get("/api/domains/" + goodDomain + "/pseudonyms/batch"), null, null, this.getAccessToken());
+        this.assertBadRequestRequest("readRecordBatchInvalidCursor", get("/api/domains/" + goodDomain + "/pseudonyms/batch"), Map.of("cursor", "not-a-cursor"), null, this.getAccessToken());
+        this.assertBadRequestRequest("readRecordBatchInvalidSize", get("/api/domains/" + goodDomain + "/pseudonyms/batch"), Map.of("size", "0"), null, this.getAccessToken());
 
         // Update the pseudonyms and their validity in a batch
         PseudonymUpdateDTO pseudonymUpdate1 = new PseudonymUpdateDTO();

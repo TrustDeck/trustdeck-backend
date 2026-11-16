@@ -144,8 +144,11 @@ public class DefaultProperties {
     @Getter
     @Setter
     public static class Pseudonym {
-        /** Maximum number of pseudonyms accepted in a batch. */
+        /** Maximum number of pseudonyms accepted in a batch, and the largest page when reading a domain's pseudonyms. */
         private int batchLength = 50000;
+        
+        /** Number of pseudonyms on one page when reading a domain's pseudonyms page by page without a given size. */
+        private int batchPageSize = 1000;
         
         /** Whether affected pseudonyms are regenerated on update. */
         private boolean regenerateOnUpdate = true;

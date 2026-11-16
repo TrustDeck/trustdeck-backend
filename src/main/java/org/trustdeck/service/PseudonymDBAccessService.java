@@ -36,6 +36,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.interceptor.TransactionAspectSupport;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.trustdeck.dto.CursorPageDTO;
+import org.trustdeck.dto.DomainDTO;
 import org.trustdeck.dto.PageDTO;
 import org.trustdeck.dto.PseudonymDTO;
 import org.trustdeck.dto.PseudonymUpdateDTO;
@@ -688,6 +690,73 @@ public class PseudonymDBAccessService {
 
         // Return the found types
         return results.stream().map(row -> new PseudonymDTO().assignPojoValues(row)).toList();
+    }
+
+    /**
+     * Reads one page of all pseudonyms of a domain, ordered by pseudonym value.
+     *
+     * The page continues directly behind the given pseudonym value (keyset paging). The value is
+     * unique within a domain and indexed together with the domain, so every page is read through the
+     * index in the same time, however far into a domain with millions of pseudonyms it is.
+     *
+     * @param domain the domain
+     * @param afterPseudonym the pseudonym value the page continues behind, or {@code null} for the first page
+     * @param size the maximum number of pseudonyms on the page
+     * @return the page with the cursor for the next page, or {@code null} when reading failed
+     */
+    @Transactional(readOnly = true)
+    public CursorPageDTO<PseudonymDTO> getPseudonymPage(Domain domain, String afterPseudonym, int size) {
+        Condition condition = PSEUDONYM.DOMAINID.eq(domain.getId());
+        if (afterPseudonym != null) {
+            condition = condition.and(PSEUDONYM.PSEUDONYM_.gt(afterPseudonym));
+        }
+
+        try {
+            // One row more than requested tells whether another page follows
+            List<Pseudonym> rows = dsl.selectFrom(PSEUDONYM)
+                    .where(condition)
+                    .orderBy(PSEUDONYM.PSEUDONYM_.asc())
+                    .limit(size + 1)
+                    .fetchInto(Pseudonym.class);
+
+            boolean morePages = rows.size() > size;
+            List<Pseudonym> pageRows = morePages ? rows.subList(0, size) : rows;
+            // All pseudonyms on the page belong to the same domain. Resolve it once instead of once per
+            // pseudonym, which would cost several database queries for every row.
+            DomainDTO domainDTO = new DomainDTO().assignPojoValues(domain);
+            List<PseudonymDTO> items = pageRows.stream().map(row -> {
+                PseudonymDTO dto = new PseudonymDTO().assignPojoValues(row.setDomainid(null));
+                dto.setDomainName(domainDTO.getName());
+                dto.setDomain(domainDTO);
+                return dto;
+            }).toList();
+            String nextCursor = morePages ? CursorPageDTO.encodeCursor(pageRows.getLast().getPseudonym()) : null;
+
+            return new CursorPageDTO<>(items, nextCursor);
+        } catch (MappingException e) {
+            log.debug("Could not map the pseudonyms of the domain.", e);
+            return null;
+        } catch (DataAccessException e) {
+            log.debug("Reading a page of the domain's pseudonyms failed.", e);
+            return null;
+        }
+    }
+
+    /**
+     * Deletes all pseudonyms of a domain with a single statement, so that the number of pseudonyms
+     * doesn't matter. The deletion is atomic: either all pseudonyms are deleted or none.
+     *
+     * @param domainId the ID of the domain
+     * @return the number of deleted pseudonyms, or {@code -1} when the deletion failed
+     */
+    @Transactional
+    public int deleteAllPseudonymsInDomain(int domainId) {
+        try {
+            return dsl.deleteFrom(PSEUDONYM).where(PSEUDONYM.DOMAINID.eq(domainId)).execute();
+        } catch (DataAccessException e) {
+            log.error("Deleting the pseudonyms of the domain failed: " + e.getMessage());
+            return -1;
+        }
     }
 
     /**

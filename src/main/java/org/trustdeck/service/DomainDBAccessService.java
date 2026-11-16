@@ -465,63 +465,6 @@ public class DomainDBAccessService {
     }
     
     /**
-     * Method to retrieve all pseudonym-values that exist in a domain from the database.
-     * 
-     * @param domainName the name of the domain where the values should be retrieved from
-     * @return a list of pseudonyms existing in the given domain when successful, {@code null} otherwise
-     */
-	public List<String> getAllPseudonymValuesInDomain(String domainName) {
-		try {
-			List<String> pseudonyms = this.dsl.transactionResult(configuration -> {
-				// Retrieve all pseudonyms from the domain
-				return DSL.using(configuration)
-						.select(PSEUDONYM.PSEUDONYM_)
-						.from(PSEUDONYM)
-						.where(PSEUDONYM.DOMAINID.equal(this.getDomainByName(domainName).getId()))
-						.fetchInto(String.class);
-				
-			    // Implicit transaction commit here
-			});
-			
-			// At this point the retrieval was successful
-            log.debug("Successfully retrieved all pseudonym-values from the domain.");
-            return pseudonyms;
-        } catch (Exception e) {
-            log.error("Couldn't retrieve the pseudonym-values of domain " + domainName + " from the database: " + e.getMessage() + "\n");
-            return null;
-        }
-	}
-
-    /**
-     * Method to retrieve all records stored in a domain.
-     *
-     * @param domainName the name of the domain where the records should be retrieved from
-     * @return a list of records stored in the given domain when successful, {@code null} otherwise
-     */
-	@Transactional
-    public List<PseudonymDTO> getAllPseudonymsInDomain(String domainName) {
-        try {
-            // Get domain
-            Domain d = this.getDomainByName(domainName);
-
-            // Retrieve all records from a domain
-            List<PseudonymDTO> ps = dsl.selectFrom(PSEUDONYM)
-                    .where(PSEUDONYM.DOMAINID.eq(d.getId()))
-                    .fetchInto(Pseudonym.class)
-                    .stream()
-                    .map(p -> new PseudonymDTO().assignPojoValues(p))
-                    .toList();
-
-            // At this point the retrieval was successful
-            log.debug("Successfully retrieved all records from the domain.");
-            return ps;
-        } catch (Exception e) {
-            log.error("Couldn't retrieve the records of domain " + domainName + " from the database: " + e.getMessage() + "\n");
-            return null;
-        }
-    }
-
-    /**
      * Checks whether a domain contains at least one record. Unlike counting, this stops at the first
      * record, so it stays fast for large domains.
      *

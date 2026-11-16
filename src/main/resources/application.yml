@@ -88,6 +88,7 @@ app:
       salt-length: 32
     pseudonym:
       batch-length: 50000
+      batch-page-size: 1000
       regenerate-on-update: true
       search-result-limit: 30
       search-page-size-limit: 100
