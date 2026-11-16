@@ -731,8 +731,8 @@ public class PseudonymDBAccessService {
                     .map(row -> new PseudonymDTO().assignPojoValues(row))
                     .toList();
 
-            boolean totalIsLowerBound = counted > countLimit;
-            return new PageDTO<>(items, page, size, totalIsLowerBound ? countLimit : counted, totalIsLowerBound);
+            boolean moreMatchesThanTotal = counted > countLimit;
+            return new PageDTO<>(items, page, size, moreMatchesThanTotal ? countLimit : counted, moreMatchesThanTotal);
         } catch (MappingException e) {
             log.debug("Could not map the pseudonym search result.", e);
             return null;
@@ -757,29 +757,25 @@ public class PseudonymDBAccessService {
             return DSL.trueCondition();
         }
 
+        // The character that marks the next character of a LIKE pattern as literal
+        final char likeEscape = '\\';
+
         Condition condition = DSL.trueCondition();
         for (String part : trimmed.split("\\s+")) {
-            String escaped = escapeLikePattern(part.toLowerCase(Locale.ROOT));
+            // In LIKE patterns, "%" matches any number of characters and "_" exactly one. Escape them, so
+            // that a search for "A_1" finds only "A_1" and not "AB1" as well. The escape character itself
+            // is escaped first, so that a backslash in the query is matched literally, too.
+            String escaped = part.toLowerCase(Locale.ROOT)
+                    .replace("\\", "\\\\")
+                    .replace("%", "\\%")
+                    .replace("_", "\\_");
             String pattern = contains ? "%" + escaped + "%" : escaped + "%";
 
-            condition = condition.and(DSL.lower(PSEUDONYM.IDENTIFIER).like(pattern, LIKE_ESCAPE)
-                    .or(DSL.lower(PSEUDONYM.IDTYPE).like(pattern, LIKE_ESCAPE))
-                    .or(DSL.lower(PSEUDONYM.PSEUDONYM_).like(pattern, LIKE_ESCAPE)));
+            condition = condition.and(DSL.lower(PSEUDONYM.IDENTIFIER).like(pattern, likeEscape)
+                    .or(DSL.lower(PSEUDONYM.IDTYPE).like(pattern, likeEscape))
+                    .or(DSL.lower(PSEUDONYM.PSEUDONYM_).like(pattern, likeEscape)));
         }
         return condition;
-    }
-
-    /** The escape character for LIKE patterns. */
-    private static final char LIKE_ESCAPE = '\\';
-
-    /**
-     * Escapes the wildcards of a LIKE pattern, so that user input is matched literally.
-     * 
-     * @param value the raw value
-     * @return the value with escaped wildcards
-     */
-    static String escapeLikePattern(String value) {
-        return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     }
 
     /**

@@ -49,6 +49,6 @@ public class PageDTO<T> {
 	/** The number of matching items, counted at most up to the count limit. */
 	private long total;
 
-	/** Whether more items match than counted, i.e. whether {@link #total} is only a lower bound. */
-	private boolean totalIsLowerBound;
+	/** Whether more items match than {@link #total} says, because counting stopped at the count limit. */
+	private boolean moreMatchesThanTotal;
 }
