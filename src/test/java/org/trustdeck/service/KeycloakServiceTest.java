@@ -20,6 +20,7 @@ package org.trustdeck.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -32,6 +33,8 @@ import static org.mockito.Mockito.verify;
 import java.util.Collections;
 import java.util.List;
 
+import jakarta.ws.rs.ForbiddenException;
+import jakarta.ws.rs.InternalServerErrorException;
 import jakarta.ws.rs.NotFoundException;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -40,6 +43,7 @@ import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.resource.ClientResource;
 import org.keycloak.admin.client.resource.ClientsResource;
 import org.keycloak.admin.client.resource.RealmResource;
+import org.keycloak.admin.client.resource.UserResource;
 import org.keycloak.admin.client.resource.UsersResource;
 import org.keycloak.representations.idm.ClientRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
@@ -103,6 +107,37 @@ class KeycloakServiceTest {
         List<UserDTO> result = service.searchUsers("ldap-user", 10);
 
         assertEquals(List.of("normal-id"), result.stream().map(UserDTO::getUserId).toList());
+    }
+
+    /**
+     * Verifies that users are still found when the service account may not search clients,
+     * i.e. when the optional service-account search fails.
+     */
+    @Test
+    void findsUsersWhenServiceAccountSearchIsForbidden() {
+        when(users.search("muel", 0, 10, true)).thenReturn(List.of(user("user-id", "muel")));
+        when(clients.findAll(anyString(), eq(true), eq(true), anyInt(), anyInt())).thenThrow(new ForbiddenException());
+
+        assertEquals(List.of("user-id"), service.searchUsers("muel", 10).stream().map(UserDTO::getUserId).toList());
+    }
+
+    /**
+     * Verifies that a failing role lookup, e.g. of an LDAP user whose role mapper fails,
+     * only leaves that user's roles empty instead of failing the search.
+     */
+    @Test
+    void findsUsersWhenRoleLookupFails() {
+        ClientRepresentation trustDeckClient = client("trustdeck-uuid", "trustdeck", false);
+        when(clients.findByClientId(any())).thenReturn(List.of(trustDeckClient));
+        when(users.search("muel", 0, 10, true)).thenReturn(List.of(user("user-id", "muel")));
+        UserResource userResource = mock(UserResource.class);
+        when(users.get("user-id")).thenReturn(userResource);
+        when(userResource.roles()).thenThrow(new InternalServerErrorException());
+
+        List<UserDTO> result = service.searchUsers("muel", 10);
+
+        assertEquals(List.of("user-id"), result.stream().map(UserDTO::getUserId).toList());
+        assertTrue(result.get(0).getKeycloakRoles().isEmpty());
     }
 
     /**

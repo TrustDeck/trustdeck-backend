@@ -90,6 +90,8 @@ app:
       batch-length: 50000
       regenerate-on-update: true
       search-result-limit: 30
+      search-page-size-limit: 100
+      search-count-limit: 10000
     project:
       validity-years: 10
       store-entities: true

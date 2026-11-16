@@ -23,9 +23,12 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import jakarta.ws.rs.NotFoundException;
+import jakarta.ws.rs.ProcessingException;
+import jakarta.ws.rs.WebApplicationException;
 
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.resource.ClientResource;
@@ -190,13 +193,15 @@ public class KeycloakService {
         }
 
         // Also search in the IDs
-        List<UserRepresentation> usersById = realm.users().search("id:" + query, 0, maxResults, true);
+        List<UserRepresentation> usersById = optionalKeycloakCall("Searching users by ID",
+        		() -> realm.users().search("id:" + query, 0, maxResults, true), Collections.emptyList());
         if (usersById != null) {
             userReps.addAll(usersById);
         }
 
-        // Also search for matching client service accounts
-        userReps.addAll(searchServiceAccountUsers(realm, query, maxResults));
+        // Also search for matching client service accounts (needs the query-clients and view-clients roles)
+        userReps.addAll(optionalKeycloakCall("Searching service accounts",
+        		() -> searchServiceAccountUsers(realm, query, maxResults), Collections.emptyList()));
 
         // Ensure uniqueness for each Keycloak user ID and retain Keycloak's order
         Map<String, UserRepresentation> uniqueUsers = new LinkedHashMap<>();
@@ -216,8 +221,12 @@ public class KeycloakService {
             return Collections.emptyList();
         }
 
-        // Fetch federation provider map
-        Map<String, String> federationProviderMap = getFederationProviderMap();
+        // Fetch federation provider map (needs the view-realm role)
+        Map<String, String> federationProviderMap = optionalKeycloakCall("Retrieving the user federation providers",
+        		this::getFederationProviderMap, Collections.emptyMap());
+
+        // Resolve the TrustDeck client once instead of once per user (needs the query-clients role)
+        String clientUuid = optionalKeycloakCall("Resolving the TrustDeck client", this::getClientUuid, null);
 
         // Transform into DTOs and add user federation info
         List<UserDTO> users = new ArrayList<>(orderedUsers.size());
@@ -235,8 +244,10 @@ public class KeycloakService {
                 user.setFederationProviderName(federationProviderMap.get(providerId));
             }
             
-            // Add Keycloak client roles
-            user.setKeycloakRoles(getClientRolesForUser(user.getUserId()));
+            // Add Keycloak client roles (needs the view-users role); federated users can fail here,
+            // e.g. when an LDAP role mapper fails, which must not break the whole search
+            user.setKeycloakRoles(optionalKeycloakCall("Retrieving the client roles of user " + user.getUserId(),
+            		() -> getClientRolesForUser(user.getUserId(), clientUuid), Collections.emptyList()));
 
             users.add(user);
         }
@@ -338,16 +349,33 @@ public class KeycloakService {
 			return Collections.emptyList();
 		}
 
-		// Note: this requires that your service account can read role mappings
-		UserResource userResource = keycloakAdminClient.realm(realmName).users().get(userId);
+		return getClientRolesForUser(userId, getClientUuid());
+	}
 
-		// Get the Keycloak internal, UUID-like ID from the given public clientId
-		String clientUuid = keycloakAdminClient.realm(realmName).clients().findByClientId(jwtProperties.getClientId())
+	/**
+	 * Retrieves the Keycloak-internal, UUID-like ID of the TrustDeck client from its public client ID.
+	 * 
+	 * @return the client's internal ID, or {@code null} when the client was not found
+	 */
+	private String getClientUuid() {
+		return keycloakAdminClient.realm(realmName).clients().findByClientId(jwtProperties.getClientId())
 				.stream().findFirst().map(c -> c.getId()).orElse(null);
+	}
 
-		if (clientUuid == null) {
+	/**
+	 * Method to retrieve the client roles of a user from Keycloak.
+	 * 
+	 * @param userId the user's Keycloak ID
+	 * @param clientUuid the Keycloak-internal ID of the TrustDeck client
+	 * @return a list of the roles' names
+	 */
+	private List<String> getClientRolesForUser(String userId, String clientUuid) {
+		if (!Assertion.isNotNullOrEmpty(userId) || clientUuid == null) {
 			return Collections.emptyList();
 		}
+
+		// Note: this requires that your service account can read role mappings
+		UserResource userResource = keycloakAdminClient.realm(realmName).users().get(userId);
 
 		// Retrieve the client roles for the given user for the trustdeck client
 		List<RoleRepresentation> roles = userResource.roles().clientLevel(clientUuid).listAll();
@@ -374,6 +402,33 @@ public class KeycloakService {
         	return Collections.emptyMap();
         }
         
-        return federations.stream().collect(Collectors.toMap(ComponentRepresentation::getId, ComponentRepresentation::getName));
-    } 
+        // Skip incomplete components and tolerate duplicates instead of failing the whole search
+        return federations.stream()
+        		.filter(f -> f.getId() != null && f.getName() != null)
+        		.collect(Collectors.toMap(ComponentRepresentation::getId, ComponentRepresentation::getName, (first, second) -> first));
+    }
+
+    /**
+     * Runs a Keycloak admin call that only enriches a result. When it fails, e.g. because the
+     * service account lacks a realm-management role or Keycloak cannot reach a user federation,
+     * the failure is logged with its cause and the fallback is used instead.
+     *
+     * @param <T> the type of the call's result
+     * @param description what the call does, for the log
+     * @param call the Keycloak admin call
+     * @param fallback the result used when the call fails
+     * @return the call's result, or the fallback when the call failed
+     */
+    private <T> T optionalKeycloakCall(String description, Supplier<T> call, T fallback) {
+    	try {
+    		return call.get();
+    	} catch (WebApplicationException e) {
+    		log.warn(description + " in Keycloak failed with HTTP status " + e.getResponse().getStatus()
+    				+ ". Check the realm-management roles of TrustDeck's service account. Cause: " + e.getMessage());
+    		return fallback;
+    	} catch (ProcessingException e) {
+    		log.warn(description + " in Keycloak failed: " + e.getMessage());
+    		return fallback;
+    	}
+    }
 }
