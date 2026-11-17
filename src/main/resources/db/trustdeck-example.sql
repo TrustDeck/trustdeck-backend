@@ -756,6 +756,20 @@ CREATE INDEX ididtypeidx ON public.pseudonym USING btree (identifier, idtype);
 -- Name: pseudonym_domain_identifier_prefix_idx; Type: INDEX; Schema: public; Owner: trustdeck-manager
 --
 
+--
+-- Name: pseudonym_domain_identifier_order_idx; Type: INDEX; Schema: public; Owner: trustdeck-manager
+--
+
+CREATE INDEX pseudonym_domain_identifier_order_idx ON public.pseudonym USING btree (domainid, identifier, idtype, id);
+
+
+--
+-- Name: pseudonym_domain_idtype_order_idx; Type: INDEX; Schema: public; Owner: trustdeck-manager
+--
+
+CREATE INDEX pseudonym_domain_idtype_order_idx ON public.pseudonym USING btree (domainid, idtype, identifier, id);
+
+
 CREATE INDEX pseudonym_domain_identifier_prefix_idx ON public.pseudonym USING btree (domainid, lower(identifier) text_pattern_ops);
 
 

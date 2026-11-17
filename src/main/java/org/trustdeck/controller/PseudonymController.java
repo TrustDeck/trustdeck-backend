@@ -47,6 +47,7 @@ import org.trustdeck.service.AlgorithmDBService;
 import org.trustdeck.service.DomainDBAccessService;
 import org.trustdeck.service.DomainFillingRateMonitor;
 import org.trustdeck.service.PseudonymDBAccessService;
+import org.trustdeck.service.PseudonymDBAccessService.PseudonymSort;
 import org.trustdeck.service.ResponseService;
 import org.trustdeck.utils.Assertion;
 import org.trustdeck.utils.Utility;
@@ -1559,9 +1560,12 @@ public class PseudonymController {
 	 * @param match (optional) "prefix" (default) to match the beginning of the values, which uses 
 	 *        the database indexes, or "contains" to match anywhere in the values (needs at least 
 	 *        three characters per part)
+	 * @param sort (optional) the column to order by: "pseudonym" (default), "identifier" (then by ID 
+	 *        type), or "idType" (then by identifier)
+	 * @param direction (optional) "asc" (default) or "desc"
 	 * @param responseContentType (optional) the response content type
 	 * @return <li>a <b>200-OK</b> status with the page of matching pseudonyms</li>
-	 *         <li>a <b>400-BAD_REQUEST</b> status when the paging or matching parameters are invalid</li>
+	 *         <li>a <b>400-BAD_REQUEST</b> status when the paging, matching, or ordering parameters are invalid</li>
 	 *         <li>a <b>404-NOT_FOUND</b> status when the domain cannot be found</li>
 	 *         <li>a <b>410-GONE</b> status when the request is not during the domain's 
 	 *         validity period</li>
@@ -1575,7 +1579,17 @@ public class PseudonymController {
 												  @RequestParam(name = "page", required = true) Integer page,
 												  @RequestParam(name = "size", required = false, defaultValue = "20") Integer size,
 												  @RequestParam(name = "match", required = false, defaultValue = "prefix") String match,
+												  @RequestParam(name = "sort", required = false, defaultValue = "pseudonym") String sort,
+												  @RequestParam(name = "direction", required = false, defaultValue = "asc") String direction,
 												  @RequestHeader(name = "accept", required = false) String responseContentType) {
+		// Validate the ordering parameters
+		PseudonymSort order = PseudonymSort.fromParameter(sort);
+		boolean descending = "desc".equalsIgnoreCase(direction);
+		if (order == null || (!descending && !"asc".equalsIgnoreCase(direction))) {
+			log.debug("The ordering parameters of the pseudonym search are invalid.");
+			return responseService.badRequest(responseContentType);
+		}
+		
 		// Validate the paging and matching parameters
 		boolean contains = "contains".equalsIgnoreCase(match);
 		if (page == null || page < 0 || size == null || size < 1 || size > defaults.getPseudonym().getSearchPageSizeLimit()
@@ -1607,7 +1621,7 @@ public class PseudonymController {
 		
 		// Retrieve the page from the database
 		PageDTO<PseudonymDTO> result = pseudonymDBAccessService.searchPseudonymsPage(query, domain.getId(), contains, page, size,
-				defaults.getPseudonym().getSearchCountLimit());
+				defaults.getPseudonym().getSearchCountLimit(), order, descending);
 		if (result == null) {
 			log.error("Searching a page of pseudonyms in the domain \"" + domainName + "\" failed.");
 			return responseService.internalServerError(responseContentType);

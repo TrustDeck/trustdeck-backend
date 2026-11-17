@@ -27,6 +27,7 @@ import org.jooq.Row2;
 import org.jooq.Row4;
 import org.jooq.Row8;
 import org.jooq.Result;
+import org.jooq.SortField;
 import org.jooq.UpdateConditionStep;
 import org.jooq.exception.DataAccessException;
 import org.jooq.exception.MappingException;
@@ -696,7 +697,7 @@ public class PseudonymDBAccessService {
      * pseudonyms: every whitespace-separated part of the query must match the identifier, the
      * ID type, or the pseudonym, case-insensitively. A query of "*" matches every pseudonym.
      * 
-     * The matches are ordered by pseudonym and counted only up to the given count limit.
+     * The matches are ordered by the given column and counted only up to the given count limit.
      * 
      * @param query the search query
      * @param domainId the ID of the domain to search in
@@ -705,10 +706,13 @@ public class PseudonymDBAccessService {
      * @param page the zero-based page index
      * @param size the maximum number of pseudonyms on the page
      * @param countLimit the number up to which the matches are counted
+     * @param sort the column to order the matches by
+     * @param descending {@code true} to order descending, {@code false} to order ascending
      * @return the page of matching pseudonyms, or {@code null} when the search failed
      */
     @Transactional(readOnly = true)
-    public PageDTO<PseudonymDTO> searchPseudonymsPage(String query, int domainId, boolean contains, int page, int size, int countLimit) {
+    public PageDTO<PseudonymDTO> searchPseudonymsPage(String query, int domainId, boolean contains, int page, int size, int countLimit,
+    		PseudonymSort sort, boolean descending) {
         Condition condition = buildSearchCondition(query, contains)
                 .and(PSEUDONYM.DOMAINID.eq(domainId))
                 .and(PSEUDONYM.VALIDFROM.le(DSL.currentLocalDateTime()))
@@ -723,7 +727,7 @@ public class PseudonymDBAccessService {
 
             List<PseudonymDTO> items = dsl.selectFrom(PSEUDONYM)
                     .where(condition)
-                    .orderBy(PSEUDONYM.PSEUDONYM_.asc(), PSEUDONYM.ID.asc())
+                    .orderBy(sort.orderFields(descending))
                     .limit(size)
                     .offset((long) page * size)
                     .fetchInto(Pseudonym.class)
@@ -740,6 +744,57 @@ public class PseudonymDBAccessService {
             log.debug("Searching a page of pseudonyms failed.", e);
             return null;
         }
+    }
+
+    /**
+     * The columns by which the results of a paged pseudonym search can be ordered. Ties are broken
+     * by further columns and finally by the ID, so that pages neither overlap nor skip pseudonyms.
+     * All columns are ordered in the same direction, so that the database can read the matching
+     * index backwards for descending orders.
+     */
+    public enum PseudonymSort {
+    	/** Orders by pseudonym. */
+    	BY_PSEUDONYM("pseudonym", PSEUDONYM.PSEUDONYM_, PSEUDONYM.ID),
+    	/** Orders by identifier, then by ID type. */
+    	BY_IDENTIFIER("identifier", PSEUDONYM.IDENTIFIER, PSEUDONYM.IDTYPE, PSEUDONYM.ID),
+    	/** Orders by ID type, then by identifier. */
+    	BY_ID_TYPE("idType", PSEUDONYM.IDTYPE, PSEUDONYM.IDENTIFIER, PSEUDONYM.ID);
+
+    	/** The name of the order in request parameters. */
+    	private final String parameterName;
+
+    	/** The columns to order by, in their order of precedence. */
+    	private final List<Field<?>> fields;
+
+    	PseudonymSort(String parameterName, Field<?>... fields) {
+    		this.parameterName = parameterName;
+    		this.fields = List.of(fields);
+    	}
+
+    	/**
+    	 * Resolves an order from its request parameter, ignoring the letter case.
+    	 * 
+    	 * @param parameter the request parameter, e.g. "idType"
+    	 * @return the order, or {@code null} when the parameter names no sortable column
+    	 */
+    	public static PseudonymSort fromParameter(String parameter) {
+    		for (PseudonymSort sort : values()) {
+    			if (sort.parameterName.equalsIgnoreCase(parameter)) {
+    				return sort;
+    			}
+    		}
+    		return null;
+    	}
+
+    	/**
+    	 * Creates the ORDER BY fields of this order.
+    	 * 
+    	 * @param descending whether to order descending
+    	 * @return the fields to order by
+    	 */
+    	List<SortField<?>> orderFields(boolean descending) {
+    		return fields.stream().<SortField<?>>map(field -> descending ? field.desc() : field.asc()).toList();
+    	}
     }
 
     /**
