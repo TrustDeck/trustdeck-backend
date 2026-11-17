@@ -19,7 +19,9 @@ package org.trustdeck.controller;
 
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,23 +42,29 @@ import org.trustdeck.algorithms.PseudonymizationFactory;
 import org.trustdeck.algorithms.Pseudonymizer;
 import org.trustdeck.dto.DomainDTO;
 import org.trustdeck.dto.EntityDTO;
+import org.trustdeck.configuration.DefaultProperties;
 import org.trustdeck.dto.EntityTypeDTO;
+import org.trustdeck.dto.PageDTO;
 import org.trustdeck.dto.ProjectDTO;
 import org.trustdeck.dto.PseudonymDTO;
 import org.trustdeck.dto.RecordLinkageCandidateDTO;
 import org.trustdeck.exception.DuplicateEntityException;
 import org.trustdeck.exception.TooManyRecordLinkageCandidatesException;
 import org.trustdeck.exception.UnexpectedResultSizeException;
+import org.trustdeck.exception.UnindexedSortException;
 import org.trustdeck.jooq.generated.tables.pojos.Algorithm;
 import org.trustdeck.jooq.generated.tables.pojos.Domain;
 import org.trustdeck.linkage.model.CandidateStatus;
 import org.trustdeck.linkage.model.EntityLinkageConfig;
+import org.trustdeck.model.EntitySort;
 import org.trustdeck.model.IdentifierItem;
+import org.trustdeck.model.SortableAttribute;
 import org.trustdeck.security.audittrail.annotation.Audit;
 import org.trustdeck.service.AuthorizationService;
 import org.trustdeck.service.DomainDBAccessService;
 import org.trustdeck.service.AlgorithmDBService;
 import org.trustdeck.service.EntityDBService;
+import org.trustdeck.service.EntitySortIndexService;
 import org.trustdeck.service.EntityTypeDBService;
 import org.trustdeck.service.JsonSchemaService;
 import org.trustdeck.service.ProjectDBService;
@@ -120,6 +128,14 @@ public class EntityController {
 	/** Enables access to record linkage candidate search. */
 	@Autowired
 	private RecordLinkageService recordLinkageService;
+
+	/** Resolves the attributes by which entity searches can be sorted. */
+	@Autowired
+	private EntitySortIndexService entitySortIndexService;
+	
+	/** Provides the configurable limits of the paged search. */
+	@Autowired
+	private DefaultProperties defaults;
 
     /** Provides functionality to ensure proper rights and roles when accessing the endpoints. */
     @Autowired
@@ -602,6 +618,121 @@ public class EntityController {
 			log.debug("Successfully queried the database and found " + foundEntities.size() + " search results.");
 			return responseService.ok(responseContentType, foundEntities);
 		}
+	}
+	
+	/**
+	 * Endpoint to search one page of entities.
+	 * In contrast to the unpaged search, the database only retrieves the requested page, so that 
+	 * this endpoint also works for entity types with millions of entities. The matches are 
+	 * counted only up to a configurable limit.
+	 * 
+	 * @param projectAbbreviation the abbreviation of the project to which the request is scoped to
+	 * @param entityTypeName the name of the entity type whose entities are searched
+	 * @param query the search string; every whitespace-separated part must match, a UUID also 
+	 *        matches the TrustDeck ID; "*" matches every entity
+	 * @param page the zero-based index of the requested page
+	 * @param size (optional) the maximum number of entities on the page, 20 by default
+	 * @param match (optional) "prefix" (default) to match the beginning of words in the string 
+	 *        values, or "contains" to match anywhere in the data (needs at least three 
+	 *        characters per part)
+	 * @param sort (optional) "relevance", "trustDeckId", "createdAt", "updatedAt", or 
+	 *        "attribute:&lt;path&gt;" with the path of a scalar attribute of the type definition 
+	 *        (e.g. "attribute:address.city"); by default, "*" is sorted by "updatedAt" (newest 
+	 *        first) and other queries by relevance (best match first)
+	 * @param direction (optional) "asc" (default) or "desc"; ignored for relevance
+	 * @param responseContentType (optional) the response content type
+	 * @return <li>a <b>200-OK</b> status with the page of matching entities</li>
+	 *         <li>a <b>400-BAD_REQUEST</b> status when the paging, matching, or sorting 
+	 *         parameters are invalid or name an unknown attribute</li>
+	 *         <li>a <b>404-NOT_FOUND</b> status when the project or entity type cannot 
+	 *         be found</li>
+	 *         <li>a <b>410-GONE</b> status when the project has ended or the entity type 
+	 *         is marked as deprecated</li>
+	 *         <li>a <b>422-UNPROCESSABLE_ENTITY</b> status when sorting by an attribute 
+	 *         without a sort index ("sortIndex": true in the type definition) while more 
+	 *         entities match than the count limit; narrowing the search helps</li>
+	 *         <li>a <b>500-INTERNAL_SERVER_ERROR</b> status when the search failed</li>
+	 */
+	@GetMapping(value = "/projects/{projectAbbreviation}/entities/{entityTypeName}", params = {"query", "page"})
+	@PreAuthorize("isAuthenticated() and @auth.hasEntityTypePermission(#root, #projectAbbreviation, #entityTypeName, 'entity:search')")
+	@Audit
+	public ResponseEntity<?> searchEntitiesPage(@PathVariable("projectAbbreviation") String projectAbbreviation,
+												@PathVariable("entityTypeName") String entityTypeName,
+												@RequestParam(name = "query", required = true) String query,
+												@RequestParam(name = "page", required = true) Integer page,
+												@RequestParam(name = "size", required = false, defaultValue = "20") Integer size,
+												@RequestParam(name = "match", required = false, defaultValue = "prefix") String match,
+												@RequestParam(name = "sort", required = false) String sort,
+												@RequestParam(name = "direction", required = false) String direction,
+												@RequestHeader(name = "accept", required = false) String responseContentType) {
+		// Validate the paging and matching parameters
+		boolean contains = "contains".equalsIgnoreCase(match);
+		if (page == null || page < 0 || size == null || size < 1 || size > defaults.getEntity().getSearchPageSizeLimit()
+				|| (!contains && !"prefix".equalsIgnoreCase(match))) {
+			log.debug("The paging or matching parameters of the entity search are invalid.");
+			return responseService.badRequest(responseContentType);
+		}
+		
+		// Matching anywhere needs a few characters per part to use the trigram index
+		String trimmed = query == null ? "" : query.trim();
+		boolean matchAll = trimmed.isEmpty() || trimmed.equals("*");
+		if (contains && !matchAll && Arrays.stream(trimmed.split("\\s+")).anyMatch(part -> part.length() < 3)) {
+			log.debug("Every part of a search matching anywhere needs at least three characters.");
+			return responseService.badRequest(responseContentType);
+		}
+		
+		// Check if project exists and still active
+		ProjectDTO project = projectDBService.getProjectByAbbreviation(projectAbbreviation);
+		if (project == null) {
+			log.debug("Project \"" + projectAbbreviation + "\" was not found.");
+			return responseService.notFound(responseContentType);
+		} else if (project.getEndDate().isBefore(OffsetDateTime.now())) {
+			log.debug("The project already ended so that no entities can be retrieved from it.");
+			return responseService.gone(responseContentType);
+		}
+		
+		// Check if entity type exists and is still active
+		EntityTypeDTO entityType = entityTypeDBService.getEntityTypeByName(entityTypeName, project.getId());
+		if (entityType == null) {
+			log.debug("Entity type \"" + entityTypeName + "\" was not found.");
+			return responseService.notFound(responseContentType);
+		} else if (entityType.getIsDeprecated()) {
+			log.debug("The entity type is marked as deprecated and cannot be used anymore.");
+			return responseService.gone(responseContentType);
+		}
+		
+		// Parse the order; attributes are looked up in the type definition (including the base type's)
+		Map<String, SortableAttribute> attributes = entitySortIndexService.getSortableAttributes(entityType.getId());
+		if (attributes == null) {
+			log.error("Resolving the sortable attributes of the entity type \"" + entityTypeName + "\" failed.");
+			return responseService.internalServerError(responseContentType);
+		}
+		
+		EntitySort entitySort;
+		try {
+			entitySort = EntitySort.parse(sort, direction, matchAll, attributes);
+		} catch (IllegalArgumentException e) {
+			log.debug("The sorting parameters of the entity search are invalid: " + e.getMessage());
+			return responseService.badRequest(responseContentType);
+		}
+		
+		// Retrieve the page from the database
+		PageDTO<EntityDTO> result;
+		try {
+			result = entityDBService.searchEntitiesPage(entityType, query, contains, entitySort, page, size,
+					defaults.getEntity().getSearchCountLimit());
+		} catch (UnindexedSortException e) {
+			log.debug(e.getMessage());
+			return responseService.unprocessableEntity(responseContentType);
+		}
+		
+		if (result == null) {
+			log.error("Searching a page of entities of the type \"" + entityTypeName + "\" failed.");
+			return responseService.internalServerError(responseContentType);
+		}
+		
+		log.debug("Successfully retrieved " + result.getItems().size() + " entities of page " + page + ".");
+		return responseService.ok(responseContentType, result);
 	}
 	
 	/**

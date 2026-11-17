@@ -44,6 +44,9 @@ public class DefaultProperties {
     /** Default values applied when creating and searching pseudonyms. */
     private Pseudonym pseudonym = new Pseudonym();
     
+    /** Default values applied when searching entities. */
+    private Entity entity = new Entity();
+    
     /** Default values applied when creating projects. */
     private Project project = new Project();
     
@@ -157,6 +160,23 @@ public class DefaultProperties {
         private int searchPageSizeLimit = 100;
         
         /** Number up to which the matches of a paged search are counted, so that huge domains are not counted completely. */
+        private int searchCountLimit = 10000;
+    }
+
+    /**
+     * Default values for entity searches.
+     */
+    @Getter
+    @Setter
+    public static class Entity {
+        /** Maximum number of entities on one page of a paged search. */
+        private int searchPageSizeLimit = 100;
+        
+        /**
+         * Number up to which the matches of a paged search are counted, so that huge entity types are not counted
+         * completely. Above it, results are ranked only among this many matches, and sorting by an attribute
+         * without a sort index is refused.
+         */
         private int searchCountLimit = 10000;
     }
 

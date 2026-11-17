@@ -25,10 +25,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.jooq.Condition;
 import org.jooq.DSLContext;
+import org.jooq.Field;
 import org.jooq.JSONB;
+import org.jooq.SortField;
+import org.jooq.Table;
 import org.jooq.exception.DataAccessException;
 import org.jooq.exception.MappingException;
 import org.jooq.impl.DSL;
@@ -36,16 +41,20 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.trustdeck.dto.EntityDTO;
+import org.trustdeck.dto.EntityTypeDTO;
+import org.trustdeck.dto.PageDTO;
 import org.trustdeck.exception.CreationException;
 import org.trustdeck.exception.DuplicateEntityException;
 import org.trustdeck.exception.TooManyRecordLinkageCandidatesException;
 import org.trustdeck.exception.UnexpectedResultSizeException;
+import org.trustdeck.exception.UnindexedSortException;
 import org.trustdeck.exception.UpdateException;
 import org.trustdeck.jooq.generated.tables.pojos.Entity;
 import org.trustdeck.jooq.generated.tables.records.EntityRecord;
 import org.trustdeck.linkage.LinkageIndexService;
 import org.trustdeck.linkage.model.LinkageToken;
 import org.trustdeck.linkage.model.LinkageTokenType;
+import org.trustdeck.model.EntitySort;
 import org.trustdeck.utils.Assertion;
 
 import tools.jackson.core.JacksonException;
@@ -73,6 +82,9 @@ public class EntityDBService {
 	/** Enables access to the mapper to transform JsonNode into JSONB and back. */
 	@Autowired
 	private ObjectMapper objectMapper;
+	
+	/** Matches a UUID in its canonical form. */
+	private static final Pattern UUID_PATTERN = Pattern.compile("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
 	
 	/** Used to create, update, and remove record linkage index entries for entities. */
 	@Autowired
@@ -552,6 +564,208 @@ public class EntityDBService {
 
         // Return the found types
         return results.stream().map(row -> new EntityDTO().assignPojoValues(row)).toList();
+    }
+    
+    /**
+     * Searches one page of the entities of an entity type.
+     * 
+     * Every whitespace-separated part of the query must match. With prefix matching, a part
+     * matches the beginning of words in the entity's string values: it is split into words like
+     * the stored values (with the "simple" text search configuration), and every word must be the
+     * beginning of a word in the entity's full text search vector. With contains matching, a part
+     * matches anywhere in the entity's data. A part that is a UUID also matches the entity's
+     * TrustDeck ID. A query of "*" or an empty query matches every entity.
+     * 
+     * The matches are counted only up to the count limit. When more entities match, relevance
+     * ranks only the first count limit matches (by internal ID), and sorting by an attribute
+     * without a sort index is refused, since the database would have to sort all matches.
+     * 
+     * @param entityType the entity type whose entities are searched
+     * @param query the search query
+     * @param contains {@code true} to match the parts anywhere in the data, {@code false} to match
+     *        the beginning of words
+     * @param sort the order of the matches
+     * @param page the zero-based page index
+     * @param size the maximum number of entities on the page
+     * @param countLimit the number up to which the matches are counted
+     * @return the page of matching entities, or {@code null} when the search failed
+     * @throws UnindexedSortException when sorting by an attribute without a sort index although 
+     *         more entities match than the count limit
+     */
+    @Transactional(readOnly = true)
+    public PageDTO<EntityDTO> searchEntitiesPage(EntityTypeDTO entityType, String query, boolean contains, EntitySort sort,
+    		int page, int size, int countLimit) throws UnindexedSortException {
+    	String trimmed = query == null ? "" : query.trim();
+    	boolean matchAll = trimmed.isEmpty() || trimmed.equals("*");
+    	
+    	// Inline the type and the deletion flag, so that the planner prunes the partitions and uses the partial indexes
+    	Condition condition = ENTITY.ENTITY_TYPE_ID.eq(DSL.inline(entityType.getId()))
+    			.and(ENTITY.IS_DELETED.eq(DSL.inline(false)));
+    	
+    	try {
+    		// Build the matching condition and the full text query for ranking the matches
+    		List<String> rankLexemes = new ArrayList<>();
+    		if (!matchAll) {
+    			condition = condition.and(buildEntitySearchCondition(trimmed.split("\\s+"), contains, rankLexemes));
+    		}
+    		
+    		// Count only up to the limit, so that huge entity types need not be counted completely
+    		int counted = dsl.fetchCount(dsl.select(ENTITY.ID)
+    				.from(ENTITY)
+    				.where(condition)
+    				.limit(countLimit + 1));
+    		boolean moreMatchesThanTotal = counted > countLimit;
+    		
+    		// Without an index, the database would have to sort all matches
+    		if (sort.key() == EntitySort.Key.ATTRIBUTE && !sort.attribute().sortIndex() && moreMatchesThanTotal) {
+    			throw new UnindexedSortException(sort.attribute().path(), countLimit);
+    		}
+    		
+    		List<Field<?>> columns = List.of(ENTITY.ID, ENTITY.TRUSTDECK_ID, ENTITY.PROJECT_ID, ENTITY.ENTITY_TYPE_ID, 
+    				ENTITY.DATA, ENTITY.IS_DELETED, ENTITY.CREATED_AT, ENTITY.UPDATED_AT);
+    		List<Entity> rows;
+    		if (sort.key() == EntitySort.Key.RELEVANCE) {
+    			// Rank only the first matches up to the count limit, so that a page never ranks all matches
+    			Field<Float> rank = rankLexemes.isEmpty() ? DSL.inline(0f) 
+    					: DSL.field("ts_rank({0}, {1}::tsquery)", Float.class, ENTITY.FULL_TEXT_SEARCH_VECTOR, DSL.val(toPrefixTsQuery(rankLexemes)));
+    			Table<?> matches = dsl.select(ENTITY.ID, rank.as("rank"))
+    					.from(ENTITY)
+    					.where(condition)
+    					.orderBy(ENTITY.ID.asc())
+    					.limit(countLimit)
+    					.asTable("matches");
+    			
+    			rows = dsl.select(columns)
+    					.from(ENTITY)
+    					.join(matches).on(ENTITY.ID.eq(matches.field(ENTITY.ID)))
+    					.where(ENTITY.ENTITY_TYPE_ID.eq(DSL.inline(entityType.getId())))
+    					.orderBy(matches.field("rank").desc(), ENTITY.ID.asc())
+    					.limit(size)
+    					.offset((long) page * size)
+    					.fetchInto(Entity.class);
+    		} else {
+    			rows = dsl.select(columns)
+    					.from(ENTITY)
+    					.where(condition)
+    					.orderBy(sortFields(sort))
+    					.limit(size)
+    					.offset((long) page * size)
+    					.fetchInto(Entity.class);
+    		}
+    		
+    		// The entities share their type and project, so look up their names only once
+    		List<EntityDTO> items = rows.stream().map(row -> {
+    			EntityDTO dto = new EntityDTO();
+    			dto.setId(row.getId());
+    			dto.setTrustdeckID(row.getTrustdeckId());
+    			dto.setProjectID(row.getProjectId());
+    			dto.setProjectName(entityType.getProjectName());
+    			dto.setEntityTypeID(row.getEntityTypeId());
+    			dto.setEntityTypeName(entityType.getName());
+    			dto.setData(row.getData() == null ? null : objectMapper.readTree(row.getData().data()));
+    			dto.setIsDeleted(row.getIsDeleted());
+    			dto.setCreatedAt(row.getCreatedAt());
+    			dto.setUpdatedAt(row.getUpdatedAt());
+    			return dto;
+    		}).toList();
+    		
+    		return new PageDTO<>(items, page, size, moreMatchesThanTotal ? countLimit : counted, moreMatchesThanTotal);
+    	} catch (MappingException | JacksonException e) {
+    		log.debug("Could not map the entity search result.", e);
+    		return null;
+    	} catch (DataAccessException e) {
+    		log.debug("Searching a page of entities failed.", e);
+    		return null;
+    	}
+    }
+    
+    /**
+     * Builds the condition that every part of an entity search must match.
+     * 
+     * @param parts the whitespace-separated parts of the query
+     * @param contains {@code true} to match the parts anywhere in the data, {@code false} to match
+     *        the beginning of words
+     * @param rankLexemes receives the words of all parts, by which the matches are ranked
+     * @return the search condition
+     * @throws DataAccessException when splitting a part into words failed
+     */
+    private Condition buildEntitySearchCondition(String[] parts, boolean contains, List<String> rankLexemes) throws DataAccessException {
+    	// The character that marks the next character of a LIKE pattern as literal
+    	final char likeEscape = '\\';
+    	
+    	Condition condition = DSL.trueCondition();
+    	boolean anyPartUsable = false;
+    	for (String part : parts) {
+    		// Split the part into words like the stored values, so that e.g. "Meier-Schmidt" finds "Meier-Schmidt"
+    		String[] lexemes = dsl.select(DSL.field("tsvector_to_array(to_tsvector('simple'::regconfig, {0}))", String[].class, DSL.val(part)))
+    				.fetchOne(0, String[].class);
+    		List<String> words = lexemes == null ? List.of() : List.of(lexemes);
+    		rankLexemes.addAll(words);
+    		
+    		Condition partCondition;
+    		if (contains) {
+    			// Match "%" and "_" literally (see PseudonymDBAccessService.buildSearchCondition)
+    			String escaped = part.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+    			partCondition = ENTITY.DATA_TEXT.likeIgnoreCase("%" + escaped + "%", likeEscape);
+    		} else if (!words.isEmpty()) {
+    			partCondition = DSL.condition("{0} @@ {1}::tsquery", ENTITY.FULL_TEXT_SEARCH_VECTOR, DSL.val(toPrefixTsQuery(words)));
+    		} else {
+    			partCondition = null;
+    		}
+    		
+    		// A UUID also finds the entity with this TrustDeck ID
+    		if (UUID_PATTERN.matcher(part).matches()) {
+    			Condition idCondition = ENTITY.TRUSTDECK_ID.eq(UUID.fromString(part));
+    			partCondition = partCondition == null ? idCondition : partCondition.or(idCondition);
+    		}
+    		
+    		// Skip parts without words (e.g. only punctuation), which the full text search cannot find
+    		if (partCondition != null) {
+    			condition = condition.and(partCondition);
+    			anyPartUsable = true;
+    		}
+    	}
+    	
+    	// A query consisting only of unsearchable parts matches nothing
+    	return anyPartUsable ? condition : DSL.falseCondition();
+    }
+    
+    /**
+     * Builds a full text query that matches entities containing words beginning with all the given words.
+     * 
+     * @param words the words (lexemes) of the "simple" text search configuration
+     * @return the full text query, e.g. {@code 'erika':* & 'muster':*}
+     */
+    private static String toPrefixTsQuery(List<String> words) {
+    	// Quote the words, since they may contain characters with a meaning in full text queries
+    	return words.stream()
+    			.map(word -> "'" + word.replace("\\", "\\\\").replace("'", "''") + "':*")
+    			.collect(Collectors.joining(" & "));
+    }
+    
+    /**
+     * Builds the ORDER BY fields of a paged entity search (except for relevance). Every order ends
+     * with the internal ID, so that pages never overlap.
+     * 
+     * @param sort the order
+     * @return the sort fields
+     */
+    private static List<SortField<?>> sortFields(EntitySort sort) {
+    	List<SortField<?>> fields = new ArrayList<>();
+    	switch (sort.key()) {
+    		case TRUSTDECK_ID -> fields.add(sort.descending() ? ENTITY.TRUSTDECK_ID.desc() : ENTITY.TRUSTDECK_ID.asc());
+    		case CREATED_AT -> fields.add(sort.descending() ? ENTITY.CREATED_AT.desc() : ENTITY.CREATED_AT.asc());
+    		case UPDATED_AT -> fields.add(sort.descending() ? ENTITY.UPDATED_AT.desc() : ENTITY.UPDATED_AT.asc());
+    		case ATTRIBUTE -> {
+    			// Entities without a value come last in both directions; the sort indexes are built the same way
+    			Field<?> expression = EntitySortIndexService.sortExpression(sort.attribute());
+    			fields.add(sort.descending() ? expression.desc().nullsLast() : expression.asc().nullsLast());
+    		}
+    		default -> { }
+    	}
+    	
+    	fields.add(ENTITY.ID.asc());
+    	return fields;
     }
     
     /**
