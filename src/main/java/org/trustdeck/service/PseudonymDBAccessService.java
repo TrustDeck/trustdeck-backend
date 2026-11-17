@@ -38,9 +38,9 @@ import org.springframework.transaction.interceptor.TransactionAspectSupport;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.trustdeck.dto.CursorPageDTO;
 import org.trustdeck.dto.DomainDTO;
-import org.trustdeck.dto.PageDTO;
 import org.trustdeck.dto.PseudonymDTO;
 import org.trustdeck.dto.PseudonymUpdateDTO;
+import org.trustdeck.dto.SearchResultPageDTO;
 import org.trustdeck.exception.UnexpectedResultSizeException;
 import org.trustdeck.jooq.generated.tables.pojos.Domain;
 import org.trustdeck.jooq.generated.tables.pojos.Pseudonym;
@@ -777,7 +777,7 @@ public class PseudonymDBAccessService {
      * @return the page of matching pseudonyms, or {@code null} when the search failed
      */
     @Transactional(readOnly = true)
-    public PageDTO<PseudonymDTO> searchPseudonymsPage(String query, int domainId, boolean contains, int page, int size, int countLimit) {
+    public SearchResultPageDTO<PseudonymDTO> searchPseudonymsPage(String query, int domainId, boolean contains, int page, int size, int countLimit) {
         Condition condition = buildSearchCondition(query, contains)
                 .and(PSEUDONYM.DOMAINID.eq(domainId))
                 .and(PSEUDONYM.VALIDFROM.le(DSL.currentLocalDateTime()))
@@ -792,7 +792,8 @@ public class PseudonymDBAccessService {
 
             List<PseudonymDTO> items = dsl.selectFrom(PSEUDONYM)
                     .where(condition)
-                    .orderBy(PSEUDONYM.PSEUDONYM_.asc(), PSEUDONYM.ID.asc())
+                    // The pseudonym is unique within a domain, so it alone gives a stable order
+                    .orderBy(PSEUDONYM.PSEUDONYM_.asc())
                     .limit(size)
                     .offset((long) page * size)
                     .fetchInto(Pseudonym.class)
@@ -800,8 +801,8 @@ public class PseudonymDBAccessService {
                     .map(row -> new PseudonymDTO().assignPojoValues(row))
                     .toList();
 
-            boolean moreMatchesThanTotal = counted > countLimit;
-            return new PageDTO<>(items, page, size, moreMatchesThanTotal ? countLimit : counted, moreMatchesThanTotal);
+            boolean numberOfMatchesExceedsSearchLimit = counted > countLimit;
+            return new SearchResultPageDTO<>(items, page, size, numberOfMatchesExceedsSearchLimit ? countLimit : counted, numberOfMatchesExceedsSearchLimit);
         } catch (MappingException e) {
             log.debug("Could not map the pseudonym search result.", e);
             return null;

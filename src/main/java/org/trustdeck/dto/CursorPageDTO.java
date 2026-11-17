@@ -26,15 +26,19 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * One page of a list that is read page by page with a cursor.
- *
- * Unlike page numbers, a cursor points directly behind the last item of the previous page. Reading
- * a page therefore takes the same time no matter how far into the list it is, and items added or
- * removed in the meantime do not shift the following pages.
- *
+ * One page of a complete list, read page by page with a cursor.
+ * 
+ * Use it when a program reads a whole list (e.g. all pseudonyms of a domain). Instead of a page
+ * number, the cursor points directly behind the last item of the previous page. Every page is
+ * therefore read in the same time, however far into the list it is, and items added or removed in
+ * the meantime do not shift the following pages. There is no total and no jumping to a page: the
+ * pages are read one after another until {@link #nextCursor} is {@code null}.
+ * 
+ * For interactive searches with page numbers and a match count, use {@link SearchResultPageDTO} instead.
+ * 
  * The cursor is an opaque token: callers pass it back unchanged and must not rely on its content,
  * so that the sort key behind it can change without changing the API.
- *
+ * 
  * @param <T> the type of the items on the page
  * @author Armin Müller
  */

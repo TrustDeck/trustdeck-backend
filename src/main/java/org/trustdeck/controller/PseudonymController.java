@@ -36,9 +36,9 @@ import org.trustdeck.algorithms.Pseudonymizer;
 import org.trustdeck.algorithms.RandomNumberPseudonymizer;
 import org.trustdeck.configuration.DefaultProperties;
 import org.trustdeck.dto.CursorPageDTO;
-import org.trustdeck.dto.PageDTO;
 import org.trustdeck.dto.PseudonymDTO;
 import org.trustdeck.dto.PseudonymUpdateDTO;
+import org.trustdeck.dto.SearchResultPageDTO;
 import org.trustdeck.jooq.generated.tables.pojos.Algorithm;
 import org.trustdeck.jooq.generated.tables.pojos.Domain;
 import org.trustdeck.model.IdentifierItem;
@@ -1574,7 +1574,7 @@ public class PseudonymController {
 		}
 		
 		// Retrieve the page from the database
-		PageDTO<PseudonymDTO> result = pseudonymDBAccessService.searchPseudonymsPage(query, domain.getId(), contains, page, size,
+		SearchResultPageDTO<PseudonymDTO> result = pseudonymDBAccessService.searchPseudonymsPage(query, domain.getId(), contains, page, size,
 				defaults.getPseudonym().getSearchCountLimit());
 		if (result == null) {
 			log.error("Searching a page of pseudonyms in the domain \"" + domainName + "\" failed.");

@@ -127,7 +127,7 @@ public class TestsSearchServiceIT extends AssertWebRequestService {
         JsonNode firstPage = this.searchPseudonymsPage(Map.of("query", "paged-", "page", "0", "size", "10"));
         assertEquals(10, firstPage.get("items").size());
         assertEquals(25, firstPage.get("total").asLong());
-        assertFalse(firstPage.get("moreMatchesThanTotal").asBoolean());
+        assertFalse(firstPage.get("numberOfMatchesExceedsSearchLimit").asBoolean());
         JsonNode lastPage = this.searchPseudonymsPage(Map.of("query", "PAGED-", "page", "2", "size", "10"));
         assertEquals(5, lastPage.get("items").size());
 

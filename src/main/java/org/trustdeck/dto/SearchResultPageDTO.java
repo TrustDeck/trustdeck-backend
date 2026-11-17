@@ -24,10 +24,17 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * One page of a paged search result.
+ * One page of a search result, addressed by its page number.
  * 
- * The total is counted only up to a limit, so that large result sets (e.g. a domain with
- * millions of pseudonyms) do not have to be counted completely.
+ * Use it for interactive searches, where people page through the matches, jump to a page, and want
+ * to know roughly how many matches there are. The matches are counted only up to the configured
+ * count limit ({@code pseudonym.search-count-limit}), so that a search in a domain with millions of
+ * pseudonyms does not have to count them all; {@link #numberOfMatchesExceedsSearchLimit} says
+ * whether the real number is higher than {@link #total}. Deep pages get slower, because the
+ * database has to skip all earlier matches, which is acceptable for searches but not for reading
+ * a whole list.
+ * 
+ * To read a complete list (e.g. all pseudonyms of a domain), use {@link CursorPageDTO} instead.
  * 
  * @param <T> the type of the items on the page
  * @author Armin Müller
@@ -35,7 +42,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class PageDTO<T> {
+public class SearchResultPageDTO<T> {
 
 	/** The items on this page. */
 	private List<T> items;
@@ -49,6 +56,9 @@ public class PageDTO<T> {
 	/** The number of matching items, counted at most up to the count limit. */
 	private long total;
 
-	/** Whether more items match than {@link #total} says, because counting stopped at the count limit. */
-	private boolean moreMatchesThanTotal;
+	/**
+	 * Whether more items match than the count limit, so that counting stopped and {@link #total} is
+	 * lower than the real number of matches.
+	 */
+	private boolean numberOfMatchesExceedsSearchLimit;
 }
