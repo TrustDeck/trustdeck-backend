@@ -19,6 +19,7 @@ package org.trustdeck.service;
 
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JavaType;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.type.TypeFactory;
 import java.sql.Connection;
@@ -818,9 +819,21 @@ public class AssertWebRequestService {
      */
     protected List<PseudonymDTO> assertEqualsListRecordsLength(int expectedLength, String goodDomainButNotFound, String goodDomain) throws Exception {
         this.assertForbiddenRequest("getRecordBatchNotFound", get("/api/domains/" + goodDomainButNotFound + "/pseudonyms/batch"), null, null, this.getAccessToken());
-        MockHttpServletResponse response = this.assertOkRequest("getRecordBatch", get("/api/domains/" + goodDomain + "/pseudonyms/batch"), null, null, this.getAccessToken());
-        String content = response.getContentAsString();
-        List<PseudonymDTO> records = this.mapJsonObjectsInStringToList(content, PseudonymDTO.class);
+
+        // Read the domain page by page with pages of two, so that following the cursor is tested as well
+        List<PseudonymDTO> records = new ArrayList<>();
+        String cursor = null;
+        do {
+            Map<String, String> params = new HashMap<>(Map.of("size", "2"));
+            if (cursor != null) {
+                params.put("cursor", cursor);
+            }
+
+            MockHttpServletResponse response = this.assertOkRequest("getRecordBatch", get("/api/domains/" + goodDomain + "/pseudonyms/batch"), params, null, this.getAccessToken());
+            JsonNode page = new ObjectMapper().readTree(response.getContentAsString());
+            records.addAll(this.mapJsonObjectsInStringToList(page.get("items").toString(), PseudonymDTO.class));
+            cursor = page.get("nextCursor").isNull() ? null : page.get("nextCursor").asString();
+        } while (cursor != null);
         assertEquals(expectedLength, records.size());
 
         return records;

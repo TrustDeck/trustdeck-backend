@@ -22,7 +22,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.jooq.Condition;
 import org.jooq.DSLContext;
 import org.jooq.DeleteConditionStep;
-import org.jooq.Field;
 import org.jooq.Row2;
 import org.jooq.Row4;
 import org.jooq.Row8;
@@ -37,9 +36,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.interceptor.TransactionAspectSupport;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
-import org.trustdeck.dto.PageDTO;
+import org.trustdeck.dto.CursorPageDTO;
+import org.trustdeck.dto.DomainDTO;
 import org.trustdeck.dto.PseudonymDTO;
 import org.trustdeck.dto.PseudonymUpdateDTO;
+import org.trustdeck.dto.SearchResultPageDTO;
 import org.trustdeck.exception.UnexpectedResultSizeException;
 import org.trustdeck.jooq.generated.tables.pojos.Domain;
 import org.trustdeck.jooq.generated.tables.pojos.Pseudonym;
@@ -602,93 +603,70 @@ public class PseudonymDBAccessService {
     }
     
     /**
-     * Method to search for pseudonyms.
-     * This search supports searching in the identifier, idType, and psn-value.
-     * 
-     * @param query the search query
-     * @param domainId the id of the domain in which to search for
-     * @return a list of pseudonyms that match the search query
+     * Reads one page of all pseudonyms of a domain, ordered by pseudonym value.
+     *
+     * The page continues directly behind the given pseudonym value (keyset paging). The value is
+     * unique within a domain and indexed together with the domain, so every page is read through the
+     * index in the same time, however far into a domain with millions of pseudonyms it is.
+     *
+     * @param domain the domain
+     * @param afterPseudonym the pseudonym value the page continues behind, or {@code null} for the first page
+     * @param size the maximum number of pseudonyms on the page
+     * @return the page with the cursor for the next page, or {@code null} when reading failed
      */
-    @Transactional
-    public List<PseudonymDTO> searchPseudonyms(String query, int domainId) {
-    	if (Assertion.isNullOrEmpty(query)) {
-            log.debug("Search query is empty.");
-            return null;
-        }
-    	
-    	// Allow wildcard-search with '*'
-        if (query.trim().equals("*")) {
-            List<Pseudonym> results;
-            try {
-                // Return all currently valid pseudonyms in the given domain scope
-                Field<LocalDateTime> now = DSL.currentLocalDateTime();
-
-                results = dsl.selectFrom(PSEUDONYM)
-                        .where(PSEUDONYM.DOMAINID.eq(domainId))
-                        .and(PSEUDONYM.VALIDFROM.le(now))
-                        .and(PSEUDONYM.VALIDTO.gt(now))
-                        .orderBy(PSEUDONYM.IDENTIFIER.asc(), PSEUDONYM.IDTYPE.asc())
-                        .limit(500)
-                        .fetchInto(Pseudonym.class);
-            } catch (MappingException e) {
-                log.debug("Could not map pseudonym search result.", e);
-                return null;
-            } catch (DataAccessException e) {
-                log.debug("Searching pseudonyms failed.", e);
-                return null;
-            }
-
-            // Return all currently valid pseudonyms
-            return results.stream().map(p -> new PseudonymDTO().assignPojoValues(p)).toList();
+    @Transactional(readOnly = true)
+    public CursorPageDTO<PseudonymDTO> getPseudonymPage(Domain domain, String afterPseudonym, int size) {
+        Condition condition = PSEUDONYM.DOMAINID.eq(domain.getId());
+        if (afterPseudonym != null) {
+            condition = condition.and(PSEUDONYM.PSEUDONYM_.gt(afterPseudonym));
         }
 
-        // Split query-parts on whitespaces; every part should match at least one column
-        String[] parts = query.trim().split("\\s+");
-        
-        // Built the search conditions statement
-        Condition condition = DSL.trueCondition();
-        for (String part : parts) {
-            String pattern = "%" + part + "%";
-
-            // Search across identifier, idType, and psn
-            Condition partCond = PSEUDONYM.IDENTIFIER.likeIgnoreCase(pattern)
-                .or(PSEUDONYM.IDTYPE.likeIgnoreCase(pattern))
-                .or(PSEUDONYM.PSEUDONYM_.likeIgnoreCase(pattern));
-
-            // AND-connect all search parts
-            condition = condition.and(partCond);
-        }
-
-        // Exclude pseudonyms which are not valid anymore
-        Field<LocalDateTime> now = DSL.currentLocalDateTime();
-        condition = condition.and(PSEUDONYM.VALIDFROM.le(now)).and(PSEUDONYM.VALIDTO.gt(now));
-        
-        // Only search in a domain scope
-        condition = condition.and(PSEUDONYM.DOMAINID.eq(domainId));
-
-        // Execute the search
-        List<Pseudonym> results;
         try {
-            results = dsl.selectFrom(PSEUDONYM)
-                      .where(condition)
-                      .orderBy(PSEUDONYM.IDENTIFIER.asc(), PSEUDONYM.IDTYPE.asc())
-                      .fetchInto(Pseudonym.class);
+            // One row more than requested tells whether another page follows
+            List<Pseudonym> rows = dsl.selectFrom(PSEUDONYM)
+                    .where(condition)
+                    .orderBy(PSEUDONYM.PSEUDONYM_.asc())
+                    .limit(size + 1)
+                    .fetchInto(Pseudonym.class);
+
+            boolean morePages = rows.size() > size;
+            List<Pseudonym> pageRows = morePages ? rows.subList(0, size) : rows;
+            // All pseudonyms on the page belong to the same domain. Resolve it once instead of once per
+            // pseudonym, which would cost several database queries for every row.
+            DomainDTO domainDTO = new DomainDTO().assignPojoValues(domain);
+            List<PseudonymDTO> items = pageRows.stream().map(row -> {
+                PseudonymDTO dto = new PseudonymDTO().assignPojoValues(row.setDomainid(null));
+                dto.setDomainName(domainDTO.getName());
+                dto.setDomain(domainDTO);
+                return dto;
+            }).toList();
+            String nextCursor = morePages ? CursorPageDTO.encodeCursor(pageRows.getLast().getPseudonym()) : null;
+
+            return new CursorPageDTO<>(items, nextCursor);
         } catch (MappingException e) {
-            log.debug("Could not map pseudonym search result.", e);
+            log.debug("Could not map the pseudonyms of the domain.", e);
             return null;
         } catch (DataAccessException e) {
-            log.debug("Searching pseudonyms failed.", e);
+            log.debug("Reading a page of the domain's pseudonyms failed.", e);
             return null;
         }
+    }
 
-        // Evaluate the search results
-        if (results == null || results.isEmpty()) {
-            log.debug("No pseudonym matched the query \"" + query + "\".");
-            return null;
+    /**
+     * Deletes all pseudonyms of a domain with a single statement, so that the number of pseudonyms
+     * doesn't matter. The deletion is atomic: either all pseudonyms are deleted or none.
+     *
+     * @param domainId the ID of the domain
+     * @return the number of deleted pseudonyms, or {@code -1} when the deletion failed
+     */
+    @Transactional
+    public int deleteAllPseudonymsInDomain(int domainId) {
+        try {
+            return dsl.deleteFrom(PSEUDONYM).where(PSEUDONYM.DOMAINID.eq(domainId)).execute();
+        } catch (DataAccessException e) {
+            log.error("Deleting the pseudonyms of the domain failed: " + e.getMessage());
+            return -1;
         }
-
-        // Return the found types
-        return results.stream().map(row -> new PseudonymDTO().assignPojoValues(row)).toList();
     }
 
     /**
@@ -711,7 +689,7 @@ public class PseudonymDBAccessService {
      * @return the page of matching pseudonyms, or {@code null} when the search failed
      */
     @Transactional(readOnly = true)
-    public PageDTO<PseudonymDTO> searchPseudonymsPage(String query, int domainId, boolean contains, int page, int size, int countLimit,
+    public SearchResultPageDTO<PseudonymDTO> searchPseudonymsPage(String query, int domainId, boolean contains, int page, int size, int countLimit,
     		PseudonymSort sort, boolean descending) {
         Condition condition = buildSearchCondition(query, contains)
                 .and(PSEUDONYM.DOMAINID.eq(domainId))
@@ -735,8 +713,8 @@ public class PseudonymDBAccessService {
                     .map(row -> new PseudonymDTO().assignPojoValues(row))
                     .toList();
 
-            boolean moreMatchesThanTotal = counted > countLimit;
-            return new PageDTO<>(items, page, size, moreMatchesThanTotal ? countLimit : counted, moreMatchesThanTotal);
+            boolean numberOfMatchesExceedsSearchLimit = counted > countLimit;
+            return new SearchResultPageDTO<>(items, page, size, numberOfMatchesExceedsSearchLimit ? countLimit : counted, numberOfMatchesExceedsSearchLimit);
         } catch (MappingException e) {
             log.debug("Could not map the pseudonym search result.", e);
             return null;

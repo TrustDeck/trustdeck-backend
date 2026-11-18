@@ -22,7 +22,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -58,14 +57,14 @@ public class TestsSearchServiceIT extends AssertWebRequestService {
     /** The abbreviation of the project that is created for every test. */
     private static final String PROJECT = "TEST";
 
-    /** The maximum number of results of a pseudonym search (see application.yml). */
-    private static final int PSEUDONYM_SEARCH_RESULT_LIMIT = 30;
+    /** The number of pseudonyms created for the search test; more than fit on one page of ten. */
+    private static final int SEARCH_PSEUDONYM_COUNT = 31;
 
     /** Used to create the type definitions and entity data. */
     private final ObjectMapper om = new ObjectMapper();
 
     /**
-     * Tests searching for pseudonyms, including multi-word and wildcard searches.
+     * Tests searching for pseudonyms, including multi-word and wildcard searches, through the paged search.
      *
      * @throws Exception forwards any internally thrown exceptions
      */
@@ -74,9 +73,9 @@ public class TestsSearchServiceIT extends AssertWebRequestService {
     public void pseudonymSearchTest() throws Exception {
         String pseudonymPath = "/api/domains/" + DOMAIN + "/pseudonyms";
 
-        // Create more pseudonyms than a search returns
+        // Create more pseudonyms than fit on one page
         List<PseudonymDTO> pseudonyms = new ArrayList<>();
-        for (int i = 1; i <= PSEUDONYM_SEARCH_RESULT_LIMIT + 1; i++) {
+        for (int i = 1; i <= SEARCH_PSEUDONYM_COUNT; i++) {
             PseudonymDTO pseudonym = new PseudonymDTO();
             pseudonym.setIdentifierItem(IdentifierItem.builder().identifier("search-" + i).idType("SEARCH-ID").build());
             pseudonyms.add(pseudonym);
@@ -96,13 +95,13 @@ public class TestsSearchServiceIT extends AssertWebRequestService {
         // No matches
         assertEquals(Set.of(), this.searchPseudonyms("nothing-to-find"));
 
-        // A wildcard search returns everything, but is truncated
-        MockHttpServletResponse response = this.assertRequestFromRequestBuilder("searchPseudonymsWildcard", get(pseudonymPath), Map.of("query", "*"),
-                null, this.getAccessToken(), status().isPartialContent());
-        assertEquals(PSEUDONYM_SEARCH_RESULT_LIMIT, this.mapJsonObjectsInStringToList(response.getContentAsString(), PseudonymDTO.class).size());
+        // A wildcard search matches everything, page by page
+        JsonNode wildcardPage = this.searchPseudonymsPage(Map.of("query", "*", "page", "0", "size", "10"));
+        assertEquals(10, wildcardPage.get("items").size());
+        assertTrue(wildcardPage.get("total").asLong() >= SEARCH_PSEUDONYM_COUNT);
 
         // Searching in non-existing domains is forbidden
-        this.assertForbiddenRequest("searchPseudonymsUnknownDomain", get("/api/domains/Unknown/pseudonyms"), Map.of("query", "search"), null, this.getAccessToken());
+        this.assertForbiddenRequest("searchPseudonymsUnknownDomain", get("/api/domains/Unknown/pseudonyms"), Map.of("query", "search", "page", "0"), null, this.getAccessToken());
     }
 
     /**
@@ -128,7 +127,7 @@ public class TestsSearchServiceIT extends AssertWebRequestService {
         JsonNode firstPage = this.searchPseudonymsPage(Map.of("query", "paged-", "page", "0", "size", "10"));
         assertEquals(10, firstPage.get("items").size());
         assertEquals(25, firstPage.get("total").asLong());
-        assertFalse(firstPage.get("moreMatchesThanTotal").asBoolean());
+        assertFalse(firstPage.get("numberOfMatchesExceedsSearchLimit").asBoolean());
         JsonNode lastPage = this.searchPseudonymsPage(Map.of("query", "PAGED-", "page", "2", "size", "10"));
         assertEquals(5, lastPage.get("items").size());
 
@@ -319,17 +318,18 @@ public class TestsSearchServiceIT extends AssertWebRequestService {
     }
 
     /**
-     * Helper to search for pseudonyms in the test domain.
+     * Helper to search for pseudonyms in the test domain, matching anywhere in the values.
      *
      * @param query the search query
-     * @return the set of identifiers of the found pseudonyms
+     * @return the set of identifiers of the pseudonyms on the first page (up to 100)
      * @throws Exception forwards any internally thrown exceptions
      */
     private Set<String> searchPseudonyms(String query) throws Exception {
-        MockHttpServletResponse response = this.assertOkRequest("searchPseudonyms", get("/api/domains/" + DOMAIN + "/pseudonyms"), Map.of("query", query), null, this.getAccessToken());
+        Set<String> identifiers = new HashSet<>();
+        this.searchPseudonymsPage(Map.of("query", query, "page", "0", "size", "100", "match", "contains")).get("items")
+                .forEach(item -> identifiers.add(item.get("identifierItem").get("identifier").asString()));
 
-        return this.mapJsonObjectsInStringToList(response.getContentAsString(), PseudonymDTO.class).stream()
-                .map(p -> p.getIdentifierItem().getIdentifier()).collect(Collectors.toSet());
+        return identifiers;
     }
 
     /**
