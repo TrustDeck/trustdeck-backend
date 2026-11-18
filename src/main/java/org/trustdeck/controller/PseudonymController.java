@@ -1462,61 +1462,10 @@ public class PseudonymController {
         return responseService.ok(responseContentType, valid.toString());
     }
     
-    /**
-	 * Endpoint to search for pseudonyms.
-	 * Supports multi-word searches.
-	 * 
-	 * @param domainName the name of the domain to which the request is scoped to
-	 * @param query the search string that should be looked up 
-	 * @param responseContentType (optional) the response content type
-	 * @return <li>a <b>200-OK</b> status with the list of matching pseudonyms on 
-	 * 		   success</li>
-     *         <li>a <b>206-PARTIAL_CONTENT</b> status with a truncated result set when 
-     *         more than the maximum number of allowed results were found</li>
-     *         <li>a <b>404-NOT_FOUND</b> status when the domain cannot be found, or 
-     *         when no pseudonyms match the query</li>
-     *         <li>a <b>410-GONE</b> status when the request is not during the domain's 
-     *         validity period</li>
-	 */
-	@GetMapping(value = "/domains/{domainName}/pseudonyms", params = {"query"})
-	@PreAuthorize("isAuthenticated() and @auth.hasDomainPermission(#root, #domainName, 'pseudonym:search')")
-	@Audit
-	public ResponseEntity<?> searchPseudonyms(@PathVariable("domainName") String domainName,
-											  @RequestParam(name = "query", required = true) String query,
-											  @RequestHeader(name = "accept", required = false) String responseContentType) {
-		// Check if the domain exists and is still active
-        Domain domain = domainDBAccessService.getDomainByName(domainName);
-        if (domain == null) {
-            log.debug("The domain where the pseudonym should be searched couldn't be found.");
-            return responseService.notFound(responseContentType);
-        }
-		
-        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
-        if (domain.getValidfrom().isAfter(now) || domain.getValidto().isBefore(now)) {
-			log.debug("The domain's validity period has not yet started or has already ended, so that no pseudonyms can be retrieved from it.");
-			return responseService.gone(responseContentType);
-		}
-		
-		// Retrieve pseudonyms from the database
-		List<PseudonymDTO> pseudonyms = pseudonymDBAccessService.searchPseudonyms(query, domain.getId());
-		
-		// Evaluate result
-		if (pseudonyms == null || pseudonyms.size() == 0) {
-			log.debug("No pseudonyms for the given query string were found.");
-			return responseService.ok(responseContentType, List.of());
-		} else if (pseudonyms.size() > defaults.getPseudonym().getSearchResultLimit()) {
-			log.debug("Successfully queried the database and found more than " + defaults.getPseudonym().getSearchResultLimit() + " pseudonyms, so the result list was truncated.");
-			return responseService.partialContent(responseContentType, pseudonyms.subList(0, defaults.getPseudonym().getSearchResultLimit()));
-		} else {
-			log.debug("Successfully found " + pseudonyms.size() + " pseudonyms.");
-			return responseService.ok(responseContentType, pseudonyms);
-		}
-	}
-
 	/**
 	 * Endpoint to search one page of pseudonyms.
-	 * In contrast to the unpaged search, the database only retrieves the requested page, so that
-	 * this endpoint also works for domains with millions of pseudonyms. The matches are ordered by
+	 * The database only retrieves the requested page, so that this endpoint also works for domains
+	 * with millions of pseudonyms. The matches are ordered by
 	 * pseudonym and counted only up to a configurable limit.
 	 * 
 	 * @param domainName the name of the domain to which the request is scoped to

@@ -47,6 +47,23 @@ class CursorPageDTOTest {
 		assertEquals(cursor, cursor.replaceAll("[^A-Za-z0-9_-]", ""));
 	}
 
+	/** A cursor behind the longest pseudonym the database can store is accepted; longer input is rejected unread. */
+	@Test
+	void limitsCursorLength() {
+		// 2,704 bytes is the largest B-tree index entry, so no stored pseudonym can be longer
+		String longest = "P".repeat(2_704);
+		String cursor = CursorPageDTO.encodeCursor(longest);
+		assertEquals(3_611, cursor.length());
+		assertEquals(longest, CursorPageDTO.decodeCursor(cursor));
+
+		// Multi-byte characters take more bytes and still fit
+		String umlauts = "Ä".repeat(1_352);
+		assertEquals(umlauts, CursorPageDTO.decodeCursor(CursorPageDTO.encodeCursor(umlauts)));
+
+		assertNull(CursorPageDTO.decodeCursor(CursorPageDTO.encodeCursor("P".repeat(4_000))));
+		assertNull(CursorPageDTO.decodeCursor("A".repeat(CursorPageDTO.MAX_CURSOR_LENGTH + 1)));
+	}
+
 	/** Tokens that weren't created by the backend are rejected. */
 	@Test
 	void rejectsInvalidCursors() {

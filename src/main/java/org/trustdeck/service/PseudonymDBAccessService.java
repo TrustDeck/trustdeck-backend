@@ -22,7 +22,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.jooq.Condition;
 import org.jooq.DSLContext;
 import org.jooq.DeleteConditionStep;
-import org.jooq.Field;
 import org.jooq.Row2;
 import org.jooq.Row4;
 import org.jooq.Row8;
@@ -602,96 +601,6 @@ public class PseudonymDBAccessService {
         }
     }
     
-    /**
-     * Method to search for pseudonyms.
-     * This search supports searching in the identifier, idType, and psn-value.
-     * 
-     * @param query the search query
-     * @param domainId the id of the domain in which to search for
-     * @return a list of pseudonyms that match the search query
-     */
-    @Transactional
-    public List<PseudonymDTO> searchPseudonyms(String query, int domainId) {
-    	if (Assertion.isNullOrEmpty(query)) {
-            log.debug("Search query is empty.");
-            return null;
-        }
-    	
-    	// Allow wildcard-search with '*'
-        if (query.trim().equals("*")) {
-            List<Pseudonym> results;
-            try {
-                // Return all currently valid pseudonyms in the given domain scope
-                Field<LocalDateTime> now = DSL.currentLocalDateTime();
-
-                results = dsl.selectFrom(PSEUDONYM)
-                        .where(PSEUDONYM.DOMAINID.eq(domainId))
-                        .and(PSEUDONYM.VALIDFROM.le(now))
-                        .and(PSEUDONYM.VALIDTO.gt(now))
-                        .orderBy(PSEUDONYM.IDENTIFIER.asc(), PSEUDONYM.IDTYPE.asc())
-                        .limit(500)
-                        .fetchInto(Pseudonym.class);
-            } catch (MappingException e) {
-                log.debug("Could not map pseudonym search result.", e);
-                return null;
-            } catch (DataAccessException e) {
-                log.debug("Searching pseudonyms failed.", e);
-                return null;
-            }
-
-            // Return all currently valid pseudonyms
-            return results.stream().map(p -> new PseudonymDTO().assignPojoValues(p)).toList();
-        }
-
-        // Split query-parts on whitespaces; every part should match at least one column
-        String[] parts = query.trim().split("\\s+");
-        
-        // Built the search conditions statement
-        Condition condition = DSL.trueCondition();
-        for (String part : parts) {
-            String pattern = "%" + part + "%";
-
-            // Search across identifier, idType, and psn
-            Condition partCond = PSEUDONYM.IDENTIFIER.likeIgnoreCase(pattern)
-                .or(PSEUDONYM.IDTYPE.likeIgnoreCase(pattern))
-                .or(PSEUDONYM.PSEUDONYM_.likeIgnoreCase(pattern));
-
-            // AND-connect all search parts
-            condition = condition.and(partCond);
-        }
-
-        // Exclude pseudonyms which are not valid anymore
-        Field<LocalDateTime> now = DSL.currentLocalDateTime();
-        condition = condition.and(PSEUDONYM.VALIDFROM.le(now)).and(PSEUDONYM.VALIDTO.gt(now));
-        
-        // Only search in a domain scope
-        condition = condition.and(PSEUDONYM.DOMAINID.eq(domainId));
-
-        // Execute the search
-        List<Pseudonym> results;
-        try {
-            results = dsl.selectFrom(PSEUDONYM)
-                      .where(condition)
-                      .orderBy(PSEUDONYM.IDENTIFIER.asc(), PSEUDONYM.IDTYPE.asc())
-                      .fetchInto(Pseudonym.class);
-        } catch (MappingException e) {
-            log.debug("Could not map pseudonym search result.", e);
-            return null;
-        } catch (DataAccessException e) {
-            log.debug("Searching pseudonyms failed.", e);
-            return null;
-        }
-
-        // Evaluate the search results
-        if (results == null || results.isEmpty()) {
-            log.debug("No pseudonym matched the query \"" + query + "\".");
-            return null;
-        }
-
-        // Return the found types
-        return results.stream().map(row -> new PseudonymDTO().assignPojoValues(row)).toList();
-    }
-
     /**
      * Reads one page of all pseudonyms of a domain, ordered by pseudonym value.
      *

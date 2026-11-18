@@ -153,9 +153,6 @@ public class DefaultProperties {
         /** Whether affected pseudonyms are regenerated on update. */
         private boolean regenerateOnUpdate = true;
         
-        /** Maximum number of pseudonyms returned by a search. */
-        private int searchResultLimit = 30;
-        
         /** Maximum number of pseudonyms on one page of a paged search. */
         private int searchPageSizeLimit = 100;
         

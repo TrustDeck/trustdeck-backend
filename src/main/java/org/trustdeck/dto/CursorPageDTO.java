@@ -37,7 +37,11 @@ import lombok.NoArgsConstructor;
  * For interactive searches with page numbers and a match count, use {@link SearchResultPageDTO} instead.
  * 
  * The cursor is an opaque token: callers pass it back unchanged and must not rely on its content,
- * so that the sort key behind it can change without changing the API.
+ * so that the sort key behind it can change without changing the API. Opaque does not mean secret:
+ * the cursor is only base64url-encoded, so anyone can read and build one. That is intended. It only
+ * contains the last pseudonym value of the previous page, which the caller already received with
+ * that page, and a self-made cursor only chooses where to start within pseudonyms the caller is
+ * allowed to read anyway. It must therefore never contain secrets, such as a domain's salt.
  * 
  * @param <T> the type of the items on the page
  * @author Armin Müller
@@ -49,6 +53,17 @@ public class CursorPageDTO<T> {
 
 	/** Marks the format of the cursor content, so that a different sort key can be introduced later. */
 	private static final String CURSOR_PREFIX = "psn:";
+
+	/**
+	 * Longest accepted cursor, so that oversized input is rejected before it is decoded.
+	 * 
+	 * TrustDeck sets no explicit maximum length for pseudonyms (the column is unbounded text, and
+	 * generated pseudonyms may have up to 1,000 random characters plus prefix and check digit). The
+	 * effective limit is the database: a pseudonym is part of two unique B-tree indexes, whose entries
+	 * may be at most 2,704 bytes. A cursor therefore holds at most 4 + 2,704 = 2,708 bytes, which
+	 * base64url encodes into 3,611 characters. 4,096 leaves room on top.
+	 */
+	static final int MAX_CURSOR_LENGTH = 4096;
 
 	/** The items on this page. */
 	private List<T> items;
@@ -71,10 +86,10 @@ public class CursorPageDTO<T> {
 	 * Reads the pseudonym value a cursor continues behind.
 	 *
 	 * @param cursor the opaque cursor from a previous page
-	 * @return the pseudonym value, or {@code null} when the cursor is not valid
+	 * @return the pseudonym value, or {@code null} when the cursor is not valid or too long
 	 */
 	public static String decodeCursor(String cursor) {
-		if (cursor == null || cursor.isBlank()) {
+		if (cursor == null || cursor.isBlank() || cursor.length() > MAX_CURSOR_LENGTH) {
 			return null;
 		}
 

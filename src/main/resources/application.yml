@@ -90,7 +90,6 @@ app:
       batch-length: 50000
       batch-page-size: 1000
       regenerate-on-update: true
-      search-result-limit: 30
       search-page-size-limit: 100
       search-count-limit: 10000
     project:
