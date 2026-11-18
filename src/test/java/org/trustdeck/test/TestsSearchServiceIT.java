@@ -24,6 +24,7 @@ import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuild
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.post;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -151,6 +152,91 @@ public class TestsSearchServiceIT extends AssertWebRequestService {
         this.assertBadRequestRequest("searchPseudonymsPageTooLarge", get(pseudonymPath), Map.of("query", "*", "page", "0", "size", "101"), null, this.getAccessToken());
         this.assertBadRequestRequest("searchPseudonymsPageUnknownMatch", get(pseudonymPath), Map.of("query", "*", "page", "0", "match", "fuzzy"), null, this.getAccessToken());
         this.assertBadRequestRequest("searchPseudonymsPageShortContains", get(pseudonymPath), Map.of("query", "pa", "page", "0", "match", "contains"), null, this.getAccessToken());
+    }
+
+    /**
+     * Tests ordering the pages of a pseudonym search by the different columns and directions.
+     *
+     * @throws Exception forwards any internally thrown exceptions
+     */
+    @Test
+    @DisplayName("sortedPseudonymSearchTest")
+    public void sortedPseudonymSearchTest() throws Exception {
+        String pseudonymPath = "/api/domains/" + DOMAIN + "/pseudonyms";
+
+        // Create pseudonyms whose identifiers and ID types are ordered inversely
+        List<PseudonymDTO> pseudonyms = new ArrayList<>();
+        Map<String, String> idTypes = Map.of("sorted-a", "SORTED-Z", "sorted-b", "SORTED-Y", "sorted-c", "SORTED-X");
+        idTypes.forEach((identifier, idType) -> {
+            PseudonymDTO pseudonym = new PseudonymDTO();
+            pseudonym.setIdentifierItem(IdentifierItem.builder().identifier(identifier).idType(idType).build());
+            pseudonyms.add(pseudonym);
+        });
+        this.assertCreatedRequest("createPseudonymsForSortedSearch", post(pseudonymPath + "/batch"), null, pseudonyms, this.getAccessToken());
+
+        // Order by identifier in both directions
+        assertEquals(List.of("sorted-a", "sorted-b", "sorted-c"), this.sortedIdentifiers(Map.of("sort", "identifier")));
+        assertEquals(List.of("sorted-c", "sorted-b", "sorted-a"), this.sortedIdentifiers(Map.of("sort", "identifier", "direction", "desc")));
+
+        // Order by ID type
+        assertEquals(List.of("sorted-c", "sorted-b", "sorted-a"), this.sortedIdentifiers(Map.of("sort", "idType")));
+
+        // Order by pseudonym, which is the default
+        List<String> ascendingPseudonyms = this.sortedPseudonyms(Map.of());
+        List<String> descendingPseudonyms = this.sortedPseudonyms(Map.of("sort", "pseudonym", "direction", "DESC"));
+        assertEquals(ascendingPseudonyms.stream().sorted().toList(), ascendingPseudonyms);
+        assertEquals(ascendingPseudonyms.reversed(), descendingPseudonyms);
+
+        // Descending pages continue each other
+        List<String> pagedIdentifiers = new ArrayList<>();
+        for (int page = 0; page < 2; page++) {
+            this.searchPseudonymsPage(Map.of("query", "sorted-", "page", String.valueOf(page), "size", "2", "sort", "identifier", "direction", "desc"))
+                    .get("items").forEach(item -> pagedIdentifiers.add(item.get("identifierItem").get("identifier").asString()));
+        }
+        assertEquals(List.of("sorted-c", "sorted-b", "sorted-a"), pagedIdentifiers);
+
+        // Unknown columns and directions are rejected
+        this.assertBadRequestRequest("searchPseudonymsPageUnknownSort", get(pseudonymPath), Map.of("query", "*", "page", "0", "sort", "validFrom"), null, this.getAccessToken());
+        this.assertBadRequestRequest("searchPseudonymsPageUnknownDirection", get(pseudonymPath), Map.of("query", "*", "page", "0", "direction", "down"), null, this.getAccessToken());
+    }
+
+    /**
+     * Helper to search the sorted test pseudonyms and return their identifiers in the returned order.
+     *
+     * @param order the ordering parameters
+     * @return the identifiers in the returned order
+     * @throws Exception forwards any internally thrown exceptions
+     */
+    private List<String> sortedIdentifiers(Map<String, String> order) throws Exception {
+        List<String> identifiers = new ArrayList<>();
+        this.searchPseudonymsPage(this.sortedSearchParams(order)).get("items")
+                .forEach(item -> identifiers.add(item.get("identifierItem").get("identifier").asString()));
+        return identifiers;
+    }
+
+    /**
+     * Helper to search the sorted test pseudonyms and return their pseudonyms in the returned order.
+     *
+     * @param order the ordering parameters
+     * @return the pseudonyms in the returned order
+     * @throws Exception forwards any internally thrown exceptions
+     */
+    private List<String> sortedPseudonyms(Map<String, String> order) throws Exception {
+        List<String> values = new ArrayList<>();
+        this.searchPseudonymsPage(this.sortedSearchParams(order)).get("items").forEach(item -> values.add(item.get("psn").asString()));
+        return values;
+    }
+
+    /**
+     * Helper to combine the search for the sorted test pseudonyms with ordering parameters.
+     *
+     * @param order the ordering parameters
+     * @return all request parameters
+     */
+    private Map<String, String> sortedSearchParams(Map<String, String> order) {
+        Map<String, String> params = new HashMap<>(Map.of("query", "sorted-", "page", "0", "size", "10"));
+        params.putAll(order);
+        return params;
     }
 
     /**
