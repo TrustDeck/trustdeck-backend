@@ -35,9 +35,10 @@ import org.trustdeck.algorithms.PseudonymizationFactory;
 import org.trustdeck.algorithms.Pseudonymizer;
 import org.trustdeck.algorithms.RandomNumberPseudonymizer;
 import org.trustdeck.configuration.DefaultProperties;
-import org.trustdeck.dto.PageDTO;
+import org.trustdeck.dto.CursorPageDTO;
 import org.trustdeck.dto.PseudonymDTO;
 import org.trustdeck.dto.PseudonymUpdateDTO;
+import org.trustdeck.dto.SearchResultPageDTO;
 import org.trustdeck.jooq.generated.tables.pojos.Algorithm;
 import org.trustdeck.jooq.generated.tables.pojos.Domain;
 import org.trustdeck.model.IdentifierItem;
@@ -56,7 +57,6 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Arrays;
 import java.util.List;
 
@@ -548,13 +548,13 @@ public class PseudonymController {
 
     /**
      * This method deletes all pseudonyms in the given domain.
+     * The deletion runs as a single statement, so it is atomic: either all pseudonyms of the
+     * domain are deleted or none.
      *
      * @param domainName (required) the name of the domain the pseudonyms are in
      * @param responseContentType (optional) the response content type
      * @return	<li>a <b>204-NO_CONTENT</b> status when the deletion was
-     * 				successful</li>
-     * 			<li>a <b>206-PARTIAL_CONTENT</b> status and a list of deletion 
-     * 				results matching the input list</li>
+     * 				successful (also when the domain contained no pseudonyms)</li>
      * 			<li>a <b>404-NOT_FOUND</b> when the given domain wasn't
      * 				found</li>
      * 			<li>a <b>422-UNPROCESSABLE_ENTITY</b> status when the
@@ -573,35 +573,17 @@ public class PseudonymController {
             return responseService.notFound(responseContentType);
         }
 
-        // Retrieve the pseudonyms
-        List<PseudonymDTO> pseudonyms = domainDBAccessService.getAllPseudonymsInDomain(domainName);
-
-        // Check if anything was found
-        if (pseudonyms == null) {
-            // Something went wrong, return a 422-UNPROCESSABLE_ENTITY
-            log.error("Retrieving the pseudonyms for the deletion in the domain \"" + domainName + "\" failed.");
-            return responseService.unprocessableEntity(responseContentType);
-        } else if (pseudonyms.size() == 0) {
-            // Nothing was found. Return a 204-NO_CONTENT status.
-            log.debug("No pseudonyms were found. Nothing to delete");
-            return responseService.noContent(responseContentType);
-        }
-
-        // Perform deletion
-        List<Boolean> results = pseudonymDBAccessService.deletePseudonyms(pseudonyms, d.getId());
-        if (results != null && results.contains(true) && !results.contains(false)) {
-            // Successfully deleted the batch, return a 204-NO_CONTENT.
-            log.debug("Successfully deleted all pseudonyms from domain \"" + domainName + "\".");
-            return responseService.noContent(responseContentType);
-        } else if (results != null && results.contains(true) && results.contains(false)) {
-        	// Partially successful deletion
-        	log.debug("Partially deleted the batch of pseudonyms.");
-        	return responseService.partialContent(responseContentType, results);
-    	} else {
+        // Delete all pseudonyms of the domain at once, without loading them
+        int deleted = pseudonymDBAccessService.deleteAllPseudonymsInDomain(d.getId());
+        if (deleted < 0) {
             // Deletion was unsuccessful, return a 422-UNPROCESSABLE_ENTITY
             log.error("Deletion of the pseudonyms in domain \"" + domainName + "\" was unsuccessful.");
             return responseService.unprocessableEntity(responseContentType);
         }
+
+        // Successfully deleted the batch, return a 204-NO_CONTENT.
+        log.debug("Successfully deleted all " + deleted + " pseudonyms from domain \"" + domainName + "\".");
+        return responseService.noContent(responseContentType);
     }
 
     /**
@@ -756,12 +738,21 @@ public class PseudonymController {
     }
 
     /**
-     * This method retrieves all pseudonyms stored in the given domain.
+     * This method retrieves the pseudonyms stored in the given domain, page by page.
+     * 
+     * The pages are ordered by pseudonym value and continue with a cursor: the response contains
+     * the cursor for the next page, which is passed back unchanged to get it. The last page has
+     * no next cursor. Every page is read in the same time, however large the domain is.
+     * The response is always JSON.
      *
      * @param domainName (required) the name of the domain the pseudonyms are in
+     * @param cursor (optional) the cursor from the previous page; without it, the first page is returned
+     * @param size (optional) the maximum number of pseudonyms on the page; defaults to the configured
+     *        batch page size and is limited by the configured batch length
      * @param responseContentType (optional) the response content type
-     * @return	<li>a <b>200-OK</b> status and the <b>list of pseudonyms</b>
-     * 				when successful</li>
+     * @return	<li>a <b>200-OK</b> status and the <b>page of pseudonyms</b> with the cursor for
+     * 				the next page when successful</li>
+     * 			<li>a <b>400-BAD_REQUEST</b> when the cursor or the page size is invalid</li>
      * 			<li>a <b>404-NOT_FOUND</b> when the given domain wasn't
      * 				found</li>
      * 			<li>a <b>422-UNPROCESSABLE_ENTITY</b> status when the
@@ -771,70 +762,47 @@ public class PseudonymController {
     @PreAuthorize("isAuthenticated() and @auth.hasDomainPermission(#root, #domainName, 'pseudonym:read-batch')")
     @Audit
     public ResponseEntity<?> getPseudonymBatch(@PathVariable("domainName") String domainName,
+                                               @RequestParam(name = "cursor", required = false) String cursor,
+                                               @RequestParam(name = "size", required = false) Integer size,
                                                @RequestHeader(name = "accept", required = false) String responseContentType) {
-        // Check that the batch size isn't too big.
-        Integer count = domainDBAccessService.getAmountOfPseudonymsInDomain(domainName);
-        if (count == null) {
-            // An error during accessing the domain occurred. Maybe the domain is not in the database.
-            log.error("Couldn't count the number of pseudonyms in the domain \"" + domainName + "\".");
-            return responseService.unprocessableEntity(responseContentType);
-        } else if (count == DomainDBAccessService.DOMAIN_NOT_FOUND) {
-            // The domain wasn't found. Return an error 404-NOT_FOUND
-            log.error("Couldn't find the domain \"" + domainName + "\".");
-            return responseService.notFound(responseContentType);
-        } else if (count > defaults.getPseudonym().getBatchLength()) {
-            // The batch size exceeded the limit. Return an error 422-UNPROCESSABLE_ENTITY.
-            log.error("The domain contains too many entries. The maximum allowed batch size is: " + defaults.getPseudonym().getBatchLength());
-            return responseService.unprocessableEntity(responseContentType);
+        // Validate the page size and the cursor
+        int pageSize = size != null ? size : defaults.getPseudonym().getBatchPageSize();
+        if (pageSize < 1 || pageSize > defaults.getPseudonym().getBatchLength()) {
+            log.debug("The page size must be between 1 and " + defaults.getPseudonym().getBatchLength() + ".");
+            return responseService.badRequest(MediaType.APPLICATION_JSON_VALUE);
+        }
+
+        String afterPseudonym = null;
+        if (cursor != null) {
+            afterPseudonym = CursorPageDTO.decodeCursor(cursor);
+            if (afterPseudonym == null) {
+                log.debug("The given cursor is not valid.");
+                return responseService.badRequest(MediaType.APPLICATION_JSON_VALUE);
+            }
         }
 
         // Retrieve the domain the pseudonyms belong to
         Domain d = domainDBAccessService.getDomainByName(domainName);
         if (d == null) {
             // The domain wasn't found; return a 404-NOT_FOUND
-            log.debug("The domain where the pseudonyms should be searched couldn't be found.");
-            return responseService.notFound(responseContentType);
+            log.debug("The domain where the pseudonyms should be read couldn't be found.");
+            return responseService.notFound(MediaType.APPLICATION_JSON_VALUE);
         }
 
-        // Retrieve the pseudonyms
-        List<PseudonymDTO> pseudonyms = domainDBAccessService.getAllPseudonymsInDomain(domainName);
-
-        // Check if anything was found
-        if (pseudonyms == null) {
-            // Something went wrong
+        // Retrieve the page
+        CursorPageDTO<PseudonymDTO> result = pseudonymDBAccessService.getPseudonymPage(d, afterPseudonym, pageSize);
+        if (result == null) {
             log.error("Retrieving the pseudonyms in the domain \"" + domainName + "\" failed.");
-            return responseService.unprocessableEntity(responseContentType);
-        } else if (pseudonyms.size() == 0) {
-            // Nothing was found. Return a 200-OK status.
-            log.debug("No pseudonyms were found.");
-            return responseService.ok(responseContentType, Collections.emptyList());
+            return responseService.unprocessableEntity(MediaType.APPLICATION_JSON_VALUE);
         }
 
-        // Transform result into the desired output format
-        List<PseudonymDTO> resultAsJson = new ArrayList<>();
-        List<String> resultAsString = new ArrayList<>();
-        for (PseudonymDTO p : pseudonyms) {
-        	// Determine whether or not a reduced standard view or a complete view is requested
-            if (!authorizationService.hasDomainPermission(domainName, "complete-view")) {
-                p = p.toReducedStandardView();
-            }
-
-            // Process the DTO depending on the response`s media type
-            if (responseContentType != null && responseContentType.equals(MediaType.TEXT_PLAIN_VALUE)) {
-                resultAsString.add(p.toRepresentationString());
-            } else {
-                resultAsJson.add(p);
-            }
+        // Without the permission for the complete view, only the reduced standard view is returned
+        if (!authorizationService.hasDomainPermission(domainName, "complete-view")) {
+            result.getItems().forEach(PseudonymDTO::toReducedStandardView);
         }
 
-        // Return result
-        log.debug("Successfully retrieved all pseudonyms from domain \"" + domainName + "\".");
-
-        if (responseContentType != null && responseContentType.equals(MediaType.TEXT_PLAIN_VALUE)) {
-            return responseService.ok(responseContentType, resultAsString);
-        } else {
-            return responseService.ok(responseContentType, resultAsJson);
-        }
+        log.debug("Successfully retrieved " + result.getItems().size() + " pseudonyms from domain \"" + domainName + "\".");
+        return responseService.ok(MediaType.APPLICATION_JSON_VALUE, result);
     }
 
     /**
@@ -1494,61 +1462,10 @@ public class PseudonymController {
         return responseService.ok(responseContentType, valid.toString());
     }
     
-    /**
-	 * Endpoint to search for pseudonyms.
-	 * Supports multi-word searches.
-	 * 
-	 * @param domainName the name of the domain to which the request is scoped to
-	 * @param query the search string that should be looked up 
-	 * @param responseContentType (optional) the response content type
-	 * @return <li>a <b>200-OK</b> status with the list of matching pseudonyms on 
-	 * 		   success</li>
-     *         <li>a <b>206-PARTIAL_CONTENT</b> status with a truncated result set when 
-     *         more than the maximum number of allowed results were found</li>
-     *         <li>a <b>404-NOT_FOUND</b> status when the domain cannot be found, or 
-     *         when no pseudonyms match the query</li>
-     *         <li>a <b>410-GONE</b> status when the request is not during the domain's 
-     *         validity period</li>
-	 */
-	@GetMapping(value = "/domains/{domainName}/pseudonyms", params = {"query"})
-	@PreAuthorize("isAuthenticated() and @auth.hasDomainPermission(#root, #domainName, 'pseudonym:search')")
-	@Audit
-	public ResponseEntity<?> searchPseudonyms(@PathVariable("domainName") String domainName,
-											  @RequestParam(name = "query", required = true) String query,
-											  @RequestHeader(name = "accept", required = false) String responseContentType) {
-		// Check if the domain exists and is still active
-        Domain domain = domainDBAccessService.getDomainByName(domainName);
-        if (domain == null) {
-            log.debug("The domain where the pseudonym should be searched couldn't be found.");
-            return responseService.notFound(responseContentType);
-        }
-		
-        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
-        if (domain.getValidfrom().isAfter(now) || domain.getValidto().isBefore(now)) {
-			log.debug("The domain's validity period has not yet started or has already ended, so that no pseudonyms can be retrieved from it.");
-			return responseService.gone(responseContentType);
-		}
-		
-		// Retrieve pseudonyms from the database
-		List<PseudonymDTO> pseudonyms = pseudonymDBAccessService.searchPseudonyms(query, domain.getId());
-		
-		// Evaluate result
-		if (pseudonyms == null || pseudonyms.size() == 0) {
-			log.debug("No pseudonyms for the given query string were found.");
-			return responseService.ok(responseContentType, List.of());
-		} else if (pseudonyms.size() > defaults.getPseudonym().getSearchResultLimit()) {
-			log.debug("Successfully queried the database and found more than " + defaults.getPseudonym().getSearchResultLimit() + " pseudonyms, so the result list was truncated.");
-			return responseService.partialContent(responseContentType, pseudonyms.subList(0, defaults.getPseudonym().getSearchResultLimit()));
-		} else {
-			log.debug("Successfully found " + pseudonyms.size() + " pseudonyms.");
-			return responseService.ok(responseContentType, pseudonyms);
-		}
-	}
-
 	/**
 	 * Endpoint to search one page of pseudonyms.
-	 * In contrast to the unpaged search, the database only retrieves the requested page, so that
-	 * this endpoint also works for domains with millions of pseudonyms. The matches are ordered by
+	 * The database only retrieves the requested page, so that this endpoint also works for domains
+	 * with millions of pseudonyms. The matches are ordered by
 	 * pseudonym and counted only up to a configurable limit.
 	 * 
 	 * @param domainName the name of the domain to which the request is scoped to
@@ -1606,7 +1523,7 @@ public class PseudonymController {
 		}
 		
 		// Retrieve the page from the database
-		PageDTO<PseudonymDTO> result = pseudonymDBAccessService.searchPseudonymsPage(query, domain.getId(), contains, page, size,
+		SearchResultPageDTO<PseudonymDTO> result = pseudonymDBAccessService.searchPseudonymsPage(query, domain.getId(), contains, page, size,
 				defaults.getPseudonym().getSearchCountLimit());
 		if (result == null) {
 			log.error("Searching a page of pseudonyms in the domain \"" + domainName + "\" failed.");
