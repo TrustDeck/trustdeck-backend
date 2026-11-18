@@ -22,9 +22,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -57,14 +57,14 @@ public class TestsSearchServiceIT extends AssertWebRequestService {
     /** The abbreviation of the project that is created for every test. */
     private static final String PROJECT = "TEST";
 
-    /** The maximum number of results of a pseudonym search (see application.yml). */
-    private static final int PSEUDONYM_SEARCH_RESULT_LIMIT = 30;
+    /** The number of pseudonyms created for the search test; more than fit on one page of ten. */
+    private static final int SEARCH_PSEUDONYM_COUNT = 31;
 
     /** Used to create the type definitions and entity data. */
     private final ObjectMapper om = new ObjectMapper();
 
     /**
-     * Tests searching for pseudonyms, including multi-word and wildcard searches.
+     * Tests searching for pseudonyms, including multi-word and wildcard searches, through the paged search.
      *
      * @throws Exception forwards any internally thrown exceptions
      */
@@ -73,9 +73,9 @@ public class TestsSearchServiceIT extends AssertWebRequestService {
     public void pseudonymSearchTest() throws Exception {
         String pseudonymPath = "/api/domains/" + DOMAIN + "/pseudonyms";
 
-        // Create more pseudonyms than a search returns
+        // Create more pseudonyms than fit on one page
         List<PseudonymDTO> pseudonyms = new ArrayList<>();
-        for (int i = 1; i <= PSEUDONYM_SEARCH_RESULT_LIMIT + 1; i++) {
+        for (int i = 1; i <= SEARCH_PSEUDONYM_COUNT; i++) {
             PseudonymDTO pseudonym = new PseudonymDTO();
             pseudonym.setIdentifierItem(IdentifierItem.builder().identifier("search-" + i).idType("SEARCH-ID").build());
             pseudonyms.add(pseudonym);
@@ -95,13 +95,13 @@ public class TestsSearchServiceIT extends AssertWebRequestService {
         // No matches
         assertEquals(Set.of(), this.searchPseudonyms("nothing-to-find"));
 
-        // A wildcard search returns everything, but is truncated
-        MockHttpServletResponse response = this.assertRequestFromRequestBuilder("searchPseudonymsWildcard", get(pseudonymPath), Map.of("query", "*"),
-                null, this.getAccessToken(), status().isPartialContent());
-        assertEquals(PSEUDONYM_SEARCH_RESULT_LIMIT, this.mapJsonObjectsInStringToList(response.getContentAsString(), PseudonymDTO.class).size());
+        // A wildcard search matches everything, page by page
+        JsonNode wildcardPage = this.searchPseudonymsPage(Map.of("query", "*", "page", "0", "size", "10"));
+        assertEquals(10, wildcardPage.get("items").size());
+        assertTrue(wildcardPage.get("total").asLong() >= SEARCH_PSEUDONYM_COUNT);
 
         // Searching in non-existing domains is forbidden
-        this.assertForbiddenRequest("searchPseudonymsUnknownDomain", get("/api/domains/Unknown/pseudonyms"), Map.of("query", "search"), null, this.getAccessToken());
+        this.assertForbiddenRequest("searchPseudonymsUnknownDomain", get("/api/domains/Unknown/pseudonyms"), Map.of("query", "search", "page", "0"), null, this.getAccessToken());
     }
 
     /**
@@ -127,7 +127,7 @@ public class TestsSearchServiceIT extends AssertWebRequestService {
         JsonNode firstPage = this.searchPseudonymsPage(Map.of("query", "paged-", "page", "0", "size", "10"));
         assertEquals(10, firstPage.get("items").size());
         assertEquals(25, firstPage.get("total").asLong());
-        assertFalse(firstPage.get("moreMatchesThanTotal").asBoolean());
+        assertFalse(firstPage.get("numberOfMatchesExceedsSearchLimit").asBoolean());
         JsonNode lastPage = this.searchPseudonymsPage(Map.of("query", "PAGED-", "page", "2", "size", "10"));
         assertEquals(5, lastPage.get("items").size());
 
@@ -152,6 +152,91 @@ public class TestsSearchServiceIT extends AssertWebRequestService {
         this.assertBadRequestRequest("searchPseudonymsPageTooLarge", get(pseudonymPath), Map.of("query", "*", "page", "0", "size", "101"), null, this.getAccessToken());
         this.assertBadRequestRequest("searchPseudonymsPageUnknownMatch", get(pseudonymPath), Map.of("query", "*", "page", "0", "match", "fuzzy"), null, this.getAccessToken());
         this.assertBadRequestRequest("searchPseudonymsPageShortContains", get(pseudonymPath), Map.of("query", "pa", "page", "0", "match", "contains"), null, this.getAccessToken());
+    }
+
+    /**
+     * Tests ordering the pages of a pseudonym search by the different columns and directions.
+     *
+     * @throws Exception forwards any internally thrown exceptions
+     */
+    @Test
+    @DisplayName("sortedPseudonymSearchTest")
+    public void sortedPseudonymSearchTest() throws Exception {
+        String pseudonymPath = "/api/domains/" + DOMAIN + "/pseudonyms";
+
+        // Create pseudonyms whose identifiers and ID types are ordered inversely
+        List<PseudonymDTO> pseudonyms = new ArrayList<>();
+        Map<String, String> idTypes = Map.of("sorted-a", "SORTED-Z", "sorted-b", "SORTED-Y", "sorted-c", "SORTED-X");
+        idTypes.forEach((identifier, idType) -> {
+            PseudonymDTO pseudonym = new PseudonymDTO();
+            pseudonym.setIdentifierItem(IdentifierItem.builder().identifier(identifier).idType(idType).build());
+            pseudonyms.add(pseudonym);
+        });
+        this.assertCreatedRequest("createPseudonymsForSortedSearch", post(pseudonymPath + "/batch"), null, pseudonyms, this.getAccessToken());
+
+        // Order by identifier in both directions
+        assertEquals(List.of("sorted-a", "sorted-b", "sorted-c"), this.sortedIdentifiers(Map.of("sort", "identifier")));
+        assertEquals(List.of("sorted-c", "sorted-b", "sorted-a"), this.sortedIdentifiers(Map.of("sort", "identifier", "direction", "desc")));
+
+        // Order by ID type
+        assertEquals(List.of("sorted-c", "sorted-b", "sorted-a"), this.sortedIdentifiers(Map.of("sort", "idType")));
+
+        // Order by pseudonym, which is the default
+        List<String> ascendingPseudonyms = this.sortedPseudonyms(Map.of());
+        List<String> descendingPseudonyms = this.sortedPseudonyms(Map.of("sort", "pseudonym", "direction", "DESC"));
+        assertEquals(ascendingPseudonyms.stream().sorted().toList(), ascendingPseudonyms);
+        assertEquals(ascendingPseudonyms.reversed(), descendingPseudonyms);
+
+        // Descending pages continue each other
+        List<String> pagedIdentifiers = new ArrayList<>();
+        for (int page = 0; page < 2; page++) {
+            this.searchPseudonymsPage(Map.of("query", "sorted-", "page", String.valueOf(page), "size", "2", "sort", "identifier", "direction", "desc"))
+                    .get("items").forEach(item -> pagedIdentifiers.add(item.get("identifierItem").get("identifier").asString()));
+        }
+        assertEquals(List.of("sorted-c", "sorted-b", "sorted-a"), pagedIdentifiers);
+
+        // Unknown columns and directions are rejected
+        this.assertBadRequestRequest("searchPseudonymsPageUnknownSort", get(pseudonymPath), Map.of("query", "*", "page", "0", "sort", "validFrom"), null, this.getAccessToken());
+        this.assertBadRequestRequest("searchPseudonymsPageUnknownDirection", get(pseudonymPath), Map.of("query", "*", "page", "0", "direction", "down"), null, this.getAccessToken());
+    }
+
+    /**
+     * Helper to search the sorted test pseudonyms and return their identifiers in the returned order.
+     *
+     * @param order the ordering parameters
+     * @return the identifiers in the returned order
+     * @throws Exception forwards any internally thrown exceptions
+     */
+    private List<String> sortedIdentifiers(Map<String, String> order) throws Exception {
+        List<String> identifiers = new ArrayList<>();
+        this.searchPseudonymsPage(this.sortedSearchParams(order)).get("items")
+                .forEach(item -> identifiers.add(item.get("identifierItem").get("identifier").asString()));
+        return identifiers;
+    }
+
+    /**
+     * Helper to search the sorted test pseudonyms and return their pseudonyms in the returned order.
+     *
+     * @param order the ordering parameters
+     * @return the pseudonyms in the returned order
+     * @throws Exception forwards any internally thrown exceptions
+     */
+    private List<String> sortedPseudonyms(Map<String, String> order) throws Exception {
+        List<String> values = new ArrayList<>();
+        this.searchPseudonymsPage(this.sortedSearchParams(order)).get("items").forEach(item -> values.add(item.get("psn").asString()));
+        return values;
+    }
+
+    /**
+     * Helper to combine the search for the sorted test pseudonyms with ordering parameters.
+     *
+     * @param order the ordering parameters
+     * @return all request parameters
+     */
+    private Map<String, String> sortedSearchParams(Map<String, String> order) {
+        Map<String, String> params = new HashMap<>(Map.of("query", "sorted-", "page", "0", "size", "10"));
+        params.putAll(order);
+        return params;
     }
 
     /**
@@ -233,17 +318,18 @@ public class TestsSearchServiceIT extends AssertWebRequestService {
     }
 
     /**
-     * Helper to search for pseudonyms in the test domain.
+     * Helper to search for pseudonyms in the test domain, matching anywhere in the values.
      *
      * @param query the search query
-     * @return the set of identifiers of the found pseudonyms
+     * @return the set of identifiers of the pseudonyms on the first page (up to 100)
      * @throws Exception forwards any internally thrown exceptions
      */
     private Set<String> searchPseudonyms(String query) throws Exception {
-        MockHttpServletResponse response = this.assertOkRequest("searchPseudonyms", get("/api/domains/" + DOMAIN + "/pseudonyms"), Map.of("query", query), null, this.getAccessToken());
+        Set<String> identifiers = new HashSet<>();
+        this.searchPseudonymsPage(Map.of("query", query, "page", "0", "size", "100", "match", "contains")).get("items")
+                .forEach(item -> identifiers.add(item.get("identifierItem").get("identifier").asString()));
 
-        return this.mapJsonObjectsInStringToList(response.getContentAsString(), PseudonymDTO.class).stream()
-                .map(p -> p.getIdentifierItem().getIdentifier()).collect(Collectors.toSet());
+        return identifiers;
     }
 
     /**
