@@ -42,7 +42,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.trustdeck.dto.EntityDTO;
 import org.trustdeck.dto.EntityTypeDTO;
-import org.trustdeck.dto.PageDTO;
+import org.trustdeck.dto.SearchResultPageDTO;
 import org.trustdeck.exception.CreationException;
 import org.trustdeck.exception.DuplicateEntityException;
 import org.trustdeck.exception.TooManyRecordLinkageCandidatesException;
@@ -593,7 +593,7 @@ public class EntityDBService {
      *         more entities match than the count limit
      */
     @Transactional(readOnly = true)
-    public PageDTO<EntityDTO> searchEntitiesPage(EntityTypeDTO entityType, String query, boolean contains, EntitySort sort,
+    public SearchResultPageDTO<EntityDTO> searchEntitiesPage(EntityTypeDTO entityType, String query, boolean contains, EntitySort sort,
     		int page, int size, int countLimit) throws UnindexedSortException {
     	String trimmed = query == null ? "" : query.trim();
     	boolean matchAll = trimmed.isEmpty() || trimmed.equals("*");
@@ -614,10 +614,10 @@ public class EntityDBService {
     				.from(ENTITY)
     				.where(condition)
     				.limit(countLimit + 1));
-    		boolean moreMatchesThanTotal = counted > countLimit;
+    		boolean numberOfMatchesExceedsSearchLimit = counted > countLimit;
     		
     		// Without an index, the database would have to sort all matches
-    		if (sort.key() == EntitySort.Key.ATTRIBUTE && !sort.attribute().sortIndex() && moreMatchesThanTotal) {
+    		if (sort.key() == EntitySort.Key.ATTRIBUTE && !sort.attribute().sortIndex() && numberOfMatchesExceedsSearchLimit) {
     			throw new UnindexedSortException(sort.attribute().path(), countLimit);
     		}
     		
@@ -669,7 +669,7 @@ public class EntityDBService {
     			return dto;
     		}).toList();
     		
-    		return new PageDTO<>(items, page, size, moreMatchesThanTotal ? countLimit : counted, moreMatchesThanTotal);
+    		return new SearchResultPageDTO<>(items, page, size, numberOfMatchesExceedsSearchLimit ? countLimit : counted, numberOfMatchesExceedsSearchLimit);
     	} catch (MappingException | JacksonException e) {
     		log.debug("Could not map the entity search result.", e);
     		return null;

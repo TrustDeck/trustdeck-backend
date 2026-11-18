@@ -123,7 +123,7 @@ public class TestsEntityPagedSearchServiceIT extends AssertWebRequestService {
         JsonNode first = this.searchPage(Map.of("query", "*", "page", "0", "size", "10"));
         assertEquals(10, first.get("items").size());
         assertEquals(25, first.get("total").asLong());
-        assertFalse(first.get("moreMatchesThanTotal").asBoolean());
+        assertFalse(first.get("numberOfMatchesExceedsSearchLimit").asBoolean());
         assertEquals(10, first.get("size").asInt());
         Set<String> seen = new HashSet<>();
         for (int page = 0; page < 3; page++) {
@@ -277,7 +277,7 @@ public class TestsEntityPagedSearchServiceIT extends AssertWebRequestService {
             // Indexed and fixed keys are allowed; the total stops at the count limit
             JsonNode byCity = this.searchPage(Map.of("query", "*", "page", "0", "sort", "attribute:address.city", "direction", "desc"));
             assertEquals(3, byCity.get("total").asLong());
-            assertTrue(byCity.get("moreMatchesThanTotal").asBoolean());
+            assertTrue(byCity.get("numberOfMatchesExceedsSearchLimit").asBoolean());
             assertEquals(5, byCity.get("items").size());
             assertEquals("City5", byCity.get("items").get(0).get("data").get("address").get("city").asString());
             assertEquals(created, this.ids(Map.of("query", "*", "sort", "createdAt")));

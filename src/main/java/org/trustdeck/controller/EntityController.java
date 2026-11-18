@@ -44,10 +44,10 @@ import org.trustdeck.dto.DomainDTO;
 import org.trustdeck.dto.EntityDTO;
 import org.trustdeck.configuration.DefaultProperties;
 import org.trustdeck.dto.EntityTypeDTO;
-import org.trustdeck.dto.PageDTO;
 import org.trustdeck.dto.ProjectDTO;
 import org.trustdeck.dto.PseudonymDTO;
 import org.trustdeck.dto.RecordLinkageCandidateDTO;
+import org.trustdeck.dto.SearchResultPageDTO;
 import org.trustdeck.exception.DuplicateEntityException;
 import org.trustdeck.exception.TooManyRecordLinkageCandidatesException;
 import org.trustdeck.exception.UnexpectedResultSizeException;
@@ -717,7 +717,7 @@ public class EntityController {
 		}
 		
 		// Retrieve the page from the database
-		PageDTO<EntityDTO> result;
+		SearchResultPageDTO<EntityDTO> result;
 		try {
 			result = entityDBService.searchEntitiesPage(entityType, query, contains, entitySort, page, size,
 					defaults.getEntity().getSearchCountLimit());

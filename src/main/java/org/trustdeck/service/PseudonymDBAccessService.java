@@ -22,6 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jooq.Condition;
 import org.jooq.DSLContext;
 import org.jooq.DeleteConditionStep;
+import org.jooq.Field;
 import org.jooq.Row2;
 import org.jooq.Row4;
 import org.jooq.Row8;
