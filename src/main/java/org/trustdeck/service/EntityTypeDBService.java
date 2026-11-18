@@ -76,6 +76,14 @@ public class EntityTypeDBService {
 	private final ApplicationEventPublisher eventPublisher;
 	
 	/**
+	 * Published when an entity type was created or its type definition was updated.
+	 *
+	 * @param entityTypeId the ID of the created or updated entity type
+	 */
+	public record EntityTypeDefinitionChangedEvent(int entityTypeId) {
+	}
+	
+	/**
      * Method to insert a new entity type into the database.
      * 
      * @param entityTypeDTO the entity type data transfer object containing the necessary data

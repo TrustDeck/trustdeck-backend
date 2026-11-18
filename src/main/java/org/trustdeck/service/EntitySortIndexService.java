@@ -46,6 +46,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 import org.trustdeck.model.SortableAttribute;
+import org.trustdeck.service.EntityTypeDBService.EntityTypeDefinitionChangedEvent;
 
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
@@ -78,8 +79,8 @@ public class EntitySortIndexService {
 	/** The suffix of the name of the index for sorting in descending order. */
 	private static final String DESCENDING_SUFFIX = "_desc";
 
-	/** The elements allowed in the path to an attribute value (the meta schema's attribute names and array indexes). */
-	private static final Pattern PATH_ELEMENT = Pattern.compile("^[a-zA-Z0-9_-]+$");
+	/** The characters allowed in a part of the path to an attribute value (the meta schema's attribute names and array indexes). */
+	private static final Pattern ALLOWED_PATH_CHARS = Pattern.compile("^[a-zA-Z0-9_-]+$");
 
 	/** The column containing the entity data. Unqualified, so that the expression is the same in queries and index definitions. */
 	private static final Field<JSONB> DATA = DSL.field(DSL.name("data"), SQLDataType.JSONB);
@@ -121,25 +122,32 @@ public class EntitySortIndexService {
 	 * Numbers are compared numerically (values that are not JSON numbers sort like missing values);
 	 * all other values as text, which sorts the ISO formatted dates and date-times chronologically.
 	 *
+	 * The expression is PostgreSQL-specific: it uses the JSONB path operators {@code #>} and
+	 * {@code #>>}, {@code jsonb_typeof}, and the {@code ::numeric} cast.
+	 *
 	 * @param attribute the attribute to sort by
 	 * @return the sort expression
 	 * @throws IllegalArgumentException when the attribute's path contains characters that the
 	 *         meta schema does not allow in attribute names
 	 */
 	public static Field<?> sortExpression(SortableAttribute attribute) {
-		// The path elements come from the validated type definition; check them anyway, as they are inlined
-		for (String element : attribute.jsonPath()) {
-			if (!PATH_ELEMENT.matcher(element).matches()) {
+		// The path parts come from the validated type definition; check them anyway, as they are inlined
+		for (String pathPart : attribute.jsonPath()) {
+			if (!ALLOWED_PATH_CHARS.matcher(pathPart).matches()) {
 				throw new IllegalArgumentException("The attribute path \"" + attribute.path() + "\" contains invalid characters.");
 			}
 		}
+
+		// Write the path as a PostgreSQL text array literal, e.g. {"address","city"}, which the JSONB path operators expect
 		Field<String> path = DSL.inline(attribute.jsonPath().stream().map(e -> "\"" + e + "\"").collect(Collectors.joining(",", "{", "}")));
 
+		// Numeric attributes: the value as a number if it is a JSON number, otherwise NULL, so that it sorts like a missing value
 		if (attribute.isNumeric()) {
 			return DSL.field("(CASE WHEN jsonb_typeof({0} #> {1}) = {2} THEN ({0} #>> {1})::numeric END)", SQLDataType.NUMERIC,
 					DATA, path, DSL.inline("number"));
 		}
 
+		// All other attributes: the value as text
 		return DSL.field("({0} #>> {1})", SQLDataType.CLOB, DATA, path);
 	}
 
@@ -161,6 +169,7 @@ public class EntitySortIndexService {
 				return null;
 			}
 
+			// A derived type inherits the attributes of its base type, so read the base type's definition as well
 			if (type.value2() != null) {
 				baseDefinition = dsl.select(ENTITY_TYPE.TYPE_DEFINITION)
 						.from(ENTITY_TYPE)
@@ -172,6 +181,7 @@ public class EntitySortIndexService {
 			return null;
 		}
 
+		// Collect the sortable attributes from both definitions
 		try {
 			return jsonSchemaService.resolveSortableAttributes(toJsonNode(type.value1()), toJsonNode(baseDefinition));
 		} catch (JacksonException e) {
@@ -279,16 +289,8 @@ public class EntitySortIndexService {
 		}
 
 		// Read the sort indexes the partition has
-		Map<String, Boolean> existing;
-		try {
-			existing = dsl.select(DSL.field("c.relname", String.class), DSL.field("i.indisvalid", Boolean.class))
-					.from(DSL.table("pg_index i"))
-					.join(DSL.table("pg_class c")).on(DSL.condition("c.oid = i.indexrelid"))
-					.where(DSL.condition("i.indrelid = to_regclass({0})", DSL.val("public." + partition)))
-					.and(DSL.condition("starts_with(c.relname, {0})", DSL.val(partition + INDEX_NAME_INFIX)))
-					.fetchMap(DSL.field("c.relname", String.class), DSL.field("i.indisvalid", Boolean.class));
-		} catch (DataAccessException e) {
-			log.error("Reading the sort indexes of the partition " + partition + " failed.", e);
+		Map<String, Boolean> existing = readExistingSortIndexes(partition);
+		if (existing == null) {
 			return false;
 		}
 
@@ -297,8 +299,7 @@ public class EntitySortIndexService {
 		// Drop the indexes that are no longer wanted, and the invalid ones, which are rebuilt below
 		for (Map.Entry<String, Boolean> index : existing.entrySet()) {
 			if (!wanted.containsKey(index.getKey()) || !index.getValue()) {
-				success &= execute("DROP INDEX CONCURRENTLY IF EXISTS " + quote("public") + "." + quote(index.getKey()),
-						"Dropping the sort index " + index.getKey());
+				success &= execute(dropIndexStatement(index.getKey()), "Dropping the sort index " + index.getKey());
 			}
 		}
 
@@ -339,7 +340,45 @@ public class EntitySortIndexService {
 	}
 
 	/**
+	 * Reads the sort indexes a partition has, together with whether each one is valid.
+	 *
+	 * The query is PostgreSQL-specific: it reads the system catalogs {@code pg_index} and
+	 * {@code pg_class} and uses {@code to_regclass} and {@code starts_with}.
+	 *
+	 * @param partition the name of the partition
+	 * @return whether each sort index is valid, keyed by the index name, or {@code null} when reading failed
+	 */
+	private Map<String, Boolean> readExistingSortIndexes(String partition) {
+		try {
+			return dsl.select(DSL.field("c.relname", String.class), DSL.field("i.indisvalid", Boolean.class))
+					.from(DSL.table("pg_index i"))
+					.join(DSL.table("pg_class c")).on(DSL.condition("c.oid = i.indexrelid"))
+					.where(DSL.condition("i.indrelid = to_regclass({0})", DSL.val("public." + partition)))
+					.and(DSL.condition("starts_with(c.relname, {0})", DSL.val(partition + INDEX_NAME_INFIX)))
+					.fetchMap(DSL.field("c.relname", String.class), DSL.field("i.indisvalid", Boolean.class));
+		} catch (DataAccessException e) {
+			log.error("Reading the sort indexes of the partition " + partition + " failed.", e);
+			return null;
+		}
+	}
+
+	/**
+	 * Builds the statement that drops a sort index without blocking reads and writes on the partition.
+	 *
+	 * The statement is PostgreSQL-specific ({@code DROP INDEX CONCURRENTLY}).
+	 *
+	 * @param name the index name
+	 * @return the statement
+	 */
+	private static String dropIndexStatement(String name) {
+		return "DROP INDEX CONCURRENTLY IF EXISTS " + quote("public") + "." + quote(name);
+	}
+
+	/**
 	 * Builds the statement that creates a sort index.
+	 *
+	 * The statement is PostgreSQL-specific: {@code CREATE INDEX CONCURRENTLY} builds the index without
+	 * blocking writes, and the {@code WHERE} clause makes it a partial index of the entities that are not deleted.
 	 *
 	 * @param name the index name
 	 * @param partition the name of the partition

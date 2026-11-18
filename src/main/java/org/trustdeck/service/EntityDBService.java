@@ -626,8 +626,7 @@ public class EntityDBService {
     		List<Entity> rows;
     		if (sort.key() == EntitySort.Key.RELEVANCE) {
     			// Rank only the first matches up to the count limit, so that a page never ranks all matches
-    			Field<Float> rank = rankLexemes.isEmpty() ? DSL.inline(0f) 
-    					: DSL.field("ts_rank({0}, {1}::tsquery)", Float.class, ENTITY.FULL_TEXT_SEARCH_VECTOR, DSL.val(toPrefixTsQuery(rankLexemes)));
+    			Field<Float> rank = rankExpression(rankLexemes);
     			Table<?> matches = dsl.select(ENTITY.ID, rank.as("rank"))
     					.from(ENTITY)
     					.where(condition)
@@ -697,9 +696,7 @@ public class EntityDBService {
     	boolean anyPartUsable = false;
     	for (String part : parts) {
     		// Split the part into words like the stored values, so that e.g. "Meier-Schmidt" finds "Meier-Schmidt"
-    		String[] lexemes = dsl.select(DSL.field("tsvector_to_array(to_tsvector('simple'::regconfig, {0}))", String[].class, DSL.val(part)))
-    				.fetchOne(0, String[].class);
-    		List<String> words = lexemes == null ? List.of() : List.of(lexemes);
+    		List<String> words = splitIntoWords(part);
     		rankLexemes.addAll(words);
     		
     		Condition partCondition;
@@ -708,7 +705,7 @@ public class EntityDBService {
     			String escaped = part.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     			partCondition = ENTITY.DATA_TEXT.likeIgnoreCase("%" + escaped + "%", likeEscape);
     		} else if (!words.isEmpty()) {
-    			partCondition = DSL.condition("{0} @@ {1}::tsquery", ENTITY.FULL_TEXT_SEARCH_VECTOR, DSL.val(toPrefixTsQuery(words)));
+    			partCondition = containsWordsBeginningWith(words);
     		} else {
     			partCondition = null;
     		}
@@ -731,7 +728,54 @@ public class EntityDBService {
     }
     
     /**
+     * Splits a search term into words the same way the full text search vector of the entities was built.
+     * 
+     * The query is PostgreSQL-specific: it uses {@code to_tsvector} with the "simple" text search
+     * configuration and {@code tsvector_to_array}.
+     * 
+     * @param term the search term
+     * @return the words (lexemes) of the term, empty when it contains none
+     * @throws DataAccessException when the database could not split the term
+     */
+    private List<String> splitIntoWords(String term) throws DataAccessException {
+    	String[] lexemes = dsl.select(DSL.field("tsvector_to_array(to_tsvector('simple'::regconfig, {0}))", String[].class, DSL.val(term)))
+    			.fetchOne(0, String[].class);
+    	return lexemes == null ? List.of() : List.of(lexemes);
+    }
+    
+    /**
+     * Builds the condition that an entity contains words beginning with all the given words.
+     * 
+     * The condition is PostgreSQL-specific: it matches the full text search vector against a
+     * {@code tsquery} with the {@code @@} operator.
+     * 
+     * @param words the words (lexemes) of the "simple" text search configuration
+     * @return the condition
+     */
+    private static Condition containsWordsBeginningWith(List<String> words) {
+    	return DSL.condition("{0} @@ {1}::tsquery", ENTITY.FULL_TEXT_SEARCH_VECTOR, DSL.val(toPrefixTsQuery(words)));
+    }
+    
+    /**
+     * Builds the expression that ranks the entities by how well they match the given words.
+     * 
+     * The expression is PostgreSQL-specific: it uses {@code ts_rank} on the full text search vector.
+     * 
+     * @param words the words (lexemes) of all parts of the query
+     * @return the rank expression, or a constant 0 when there are no words to rank by
+     */
+    private static Field<Float> rankExpression(List<String> words) {
+    	if (words.isEmpty()) {
+    		return DSL.inline(0f);
+    	}
+    	
+    	return DSL.field("ts_rank({0}, {1}::tsquery)", Float.class, ENTITY.FULL_TEXT_SEARCH_VECTOR, DSL.val(toPrefixTsQuery(words)));
+    }
+    
+    /**
      * Builds a full text query that matches entities containing words beginning with all the given words.
+     * 
+     * The result uses PostgreSQL's {@code tsquery} syntax ({@code :*} for prefixes, {@code &} for "and").
      * 
      * @param words the words (lexemes) of the "simple" text search configuration
      * @return the full text query, e.g. {@code 'erika':* & 'muster':*}
