@@ -28,6 +28,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -39,6 +40,7 @@ import org.springframework.stereotype.Service;
 import org.trustdeck.linkage.model.EntityLinkageConfig;
 import org.trustdeck.linkage.model.LinkageFieldRule;
 import org.trustdeck.linkage.model.PPRLConfig;
+import org.trustdeck.model.SortableAttribute;
 import org.trustdeck.utils.LRUCache;
 
 import tools.jackson.core.JacksonException;
@@ -539,6 +541,97 @@ public class JsonSchemaService {
 		}
 
 		return resolvedRules;
+	}
+	
+	/**
+	 * Resolves the scalar attributes of a type definition by which entity searches can be sorted.
+	 * Attributes of the base type are included, and the project-specific definition of an
+	 * attribute takes precedence over the base type's. The {@code sortIndex} flag is inherited from
+	 * the base type's attribute unless the project-specific attribute sets it itself.
+	 * 
+	 * @param typeDefinition the (project-specific) type definition
+	 * @param baseDefinition the optional definition of the base type
+	 * @return the sortable attributes keyed by their path (e.g. {@code address.city})
+	 */
+	public Map<String, SortableAttribute> resolveSortableAttributes(JsonNode typeDefinition, JsonNode baseDefinition) {
+		Map<String, SortableAttribute> baseAttributes = new LinkedHashMap<>();
+		if (baseDefinition != null) {
+			collectSortableAttributes(baseDefinition.get("attributes"), "", List.of(), baseAttributes, new HashSet<>());
+		}
+		
+		Map<String, SortableAttribute> attributes = new LinkedHashMap<>();
+		Set<String> flaggedExplicitly = new HashSet<>();
+		if (typeDefinition != null) {
+			collectSortableAttributes(typeDefinition.get("attributes"), "", List.of(), attributes, flaggedExplicitly);
+		}
+		
+		// Inherit the sort index flag and the base type's attributes that the project-specific type does not define
+		Map<String, SortableAttribute> resolved = new LinkedHashMap<>();
+		for (SortableAttribute attribute : attributes.values()) {
+			SortableAttribute base = baseAttributes.get(attribute.path());
+			boolean sortIndex = flaggedExplicitly.contains(attribute.path()) ? attribute.sortIndex() : base != null && base.sortIndex();
+			resolved.put(attribute.path(), new SortableAttribute(attribute.path(), attribute.type(), attribute.jsonPath(), sortIndex));
+		}
+		for (SortableAttribute base : baseAttributes.values()) {
+			resolved.putIfAbsent(base.path(), base);
+		}
+		
+		return resolved;
+	}
+	
+	/**
+	 * Recursively collects the leaf attributes of a definition subtree as sortable attributes.
+	 * 
+	 * @param attributes the array of attribute definition nodes to inspect
+	 * @param currentPath the path created from the enclosing named groups
+	 * @param currentJsonPath the path to the enclosing object in the stored entity data
+	 * @param target the map that receives the collected attributes, keyed by their path
+	 * @param flaggedExplicitly receives the paths of the attributes that set {@code sortIndex} themselves
+	 */
+	private void collectSortableAttributes(JsonNode attributes, String currentPath, List<String> currentJsonPath,
+			Map<String, SortableAttribute> target, Set<String> flaggedExplicitly) {
+		if (attributes == null || !attributes.isArray()) {
+			return;
+		}
+		
+		for (JsonNode node : attributes) {
+			boolean repeatable = node.path("repeatable").asBoolean(false);
+			
+			if (isContainerNode(node)) {
+				// Only named groups add a level to the path and to the stored data; rows and columns are layout only
+				if (!isNamedGroup(node)) {
+					collectSortableAttributes(node.get("attributes"), currentPath, currentJsonPath, target, flaggedExplicitly);
+					continue;
+				}
+				
+				// Repeatable groups store an array of objects; sort by the first one
+				String name = node.get("name").asString();
+				List<String> groupJsonPath = new ArrayList<>(currentJsonPath);
+				groupJsonPath.add(name);
+				if (repeatable) {
+					groupJsonPath.add("0");
+				}
+				
+				collectSortableAttributes(node.get("attributes"), appendPath(currentPath, name), List.copyOf(groupJsonPath), target, flaggedExplicitly);
+				continue;
+			}
+			
+			// Repeatable leaf attributes store an array of values; sort by the first one
+			String name = node.get("name").asString();
+			List<String> jsonPath = new ArrayList<>(currentJsonPath);
+			jsonPath.add(name);
+			if (repeatable) {
+				jsonPath.add("0");
+			}
+			
+			String path = appendPath(currentPath, name);
+			if (node.has("sortIndex")) {
+				flaggedExplicitly.add(path);
+			}
+			
+			target.put(path, new SortableAttribute(path, node.path("type").asString("string"), List.copyOf(jsonPath),
+					node.path("sortIndex").asBoolean(false)));
+		}
 	}
 	
 	/**

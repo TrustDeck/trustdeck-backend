@@ -711,6 +711,34 @@ CREATE UNIQUE INDEX entity_uq_type_sha256 ON ONLY public.entity USING btree (pro
 
 
 --
+-- Name: entity_created_at_idx; Type: INDEX; Schema: public; Owner: trustdeck-manager
+--
+
+CREATE INDEX entity_created_at_idx ON public.entity USING btree (entity_type_id, created_at, id) WHERE (is_deleted = false);
+
+
+--
+-- Name: entity_data_text_trgm_idx; Type: INDEX; Schema: public; Owner: trustdeck-manager
+--
+
+CREATE INDEX entity_data_text_trgm_idx ON public.entity USING gin (data_text public.gin_trgm_ops) WHERE (is_deleted = false);
+
+
+--
+-- Name: entity_fts_idx; Type: INDEX; Schema: public; Owner: trustdeck-manager
+--
+
+CREATE INDEX entity_fts_idx ON public.entity USING gin (full_text_search_vector) WHERE (is_deleted = false);
+
+
+--
+-- Name: entity_updated_at_idx; Type: INDEX; Schema: public; Owner: trustdeck-manager
+--
+
+CREATE INDEX entity_updated_at_idx ON public.entity USING btree (entity_type_id, updated_at, id) WHERE (is_deleted = false);
+
+
+--
 -- Name: entity_type_fts_idx; Type: INDEX; Schema: public; Owner: trustdeck-manager
 --
 

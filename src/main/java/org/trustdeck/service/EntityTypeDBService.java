@@ -28,6 +28,7 @@ import org.jooq.JSONB;
 import org.jooq.exception.DataAccessException;
 import org.jooq.exception.MappingException;
 import org.jooq.impl.DSL;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.trustdeck.dto.EntityTypeDTO;
@@ -70,6 +71,17 @@ public class EntityTypeDBService {
 	
 	/** Enables access to the mapper to transform JsonNode into JSONB and back. */
 	private final ObjectMapper objectMapper;
+	
+	/** Announces changed type definitions, so that the sort indexes are synchronized after the commit. */
+	private final ApplicationEventPublisher eventPublisher;
+	
+	/**
+	 * Published when an entity type was created or its type definition was updated.
+	 *
+	 * @param entityTypeId the ID of the created or updated entity type
+	 */
+	public record EntityTypeDefinitionChangedEvent(int entityTypeId) {
+	}
 	
 	/**
      * Method to insert a new entity type into the database.
@@ -119,6 +131,9 @@ public class EntityTypeDBService {
 		    	throw new CreationException(e.getMessage());
 	    	}
 	    }
+	    
+	    // Create the sort indexes the definition asks for once the type is committed
+	    eventPublisher.publishEvent(new EntityTypeDefinitionChangedEvent(createdEntityType.getId()));
 	    
 	    // Return the entity type
         log.debug("Creating the entity type \"" + entityTypeDTO.getName() + "\" was successful.");
@@ -386,6 +401,9 @@ public class EntityTypeDBService {
 	    	log.error("Updating the entity type failed.", e);
 	    	return null;
 	    }
+	    
+	    // Synchronize the sort indexes with the definition once the update is committed
+	    eventPublisher.publishEvent(new EntityTypeDefinitionChangedEvent(updatedRecord.getId()));
 	    
 	    // Return the entity type
         log.debug("Updating the entity type \"" + updatedRecord.getName() + "\" was successful.");
