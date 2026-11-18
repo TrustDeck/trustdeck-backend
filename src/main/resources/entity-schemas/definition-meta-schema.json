@@ -129,6 +129,9 @@
         "repeatable": {
           "type": "boolean"
         },
+        "sortIndex": {
+          "type": "boolean"
+        },
         "minimum": {
           "type": "number"
         },

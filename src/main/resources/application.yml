@@ -92,6 +92,9 @@ app:
       regenerate-on-update: true
       search-page-size-limit: 100
       search-count-limit: 10000
+    entity:
+      search-page-size-limit: 100
+      search-count-limit: 10000
     project:
       validity-years: 10
       store-entities: true
