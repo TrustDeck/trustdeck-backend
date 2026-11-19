@@ -12,7 +12,9 @@ RUN dnf install --installroot /mnt/rootfs curl --releasever 9 --setopt install_w
     rpm --root /mnt/rootfs -e --nodeps setup
 
 # Start creating standard keycloak and copy the curl installation into the standard image
-FROM quay.io/keycloak/keycloak:latest
+# Pin the version: a new Keycloak version can change behavior (e.g. 26.8.2 requires the
+# kc-admin-api client scope for the admin API), so upgrades should be deliberate.
+FROM quay.io/keycloak/keycloak:26.8.2
 COPY --from=ubi-micro-build /mnt/rootfs /
 
 # Copy every repository-provided Keycloak theme into the standard theme directory.

@@ -151,8 +151,8 @@ public class PermissionController {
         try {
         	users = keycloakService.searchUsers(query, resultLimit + 1);
         } catch (WebApplicationException e) {
-        	log.error("Searching users in Keycloak failed with HTTP status " + e.getResponse().getStatus()
-        			+ ". Check the realm-management roles (query-users, view-users) of TrustDeck's service account.", e);
+        	int status = e.getResponse().getStatus();
+        	log.error("Searching users in Keycloak failed with HTTP status " + status + "." + KeycloakService.adminApiErrorHint(status), e);
         	return responseService.internalServerError(responseContentType);
         } catch (ProcessingException e) {
         	log.error("Searching users in Keycloak failed, since Keycloak could not be reached or answered unexpectedly.", e);
