@@ -108,6 +108,55 @@ wait_for_healthy() {
   return 1
 }
 
+# Gives the TrustDeck client the client scope "kc-admin-api". Since Keycloak 26.8.2, the admin API
+# only accepts tokens carrying its audience, which this scope adds; without it, the user search in
+# the permission management fails with 401. Runs on every start and changes nothing if the scope
+# is already assigned or does not exist (Keycloak before 26.8.2). Failures only produce a warning.
+ensure_admin_api_scope() {
+  local server="$1"
+  local realm="${KEYCLOAK_REALM_NAME:-}"
+  local client="${KEYCLOAK_CLIENT_ID:-trustdeck}"
+  local config="/tmp/kcadm-trustdeck.config"
+
+  if [[ -z "$realm" || -z "${KEYCLOAK_ADMIN_USER:-}" || -z "${KEYCLOAK_ADMIN_PASSWORD:-}" ]]; then
+    echo "WARNING: KEYCLOAK_REALM_NAME or the Keycloak admin credentials are not set; skipping the kc-admin-api client scope check."
+    return 0
+  fi
+
+  # kcadm reads the password from KC_CLI_PASSWORD, so it does not appear in the process list
+  kcadm() {
+    KC_CLI_PASSWORD="$KEYCLOAK_ADMIN_PASSWORD" $SUDO_DOCKER docker exec -e KC_CLI_PASSWORD "$KEYCLOAK_CONTAINER" \
+      /opt/keycloak/bin/kcadm.sh "$@" --config "$config"
+  }
+
+  echo "Checking the kc-admin-api client scope of the client '$client' in the realm '$realm' ..."
+  if ! kcadm config credentials --server "$server" --realm master --user "$KEYCLOAK_ADMIN_USER" >/dev/null 2>&1; then
+    echo "WARNING: Could not log in to Keycloak as '$KEYCLOAK_ADMIN_USER'. If the user search fails with 401, add the"
+    echo "         client scope 'kc-admin-api' to the client '$client' as a default scope in the Keycloak admin console."
+    return 0
+  fi
+
+  local scope_id client_id
+  scope_id="$(kcadm get client-scopes -r "$realm" --fields id,name --format csv --noquotes 2>/dev/null \
+    | awk -F, '$2 == "kc-admin-api" {print $1}')"
+  client_id="$(kcadm get clients -r "$realm" -q clientId="$client" --fields id --format csv --noquotes 2>/dev/null | head -n 1)"
+
+  if [[ -z "$scope_id" ]]; then
+    echo "The client scope 'kc-admin-api' does not exist in this Keycloak version; nothing to do."
+  elif [[ -z "$client_id" ]]; then
+    echo "WARNING: The client '$client' was not found in the realm '$realm'."
+  elif kcadm get "clients/$client_id/default-client-scopes" -r "$realm" --fields name --format csv --noquotes 2>/dev/null \
+      | grep -qx "kc-admin-api"; then
+    echo "The client '$client' already has the client scope 'kc-admin-api'."
+  elif kcadm update "clients/$client_id/default-client-scopes/$scope_id" -r "$realm" >/dev/null 2>&1; then
+    echo "Added the client scope 'kc-admin-api' to the client '$client'."
+  else
+    echo "WARNING: Could not add the client scope 'kc-admin-api' to the client '$client'; add it in the Keycloak admin console."
+  fi
+
+  $SUDO_DOCKER docker exec "$KEYCLOAK_CONTAINER" rm -f "$config" >/dev/null 2>&1 || true
+}
+
 wait_for_host_port() {
   local host="$1"
   local port="$2"
@@ -235,6 +284,7 @@ start_dev() {
   # Wait for DB + Keycloak to be ready
   wait_for_healthy "$POSTGRES_CONTAINER"
   wait_for_healthy "$KEYCLOAK_CONTAINER"
+  ensure_admin_api_scope "http://localhost:8080"
 
   echo "Running backend via Maven ..."
 
@@ -271,6 +321,7 @@ start_prod() {
     up -d --build "$KEYCLOAK_CONTAINER"
 
   wait_for_healthy "$KEYCLOAK_CONTAINER"
+  ensure_admin_api_scope "http://localhost:8081${KEYCLOAK_RELATIVE_PATH:-}"
 
   echo "Building/recreating TrustDeck backend container with the freshly generated JAR ..."
   $SUDO_DOCKER docker compose \

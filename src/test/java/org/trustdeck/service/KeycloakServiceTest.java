@@ -365,4 +365,12 @@ class KeycloakServiceTest {
         
         return resource;
     }
+
+	/** A 401 points to the kc-admin-api client scope, a 403 to the roles, other statuses add no hint. */
+	@Test
+	void explainsFailedAdminApiCalls() {
+		assertTrue(KeycloakService.adminApiErrorHint(401).contains("kc-admin-api"));
+		assertTrue(KeycloakService.adminApiErrorHint(403).contains("realm-management roles"));
+		assertEquals("", KeycloakService.adminApiErrorHint(500));
+	}
 }

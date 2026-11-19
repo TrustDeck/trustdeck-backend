@@ -1,6 +1,6 @@
 # TrustDeck - Open-Source Tools for Identity Management in Translational Medicine
 
-[![Version](https://img.shields.io/badge/version-v2.9.1-green)](https://github.com/TrustDeck/trustdeck-backend/releases/tag/v2.9.1)
+[![Version](https://img.shields.io/badge/version-v2.9.2-green)](https://github.com/TrustDeck/trustdeck-backend/releases/tag/v2.9.2)
 [![License](https://img.shields.io/badge/License-Apache_2.0-green)](https://github.com/TrustDeck/trustdeck-backend/blob/main/LICENSE)
 [![Ask DeepWiki](https://img.shields.io/badge/Ask-DeepWiki-blue)](https://deepwiki.com/TrustDeck/trustdeck-backend)
 
@@ -19,7 +19,7 @@ TrustDeck provides a robust solution for pseudonymization and identity managemen
 - Java 21 or later
 - Maven
 - PostgreSQL 15.3 or later
-- Keycloak 23.0.5 or later
+- Keycloak 26.8.2 (the Docker setup pins this version)
 - jOOQ
 
 ## Setup & Installation

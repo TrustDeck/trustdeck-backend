@@ -409,6 +409,22 @@ public class KeycloakService {
     }
 
     /**
+     * Explains a failed call to the Keycloak admin API for the log.
+     *
+     * @param status the HTTP status Keycloak answered with
+     * @return the hint, starting with a space, or an empty string for other statuses
+     */
+    public static String adminApiErrorHint(int status) {
+    	return switch (status) {
+    		// Keycloak rejected the token itself, not just the request
+    		case 401 -> " Keycloak rejected the token of TrustDeck's service account. Since Keycloak 26.8.2, the client"
+    				+ " needs the client scope kc-admin-api, whose audience the admin API requires.";
+    		case 403 -> " Check the realm-management roles (e.g. query-users, view-users) of TrustDeck's service account.";
+    		default -> "";
+    	};
+    }
+
+    /**
      * Runs a Keycloak admin call that only enriches a result. When it fails, e.g. because the
      * service account lacks a realm-management role or Keycloak cannot reach a user federation,
      * the failure is logged with its cause and the fallback is used instead.
@@ -423,8 +439,8 @@ public class KeycloakService {
     	try {
     		return call.get();
     	} catch (WebApplicationException e) {
-    		log.warn(description + " in Keycloak failed with HTTP status " + e.getResponse().getStatus()
-    				+ ". Check the realm-management roles of TrustDeck's service account. Cause: " + e.getMessage());
+    		log.warn(description + " in Keycloak failed with HTTP status " + e.getResponse().getStatus() + "."
+    				+ adminApiErrorHint(e.getResponse().getStatus()) + " Cause: " + e.getMessage());
     		return fallback;
     	} catch (ProcessingException e) {
     		log.warn(description + " in Keycloak failed: " + e.getMessage());
