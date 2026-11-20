@@ -121,4 +121,26 @@ public class TestsStatisticsServiceIT extends AssertWebRequestService {
 
         assertNotFoundRequest("legacyTableStorageRemoved", get("/api/tables/project/storage"), null, null, getAccessToken());
     }
+
+    /**
+     * Tests that the backend version can be read by every authenticated user, including one without
+     * any global permission, but not without a login.
+     *
+     * @throws Exception forwards any internally thrown exceptions
+     */
+    @Test
+    public void versionTest() throws Exception {
+        assertUnauthorizedRequest("versionNoToken", get("/api/version"), null, null, "");
+
+        // The user "test2" may not read the system statistics, but the version
+        String test2AccessToken = obtainNewAccessToken("test2", "test");
+        try {
+            assertForbiddenRequest("systemStatisticsWithoutPermission", get("/api/system/statistics"), null, null, test2AccessToken);
+            MockHttpServletResponse response = assertOkRequest("versionWithoutPermission", get("/api/version"), null, null, test2AccessToken);
+            assertTrue(response.getContentAsString().contains("\"version\""));
+        } finally {
+            // Restore the token of the user "test" for the other tests
+            obtainNewAccessToken("test", "test");
+        }
+    }
 }
