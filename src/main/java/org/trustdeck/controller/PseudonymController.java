@@ -59,7 +59,9 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * This class represents a REST-API controller encapsulating the requests for pseudonyms.
@@ -854,6 +856,73 @@ public class PseudonymController {
             // Nothing found, return a 404-NOT_FOUND
             return responseService.notFound(responseContentType);
         }
+    }
+
+    /**
+     * This method looks up multiple pseudonyms at once through their psn values,
+     * e.g. to resolve a list of pseudonyms back to their identifiers.
+     *
+     * The pseudonyms are trimmed, duplicates and blank values are ignored. Pseudonyms that
+     * don't exist in the domain are not part of the response. The response is always JSON.
+     *
+     * @param domainName (required) the name of the domain the pseudonyms are in
+     * @param psns (required) the list of pseudonyms to look up
+     * @param responseContentType (optional) the response content type
+     * @return 	<li>a <b>200-OK</b> status and the <b>list of found pseudonyms</b>
+     * 				(an empty list when none of them was found)</li>
+     * 			<li>a <b>400-BAD_REQUEST</b> when no list of pseudonyms was given</li>
+     * 			<li>a <b>404-NOT_FOUND</b> when the given domain wasn't found</li>
+     * 			<li>a <b>422-UNPROCESSABLE_ENTITY</b> status when the list is longer than
+     * 				the configured batch length or the pseudonyms could not be retrieved</li>
+     */
+    @PostMapping("/domains/{domainName}/pseudonyms/lookup")
+    @PreAuthorize("isAuthenticated() and @auth.hasDomainPermission(#root, #domainName, 'pseudonym:read')")
+    @Audit
+    public ResponseEntity<?> lookupPseudonyms(@PathVariable("domainName") String domainName,
+                                              @RequestBody(required = false) List<String> psns,
+                                              @RequestHeader(name = "accept", required = false) String responseContentType) {
+        // Check the given list
+        if (psns == null) {
+            log.debug("No list of pseudonyms to look up was given.");
+            return responseService.badRequest(MediaType.APPLICATION_JSON_VALUE);
+        }
+
+        if (psns.size() > defaults.getPseudonym().getBatchLength()) {
+            // The batch size exceeded the limit. Return an error 422-UNPROCESSABLE_ENTITY.
+            log.debug("The given list of pseudonyms is too big. The maximum allowed batch size is: " + defaults.getPseudonym().getBatchLength());
+            return responseService.unprocessableEntity(MediaType.APPLICATION_JSON_VALUE);
+        }
+
+        // Retrieve the domain the pseudonyms belong to
+        Domain d = domainDBAccessService.getDomainByName(domainName);
+        if (d == null) {
+            // The domain wasn't found; return a 404-NOT_FOUND
+            log.debug("The domain where the pseudonyms should be looked up couldn't be found.");
+            return responseService.notFound(MediaType.APPLICATION_JSON_VALUE);
+        }
+
+        // Trim the pseudonyms, drop blank values and duplicates while keeping the order
+        Set<String> cleaned = new LinkedHashSet<>();
+        for (String psn : psns) {
+            if (Assertion.isNotNullOrEmpty(psn)) {
+                cleaned.add(psn.trim());
+            }
+        }
+
+        // Retrieve the pseudonyms with a single query
+        List<PseudonymDTO> found = pseudonymDBAccessService.getPseudonymsFromPsns(d, cleaned);
+        if (found == null) {
+            log.error("Looking up the pseudonyms in the domain \"" + domainName + "\" failed.");
+            return responseService.unprocessableEntity(MediaType.APPLICATION_JSON_VALUE);
+        }
+
+        // Without the permission for the complete view, only the reduced standard view is returned
+        if (!authorizationService.hasDomainPermission(domainName, "complete-view")) {
+            found.forEach(PseudonymDTO::toReducedStandardView);
+        }
+
+        log.debug("Successfully looked up " + found.size() + " of " + cleaned.size() + " pseudonyms in domain \"" + domainName + "\".");
+        return responseService.ok(MediaType.APPLICATION_JSON_VALUE, found);
     }
 
     /**

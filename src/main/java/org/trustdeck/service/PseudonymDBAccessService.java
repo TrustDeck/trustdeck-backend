@@ -54,6 +54,7 @@ import static org.trustdeck.jooq.generated.Tables.PSEUDONYM;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -407,6 +408,48 @@ public class PseudonymDBAccessService {
         	TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
         	
             log.error("Couldn't query the database: " + e.getClass() + ": " + e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Retrieves the pseudonym-records for a list of pseudonyms in a single query.
+     * Pseudonyms that don't exist in the domain are not part of the result.
+     *
+     * @param domain the domain to search in
+     * @param psns the pseudonyms to search for
+     * @return the found pseudonym-records ordered by pseudonym value (an empty list when
+     * none of them was found), or {@code null} when an error occurs
+     */
+    @Transactional(readOnly = true)
+    public List<PseudonymDTO> getPseudonymsFromPsns(Domain domain, Collection<String> psns) {
+        if (psns == null || psns.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        try {
+            List<Pseudonym> rows = dsl.selectFrom(PSEUDONYM)
+                    .where(PSEUDONYM.DOMAINID.eq(domain.getId()))
+                    .and(PSEUDONYM.PSEUDONYM_.in(psns))
+                    .orderBy(PSEUDONYM.PSEUDONYM_.asc())
+                    .fetchInto(Pseudonym.class);
+
+            // All pseudonyms belong to the same domain. Resolve it once instead of once per pseudonym.
+            DomainDTO domainDTO = new DomainDTO().assignPojoValues(domain);
+            List<PseudonymDTO> items = rows.stream().map(row -> {
+                PseudonymDTO dto = new PseudonymDTO().assignPojoValues(row.setDomainid(null));
+                dto.setDomainName(domainDTO.getName());
+                dto.setDomain(domainDTO);
+                return dto;
+            }).collect(Collectors.toList());
+
+            log.trace("Found " + items.size() + " of " + psns.size() + " requested pseudonyms.");
+            return items;
+        } catch (MappingException e) {
+            log.debug("Could not map the looked up pseudonyms.", e);
+            return null;
+        } catch (DataAccessException e) {
+            log.debug("Looking up the pseudonyms failed.", e);
             return null;
         }
     }
