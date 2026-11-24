@@ -51,6 +51,18 @@ public class AuditInformationResolver {
 	/** The configuration for audit user types. */
     @Autowired
     private AuditUserTypeConfiguration auditUserTypeConfig;
+
+    /** The header in which a requester states on whose behalf it acts (e.g. the end user of a connected application). */
+    public static final String ON_BEHALF_OF_HEADER = "X-On-Behalf-Of";
+
+    /** The header in which a requester states the purpose of the request. */
+    public static final String PURPOSE_HEADER = "X-Purpose";
+
+    /** The maximum number of characters stored from the on-behalf-of header. */
+    public static final int MAX_ON_BEHALF_OF_LENGTH = 256;
+
+    /** The maximum number of characters stored from the purpose header. */
+    public static final int MAX_PURPOSE_LENGTH = 1024;
     
     /**
      * Resolves the audit information from the current REST request.
@@ -109,6 +121,8 @@ public class AuditInformationResolver {
                 .requesterIp(getRequesterIP(req))
                 .target("[" + req.getMethod() + "] " + getRequestURL(req))
                 .payload(normalizePayload(requestBody))
+                .onBehalfOf(sanitizeHeader(req.getHeader(ON_BEHALF_OF_HEADER), MAX_ON_BEHALF_OF_LENGTH))
+                .purpose(sanitizeHeader(req.getHeader(PURPOSE_HEADER), MAX_PURPOSE_LENGTH))
                 .build();
     }
 
@@ -227,6 +241,28 @@ public class AuditInformationResolver {
 
         // Remove all whitespaces
         return payload.replaceAll("\\s+", "");
+    }
+
+    /**
+     * Cleans an informational header value for storage: control characters are removed, 
+     * surrounding whitespace is trimmed, and the value is cut to the given length.
+     * The value is stated by the requester and is never used for authorization.
+     *
+     * @param value the header value
+     * @param maxLength the maximum number of characters to keep
+     * @return the cleaned value, or {@code null} when nothing is left
+     */
+    static String sanitizeHeader(String value, int maxLength) {
+        if (value == null) {
+            return null;
+        }
+
+        String cleaned = value.replaceAll("\\p{Cntrl}", "").trim();
+        if (cleaned.isEmpty()) {
+            return null;
+        }
+
+        return cleaned.length() > maxLength ? cleaned.substring(0, maxLength) : cleaned;
     }
 
     /**

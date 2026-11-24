@@ -157,4 +157,34 @@ public class AuditEventDao extends DAOImpl<AuditEventRecord, org.trustdeck.jooq.
     public List<org.trustdeck.jooq.generated.tables.pojos.AuditEvent> fetchBySourceSystem(String... values) {
         return fetch(AuditEvent.AUDIT_EVENT.SOURCE_SYSTEM, values);
     }
+
+    /**
+     * Fetch records that have <code>on_behalf_of BETWEEN lowerInclusive AND
+     * upperInclusive</code>
+     */
+    public List<org.trustdeck.jooq.generated.tables.pojos.AuditEvent> fetchRangeOfOnBehalfOf(String lowerInclusive, String upperInclusive) {
+        return fetchRange(AuditEvent.AUDIT_EVENT.ON_BEHALF_OF, lowerInclusive, upperInclusive);
+    }
+
+    /**
+     * Fetch records that have <code>on_behalf_of IN (values)</code>
+     */
+    public List<org.trustdeck.jooq.generated.tables.pojos.AuditEvent> fetchByOnBehalfOf(String... values) {
+        return fetch(AuditEvent.AUDIT_EVENT.ON_BEHALF_OF, values);
+    }
+
+    /**
+     * Fetch records that have <code>purpose BETWEEN lowerInclusive AND
+     * upperInclusive</code>
+     */
+    public List<org.trustdeck.jooq.generated.tables.pojos.AuditEvent> fetchRangeOfPurpose(String lowerInclusive, String upperInclusive) {
+        return fetchRange(AuditEvent.AUDIT_EVENT.PURPOSE, lowerInclusive, upperInclusive);
+    }
+
+    /**
+     * Fetch records that have <code>purpose IN (values)</code>
+     */
+    public List<org.trustdeck.jooq.generated.tables.pojos.AuditEvent> fetchByPurpose(String... values) {
+        return fetch(AuditEvent.AUDIT_EVENT.PURPOSE, values);
+    }
 }

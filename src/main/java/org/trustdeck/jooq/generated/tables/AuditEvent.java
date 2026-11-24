@@ -90,6 +90,16 @@ public class AuditEvent extends TableImpl<AuditEventRecord> {
      */
     public final TableField<AuditEventRecord, String> SOURCE_SYSTEM = createField(DSL.name("source_system"), SQLDataType.CLOB, this, "");
 
+    /**
+     * The column <code>public.audit_event.on_behalf_of</code>.
+     */
+    public final TableField<AuditEventRecord, String> ON_BEHALF_OF = createField(DSL.name("on_behalf_of"), SQLDataType.CLOB, this, "");
+
+    /**
+     * The column <code>public.audit_event.purpose</code>.
+     */
+    public final TableField<AuditEventRecord, String> PURPOSE = createField(DSL.name("purpose"), SQLDataType.CLOB, this, "");
+
     private AuditEvent(Name alias, Table<AuditEventRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);
     }
