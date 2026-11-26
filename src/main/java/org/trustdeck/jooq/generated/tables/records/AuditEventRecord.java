@@ -143,6 +143,23 @@ public class AuditEventRecord extends UpdatableRecordImpl<AuditEventRecord> impl
         return (String) get(6);
     }
 
+    /**
+     * Setter for <code>public.audit_event.on_behalf_of</code>.
+     */
+    @Override
+    public AuditEventRecord setOnBehalfOf(String value) {
+        set(7, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>public.audit_event.on_behalf_of</code>.
+     */
+    @Override
+    public String getOnBehalfOf() {
+        return (String) get(7);
+    }
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -165,6 +182,7 @@ public class AuditEventRecord extends UpdatableRecordImpl<AuditEventRecord> impl
         setRequestUrl(from.getRequestUrl());
         setRequestBody(from.getRequestBody());
         setSourceSystem(from.getSourceSystem());
+        setOnBehalfOf(from.getOnBehalfOf());
         resetTouchedOnNotNull();
     }
 
@@ -188,7 +206,7 @@ public class AuditEventRecord extends UpdatableRecordImpl<AuditEventRecord> impl
     /**
      * Create a detached, initialised AuditEventRecord
      */
-    public AuditEventRecord(Long id, LocalDateTime requestTime, String userName, String requesterIp, String requestUrl, String requestBody, String sourceSystem) {
+    public AuditEventRecord(Long id, LocalDateTime requestTime, String userName, String requesterIp, String requestUrl, String requestBody, String sourceSystem, String onBehalfOf) {
         super(AuditEvent.AUDIT_EVENT);
 
         setId(id);
@@ -198,6 +216,7 @@ public class AuditEventRecord extends UpdatableRecordImpl<AuditEventRecord> impl
         setRequestUrl(requestUrl);
         setRequestBody(requestBody);
         setSourceSystem(sourceSystem);
+        setOnBehalfOf(onBehalfOf);
         resetTouchedOnNotNull();
     }
 
@@ -215,6 +234,7 @@ public class AuditEventRecord extends UpdatableRecordImpl<AuditEventRecord> impl
             setRequestUrl(value.getRequestUrl());
             setRequestBody(value.getRequestBody());
             setSourceSystem(value.getSourceSystem());
+            setOnBehalfOf(value.getOnBehalfOf());
             resetTouchedOnNotNull();
         }
     }

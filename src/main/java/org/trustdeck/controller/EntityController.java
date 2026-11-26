@@ -143,6 +143,9 @@ public class EntityController {
 	
 	/** The maximum number of search results that will be returned to the caller. */
 	private final static int MAX_NUMBER_OF_SEARCH_RESULTS = 20;
+
+	/** The ID type of the pseudonyms that are created for the TrustDeck IDs of entities. */
+	private final static String ENTITY_ID_TYPE = "TrustDeckID";
 	
 	/**
 	 * Endpoint to create a new entity of an entity type.
@@ -376,7 +379,134 @@ public class EntityController {
 		log.debug("Successfully retrieved an entity.");
 		return responseService.ok(responseContentType, entity);
 	}
-	
+
+	/**
+	 * Endpoint to retrieve the entity that a pseudonym belongs to.
+	 *
+	 * The pseudonym can either be in the domain associated with the entity type, where
+	 * its identifier is the entity's TrustDeck ID, or in another domain of the same domain
+	 * tree. In the latter case, the linked pseudonyms are followed to the associated domain.
+	 *
+	 * Besides the right to read entities of the type, reading the pseudonym is needed
+	 * (pseudonym:read in the given domain). When the pseudonym is not in the associated
+	 * domain, linking is needed as well (pseudonym:link in the given domain, pseudonym:read
+	 * and pseudonym:link in the associated domain).
+	 *
+	 * @param projectAbbreviation the abbreviation of the project to which the request is scoped to
+	 * @param entityTypeName the name of the entity type associated with the entity
+	 * @param domainName the name of the domain the pseudonym is in
+	 * @param psn the pseudonym
+	 * @param responseContentType (optional) the response content type
+	 * @return <li>a <b>200-OK</b> status with the entity on success</li>
+	 *         <li>a <b>403-FORBIDDEN</b> status when the rights to read or link
+	 *         pseudonyms in any of the involved domains are missing (also when the
+	 *         given domain doesn't exist)</li>
+	 *         <li>a <b>404-NOT_FOUND</b> status when the project, the entity type, the
+	 *         pseudonym, or the entity cannot be found (deleted entities are treated
+	 *         as not found)</li>
+	 *         <li>a <b>410-GONE</b> status when the project has ended or the entity type
+	 *         is marked as deprecated</li>
+	 *         <li>a <b>422-UNPROCESSABLE_ENTITY</b> status when there was no domain
+	 *         associated with the entity type or the pseudonym leads to more than one entity</li>
+	 */
+	@GetMapping(value = "/projects/{projectAbbreviation}/entities/{entityTypeName}/by-pseudonym", params = {"domain", "psn"})
+	@PreAuthorize("isAuthenticated() and @auth.hasEntityTypePermission(#root, #projectAbbreviation, #entityTypeName, 'entity:read')")
+	@Audit
+	public ResponseEntity<?> getEntityByPseudonym(@PathVariable("projectAbbreviation") String projectAbbreviation,
+												  @PathVariable("entityTypeName") String entityTypeName,
+												  @RequestParam(name = "domain", required = true) String domainName,
+												  @RequestParam(name = "psn", required = true) String psn,
+												  @RequestHeader(name = "accept", required = false) String responseContentType) {
+
+		// Check if project exists and still active
+		ProjectDTO project = projectDBService.getProjectByAbbreviation(projectAbbreviation);
+		if (project == null) {
+			log.debug("Project \"" + projectAbbreviation + "\" was not found.");
+			return responseService.notFound(responseContentType);
+		} else if (project.getEndDate().isBefore(OffsetDateTime.now())) {
+			// Project end was in the past
+			log.debug("The project already ended so that no entities can be retrieved from it.");
+			return responseService.gone(responseContentType);
+		}
+
+		// Check if entity type exists and is still active
+		EntityTypeDTO entityType = entityTypeDBService.getEntityTypeByName(entityTypeName, project.getId());
+		if (entityType == null) {
+			log.debug("Entity type \"" + entityTypeName + "\" was not found.");
+			return responseService.notFound(responseContentType);
+		} else if (entityType.getIsDeprecated()) {
+			log.debug("The entity type is marked as deprecated and cannot be used anymore.");
+			return responseService.gone(responseContentType);
+		}
+
+		// Retrieve the domain associated with the entity type
+		String associatedDomain = entityType.getAssociatedDomainName();
+		if (Assertion.isNullOrEmpty(associatedDomain)) {
+			log.debug("There was no domain associated with the entity type.");
+			return responseService.unprocessableEntity(responseContentType);
+		}
+
+		if (Assertion.isNullOrEmpty(domainName) || Assertion.isNullOrEmpty(psn)) {
+			log.debug("The domain and the pseudonym are needed to find the entity.");
+			return responseService.badRequest(responseContentType);
+		}
+
+		// Check the rights to read the pseudonym in the given domain
+		if (!authorizationService.hasDomainPermission(domainName, "pseudonym:read")) {
+			log.debug("Read access to the pseudonyms in the domain \"" + domainName + "\" was forbidden.");
+			return responseService.forbidden(responseContentType);
+		}
+
+		// Resolve the pseudonym to the entity's TrustDeck ID
+		List<PseudonymDTO> candidates = new ArrayList<>();
+		if (domainName.equals(associatedDomain)) {
+			// The pseudonym is directly connected to the entity
+			PseudonymDTO p = pdba.getPseudonymFromPsn(domainName, psn.trim());
+			if (p != null) {
+				candidates.add(p);
+			}
+		} else {
+			// The pseudonym is in another domain: follow the linked pseudonyms to the associated domain
+			if (!authorizationService.hasDomainPermission(domainName, "pseudonym:link")
+					|| !authorizationService.hasDomainPermission(associatedDomain, "pseudonym:read")
+					|| !authorizationService.hasDomainPermission(associatedDomain, "pseudonym:link")) {
+				log.debug("Read or link access to the domains involved in linking the pseudonym to the entity was forbidden.");
+				return responseService.forbidden(responseContentType);
+			}
+
+			List<Pair<PseudonymDTO, PseudonymDTO>> linked = ddba.getLinkedPseudonyms(domainName, null, null, psn.trim(), associatedDomain);
+			if (linked != null) {
+				linked.forEach(pair -> candidates.add(pair.second()));
+			}
+		}
+
+		// Only pseudonyms of TrustDeck IDs lead to an entity
+		List<String> trustDeckIds = candidates.stream()
+				.filter(p -> p.getIdentifierItem() != null && ENTITY_ID_TYPE.equals(p.getIdentifierItem().getIdType()))
+				.map(p -> p.getIdentifierItem().getIdentifier())
+				.filter(Assertion::isNotNullOrEmpty)
+				.distinct()
+				.toList();
+
+		if (trustDeckIds.isEmpty()) {
+			log.debug("The pseudonym was not found or doesn't lead to an entity.");
+			return responseService.notFound(responseContentType);
+		} else if (trustDeckIds.size() > 1) {
+			log.debug("The pseudonym leads to " + trustDeckIds.size() + " entities, so it cannot be resolved unambiguously.");
+			return responseService.unprocessableEntity(responseContentType);
+		}
+
+		// Retrieve the entity
+		EntityDTO entity = entityDBService.getEntity(trustDeckIds.getFirst(), project.getId(), entityType.getId());
+		if (entity == null || entity.getIsDeleted()) {
+			log.debug("The entity the pseudonym belongs to was not found or is marked as deleted.");
+			return responseService.notFound(responseContentType);
+		}
+
+		log.debug("Successfully retrieved the entity of a pseudonym.");
+		return responseService.ok(responseContentType, entity);
+	}
+
 	/**
 	 * Endpoint to update an entity object. Updatable attributes are
 	 * data, is_deleted, created_at, and updated_at.

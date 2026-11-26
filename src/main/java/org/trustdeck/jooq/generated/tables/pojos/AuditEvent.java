@@ -26,6 +26,7 @@ public class AuditEvent implements IAuditEvent {
     private String requestUrl;
     private String requestBody;
     private String sourceSystem;
+    private String onBehalfOf;
 
     public AuditEvent() {}
 
@@ -37,6 +38,7 @@ public class AuditEvent implements IAuditEvent {
         this.requestUrl = value.getRequestUrl();
         this.requestBody = value.getRequestBody();
         this.sourceSystem = value.getSourceSystem();
+        this.onBehalfOf = value.getOnBehalfOf();
     }
 
     public AuditEvent(
@@ -46,7 +48,8 @@ public class AuditEvent implements IAuditEvent {
         String requesterIp,
         String requestUrl,
         String requestBody,
-        String sourceSystem
+        String sourceSystem,
+        String onBehalfOf
     ) {
         this.id = id;
         this.requestTime = requestTime;
@@ -55,6 +58,7 @@ public class AuditEvent implements IAuditEvent {
         this.requestUrl = requestUrl;
         this.requestBody = requestBody;
         this.sourceSystem = sourceSystem;
+        this.onBehalfOf = onBehalfOf;
     }
 
     /**
@@ -178,6 +182,23 @@ public class AuditEvent implements IAuditEvent {
         return this;
     }
 
+    /**
+     * Getter for <code>public.audit_event.on_behalf_of</code>.
+     */
+    @Override
+    public String getOnBehalfOf() {
+        return this.onBehalfOf;
+    }
+
+    /**
+     * Setter for <code>public.audit_event.on_behalf_of</code>.
+     */
+    @Override
+    public AuditEvent setOnBehalfOf(String onBehalfOf) {
+        this.onBehalfOf = onBehalfOf;
+        return this;
+    }
+
     @Override
     public boolean equals(Object obj) {
         if (this == obj)
@@ -229,6 +250,12 @@ public class AuditEvent implements IAuditEvent {
         }
         else if (!this.sourceSystem.equals(other.sourceSystem))
             return false;
+        if (this.onBehalfOf == null) {
+            if (other.onBehalfOf != null)
+                return false;
+        }
+        else if (!this.onBehalfOf.equals(other.onBehalfOf))
+            return false;
         return true;
     }
 
@@ -243,6 +270,7 @@ public class AuditEvent implements IAuditEvent {
         result = prime * result + ((this.requestUrl == null) ? 0 : this.requestUrl.hashCode());
         result = prime * result + ((this.requestBody == null) ? 0 : this.requestBody.hashCode());
         result = prime * result + ((this.sourceSystem == null) ? 0 : this.sourceSystem.hashCode());
+        result = prime * result + ((this.onBehalfOf == null) ? 0 : this.onBehalfOf.hashCode());
         return result;
     }
 
@@ -257,6 +285,7 @@ public class AuditEvent implements IAuditEvent {
         sb.append(", ").append(requestUrl);
         sb.append(", ").append(requestBody);
         sb.append(", ").append(sourceSystem);
+        sb.append(", ").append(onBehalfOf);
 
         sb.append(")");
         return sb.toString();
@@ -275,6 +304,7 @@ public class AuditEvent implements IAuditEvent {
         setRequestUrl(from.getRequestUrl());
         setRequestBody(from.getRequestBody());
         setSourceSystem(from.getSourceSystem());
+        setOnBehalfOf(from.getOnBehalfOf());
     }
 
     @Override

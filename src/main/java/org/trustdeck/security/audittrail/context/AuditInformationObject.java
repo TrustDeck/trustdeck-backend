@@ -53,4 +53,10 @@ public class AuditInformationObject {
 
     /** Request body. */
     private String payload;
+
+    /**
+     * The person or process the requester acts on behalf of, as stated by the requester
+     * (e.g. the end user of a connected application). Informational only, never used for authorization.
+     */
+    private String onBehalfOf;
 }

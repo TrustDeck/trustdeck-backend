@@ -78,5 +78,34 @@ class AuditInformationResolverTest {
 		assertEquals("192.0.2.10", aio.getRequesterIp());
 		assertEquals("UNKNOWN", aio.getUsername());
 		assertEquals(AuditUserType.UNKNOWN, aio.getUserType());
+		assertNull(aio.getOnBehalfOf());
+	}
+
+	/** The stated on-behalf-of header is stored without control characters. */
+	@Test
+	void resolvesOnBehalfOfHeader() {
+		MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/domains/test-domain/pseudonyms/lookup");
+		request.addHeader("X-On-Behalf-Of", "  jdoe\r\nforged: entry ");
+		RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
+
+		assertEquals("jdoeforged: entry", resolver.resolve().getOnBehalfOf());
+	}
+
+	/** The stated on-behalf-of header is cut to its maximum length. */
+	@Test
+	void limitsOnBehalfOfHeaderLength() {
+		MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/domains/test-domain/pseudonyms/lookup");
+		request.addHeader("X-On-Behalf-Of", "x".repeat(AuditInformationResolver.MAX_ON_BEHALF_OF_LENGTH + 10));
+		RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
+
+		assertEquals(AuditInformationResolver.MAX_ON_BEHALF_OF_LENGTH, resolver.resolve().getOnBehalfOf().length());
+	}
+
+	/** Blank or missing header values are not stored. */
+	@Test
+	void ignoresBlankHeaderValues() {
+		assertNull(AuditInformationResolver.sanitizeHeader(null, 10));
+		assertNull(AuditInformationResolver.sanitizeHeader(" \t ", 10));
+		assertEquals("abc", AuditInformationResolver.sanitizeHeader(" abcdef ", 3));
 	}
 }

@@ -88,6 +88,16 @@ public interface IAuditEvent extends Serializable {
      */
     public String getSourceSystem();
 
+    /**
+     * Setter for <code>public.audit_event.on_behalf_of</code>.
+     */
+    public IAuditEvent setOnBehalfOf(String value);
+
+    /**
+     * Getter for <code>public.audit_event.on_behalf_of</code>.
+     */
+    public String getOnBehalfOf();
+
     // -------------------------------------------------------------------------
     // FROM and INTO
     // -------------------------------------------------------------------------
