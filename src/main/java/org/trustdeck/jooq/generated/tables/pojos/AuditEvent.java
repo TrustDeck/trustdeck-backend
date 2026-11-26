@@ -27,7 +27,6 @@ public class AuditEvent implements IAuditEvent {
     private String requestBody;
     private String sourceSystem;
     private String onBehalfOf;
-    private String purpose;
 
     public AuditEvent() {}
 
@@ -40,7 +39,6 @@ public class AuditEvent implements IAuditEvent {
         this.requestBody = value.getRequestBody();
         this.sourceSystem = value.getSourceSystem();
         this.onBehalfOf = value.getOnBehalfOf();
-        this.purpose = value.getPurpose();
     }
 
     public AuditEvent(
@@ -51,8 +49,7 @@ public class AuditEvent implements IAuditEvent {
         String requestUrl,
         String requestBody,
         String sourceSystem,
-        String onBehalfOf,
-        String purpose
+        String onBehalfOf
     ) {
         this.id = id;
         this.requestTime = requestTime;
@@ -62,7 +59,6 @@ public class AuditEvent implements IAuditEvent {
         this.requestBody = requestBody;
         this.sourceSystem = sourceSystem;
         this.onBehalfOf = onBehalfOf;
-        this.purpose = purpose;
     }
 
     /**
@@ -203,23 +199,6 @@ public class AuditEvent implements IAuditEvent {
         return this;
     }
 
-    /**
-     * Getter for <code>public.audit_event.purpose</code>.
-     */
-    @Override
-    public String getPurpose() {
-        return this.purpose;
-    }
-
-    /**
-     * Setter for <code>public.audit_event.purpose</code>.
-     */
-    @Override
-    public AuditEvent setPurpose(String purpose) {
-        this.purpose = purpose;
-        return this;
-    }
-
     @Override
     public boolean equals(Object obj) {
         if (this == obj)
@@ -277,12 +256,6 @@ public class AuditEvent implements IAuditEvent {
         }
         else if (!this.onBehalfOf.equals(other.onBehalfOf))
             return false;
-        if (this.purpose == null) {
-            if (other.purpose != null)
-                return false;
-        }
-        else if (!this.purpose.equals(other.purpose))
-            return false;
         return true;
     }
 
@@ -298,7 +271,6 @@ public class AuditEvent implements IAuditEvent {
         result = prime * result + ((this.requestBody == null) ? 0 : this.requestBody.hashCode());
         result = prime * result + ((this.sourceSystem == null) ? 0 : this.sourceSystem.hashCode());
         result = prime * result + ((this.onBehalfOf == null) ? 0 : this.onBehalfOf.hashCode());
-        result = prime * result + ((this.purpose == null) ? 0 : this.purpose.hashCode());
         return result;
     }
 
@@ -314,7 +286,6 @@ public class AuditEvent implements IAuditEvent {
         sb.append(", ").append(requestBody);
         sb.append(", ").append(sourceSystem);
         sb.append(", ").append(onBehalfOf);
-        sb.append(", ").append(purpose);
 
         sb.append(")");
         return sb.toString();
@@ -334,7 +305,6 @@ public class AuditEvent implements IAuditEvent {
         setRequestBody(from.getRequestBody());
         setSourceSystem(from.getSourceSystem());
         setOnBehalfOf(from.getOnBehalfOf());
-        setPurpose(from.getPurpose());
     }
 
     @Override

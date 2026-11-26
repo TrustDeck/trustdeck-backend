@@ -66,7 +66,6 @@ public class AuditEventBuilder {
         auditEvent.setRequestBody(aio.getPayload());
         auditEvent.setSourceSystem(aio.getAuditSourceSystem() != null ? aio.getAuditSourceSystem().name() : "UNKNOWN");
         auditEvent.setOnBehalfOf(aio.getOnBehalfOf());
-        auditEvent.setPurpose(aio.getPurpose());
 
         return auditEvent;
     }

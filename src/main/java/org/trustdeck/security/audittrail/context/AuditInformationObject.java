@@ -59,7 +59,4 @@ public class AuditInformationObject {
      * (e.g. the end user of a connected application). Informational only, never used for authorization.
      */
     private String onBehalfOf;
-
-    /** The purpose of the request, as stated by the requester. Informational only. */
-    private String purpose;
 }

@@ -135,8 +135,7 @@ CREATE TABLE public.audit_event (
     request_url text,
     request_body text,
     source_system text,
-    on_behalf_of text,
-    purpose text
+    on_behalf_of text
 );
 
 

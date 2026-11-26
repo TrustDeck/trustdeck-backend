@@ -30,38 +30,35 @@ import org.trustdeck.security.audittrail.context.AuditSourceSystem;
 import org.trustdeck.security.audittrail.usertype.AuditUserType;
 
 /**
- * Tests that the audit event carries the stated on-behalf-of and purpose information.
+ * Tests that the audit event carries the stated on-behalf-of information.
  */
 class AuditEventBuilderTest {
 
 	private final AuditEventBuilder builder = new AuditEventBuilder();
 
-	/** The on-behalf-of and purpose values are stored next to the requester. */
+	/** The on-behalf-of value is stored next to the requester. */
 	@Test
-	void storesOnBehalfOfAndPurpose() {
+	void storesOnBehalfOf() {
 		AuditInformationObject aio = AuditInformationObject.builder()
 				.auditSourceSystem(AuditSourceSystem.REST)
 				.username("service-account-fhir-dashboard")
 				.userType(AuditUserType.TECHNICAL)
 				.target("[POST] /domains/fhir/pseudonyms/lookup")
 				.onBehalfOf("jdoe")
-				.purpose("re-identification")
 				.build();
 
 		AuditEvent event = builder.build(annotation(), aio);
 		assertEquals("service-account-fhir-dashboard", event.getUserName());
 		assertEquals("jdoe", event.getOnBehalfOf());
-		assertEquals("re-identification", event.getPurpose());
 	}
 
-	/** Without the headers, both values stay empty. */
+	/** Without the header, the value stays empty. */
 	@Test
-	void leavesValuesEmptyWithoutHeaders() {
+	void leavesValueEmptyWithoutHeader() {
 		AuditInformationObject aio = AuditInformationObject.builder().username("jdoe").userType(AuditUserType.HUMAN).build();
 
 		AuditEvent event = builder.build(annotation(), aio);
 		assertNull(event.getOnBehalfOf());
-		assertNull(event.getPurpose());
 	}
 
 	private static Audit annotation() {

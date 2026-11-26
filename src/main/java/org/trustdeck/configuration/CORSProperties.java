@@ -53,7 +53,7 @@ public class CORSProperties {
 
     /** Request headers accepted for cross-origin API requests. */
     @NotEmpty
-    private List<String> allowedHeaders = new ArrayList<>(List.of("Authorization", "Content-Type", "Accept", "Origin", "X-On-Behalf-Of", "X-Purpose"));
+    private List<String> allowedHeaders = new ArrayList<>(List.of("Authorization", "Content-Type", "Accept", "Origin", "X-On-Behalf-Of"));
 
     /**
      * Whether browser credentials such as cookies may be included.
