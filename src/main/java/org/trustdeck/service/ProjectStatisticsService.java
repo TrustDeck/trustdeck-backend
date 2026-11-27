@@ -18,9 +18,9 @@
 package org.trustdeck.service;
 
 import static org.trustdeck.jooq.generated.Tables.DOMAIN;
-import static org.trustdeck.jooq.generated.Tables.ENTITY;
+import static org.trustdeck.jooq.generated.Tables.DOMAIN_PSEUDONYM_COUNTS;
 import static org.trustdeck.jooq.generated.Tables.ENTITY_TYPE;
-import static org.trustdeck.jooq.generated.Tables.PSEUDONYM;
+import static org.trustdeck.jooq.generated.Tables.ENTITY_TYPE_ENTITY_COUNTS;
 import static org.trustdeck.jooq.generated.Tables.PROJECT;
 
 import java.time.Duration;
@@ -28,8 +28,6 @@ import java.time.Instant;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.jooq.DSLContext;
-import org.jooq.Field;
-import org.jooq.impl.DSL;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.trustdeck.dto.ProjectStatisticsDTO;
@@ -41,6 +39,11 @@ import org.trustdeck.jooq.generated.tables.pojos.Project;
 /**
  * Provides project-isolated aggregate statistics.
  *
+ * The numbers of pseudonyms and entities are read from counters that database triggers keep up
+ * to date on every write (see the views {@code domain_pseudonym_counts} and
+ * {@code entity_type_entity_counts}), so the statistics stay cheap for tables with hundreds of
+ * millions of rows.
+ *
  * @author Armin Müller
  */
 @Service
@@ -51,30 +54,17 @@ public class ProjectStatisticsService {
     private final DSLContext dsl;
 
     /**
-     * Retrieves statistics for a project.
+     * Gathers the statistics of a project.
+     *
+     * The entity counts cover the entity types owned by the project that are not deleted; soft-deleted
+     * entities and entities of types not owned by the project (e.g. of a global base type) are not
+     * counted. The pseudonym counts cover the domains of the project.
      *
      * @param abbreviation the project abbreviation
-     * @return the statistics, or {@code null} when the project does not exist
+     * @return the project statistics, or {@code null} when the project does not exist
      */
     @Transactional(readOnly = true)
     public ProjectStatisticsDTO getStatistics(String abbreviation) {
-        return getStatistics(abbreviation, false);
-    }
-
-    /**
-     * Gathers the statistics of a project.
-     *
-     * Domains and entity types are always counted exactly; these tables are small. Entities and
-     * pseudonyms, in total and per entity type or domain, require scanning tables that can hold
-     * hundreds of millions of rows. They are only counted with {@code exact}; otherwise the counts
-     * are {@code null} and the lists contain the entity types and domains without counts. Use the
-     * system statistics' live-row estimates and insert counters to follow progress cheaply.
-     *
-     * @param abbreviation the project abbreviation
-     * @param exact whether to count entities and pseudonyms exactly
-     * @return the project statistics, or {@code null} when the project does not exist
-     */
-    public ProjectStatisticsDTO getStatistics(String abbreviation, boolean exact) {
         
     	// Get project from database
     	Project project = dsl.selectFrom(PROJECT)
@@ -85,14 +75,29 @@ public class ProjectStatisticsService {
             return null;
         }
 
-        // Gather statistics
         int pid = project.getId();
         Instant generatedAt = Instant.now();
-        long domains = dsl.selectCount().from(DOMAIN).where(DOMAIN.PROJECT_ID.eq(pid)).fetchOne(0, Long.class);
-        long entityTypes = dsl.selectCount().from(ENTITY_TYPE).where(ENTITY_TYPE.PROJECT_ID.eq(pid)).fetchOne(0, Long.class);
-        Long entities = exact ? dsl.selectCount().from(ENTITY).where(ENTITY.PROJECT_ID.eq(pid)).fetchOne(0, Long.class) : null;
-        Long pseudonyms = exact ? dsl.selectCount().from(PSEUDONYM).join(DOMAIN).on(PSEUDONYM.DOMAINID.eq(DOMAIN.ID))
-                .where(DOMAIN.PROJECT_ID.eq(pid)).fetchOne(0, Long.class) : null;
+
+        // Count the entities per entity type of the project, also of types without entities
+        List<NamedCount> entitiesByType = dsl.select(ENTITY_TYPE.NAME, ENTITY_TYPE_ENTITY_COUNTS.RECORD_COUNT)
+                .from(ENTITY_TYPE)
+                .join(ENTITY_TYPE_ENTITY_COUNTS).on(ENTITY_TYPE_ENTITY_COUNTS.ENTITY_TYPE_ID.eq(ENTITY_TYPE.ID))
+                .where(ENTITY_TYPE.PROJECT_ID.eq(pid))
+                .and(ENTITY_TYPE.IS_DEPRECATED.isFalse())
+                .orderBy(ENTITY_TYPE.ID.asc())
+                .fetch(record -> new NamedCount(record.get(ENTITY_TYPE.NAME), record.get(ENTITY_TYPE_ENTITY_COUNTS.RECORD_COUNT)));
+
+        // Count the pseudonyms per domain of the project, also of domains without pseudonyms
+        List<NamedCount> pseudonymsByDomain = dsl.select(DOMAIN.NAME, DOMAIN_PSEUDONYM_COUNTS.RECORD_COUNT)
+                .from(DOMAIN)
+                .join(DOMAIN_PSEUDONYM_COUNTS).on(DOMAIN_PSEUDONYM_COUNTS.DOMAIN_ID.eq(DOMAIN.ID))
+                .where(DOMAIN.PROJECT_ID.eq(pid))
+                .orderBy(DOMAIN.ID.asc())
+                .fetch(record -> new NamedCount(record.get(DOMAIN.NAME), record.get(DOMAIN_PSEUDONYM_COUNTS.RECORD_COUNT)));
+
+        long entityTypes = entitiesByType.size();
+        long entities = entitiesByType.stream().mapToLong(NamedCount::getCount).sum();
+        long pseudonyms = pseudonymsByDomain.stream().mapToLong(NamedCount::getCount).sum();
 
         // Calculate how long the project is still valid for
         Long remainingValiditySeconds = null;
@@ -100,47 +105,9 @@ public class ProjectStatisticsService {
             remainingValiditySeconds = Math.max(0L, Duration.between(generatedAt, project.getEndDate().toInstant()).getSeconds());
         }
 
-        List<NamedCount> entitiesByType;
-        List<NamedCount> pseudonymsByDomain;
-
-        if (exact) {
-            // Count the entities for each entity type belonging to the project. The left join
-            // also includes entity types without entities, for which COUNT(ENTITY.ID) returns zero.
-            Field<Long> entityCount = DSL.count(ENTITY.ID).cast(Long.class).as("entity_count");
-            entitiesByType = dsl.select(ENTITY_TYPE.ID, ENTITY_TYPE.NAME, entityCount)
-                    .from(ENTITY_TYPE)
-                    .leftJoin(ENTITY).on(ENTITY.ENTITY_TYPE_ID.eq(ENTITY_TYPE.ID))
-                    .and(ENTITY.PROJECT_ID.eq(pid))
-                    .where(ENTITY_TYPE.PROJECT_ID.eq(pid))
-                    .groupBy(ENTITY_TYPE.ID, ENTITY_TYPE.NAME)
-                    .orderBy(ENTITY_TYPE.ID.asc())
-                    .fetch(record -> new NamedCount(record.get(ENTITY_TYPE.NAME), record.get(entityCount)));
-
-            // Count the pseudonyms for each domain belonging to the project. The left join
-            // also includes project-owned domains without pseudonyms, returning zero for them.
-            Field<Long> pseudonymCount = DSL.count(PSEUDONYM.ID).cast(Long.class).as("pseudonym_count");
-            pseudonymsByDomain = dsl.select(DOMAIN.ID, DOMAIN.NAME, pseudonymCount)
-                    .from(DOMAIN)
-                    .leftJoin(PSEUDONYM).on(PSEUDONYM.DOMAINID.eq(DOMAIN.ID))
-                    .where(DOMAIN.PROJECT_ID.eq(pid))
-                    .groupBy(DOMAIN.ID, DOMAIN.NAME)
-                    .orderBy(DOMAIN.ID.asc())
-                    .fetch(record -> new NamedCount(record.get(DOMAIN.NAME), record.get(pseudonymCount)));
-        } else {
-            // List the entity types and domains without touching the large entity and pseudonym tables
-            entitiesByType = dsl.select(ENTITY_TYPE.NAME).from(ENTITY_TYPE)
-                    .where(ENTITY_TYPE.PROJECT_ID.eq(pid))
-                    .orderBy(ENTITY_TYPE.ID.asc())
-                    .fetch(record -> new NamedCount(record.get(ENTITY_TYPE.NAME), null));
-            pseudonymsByDomain = dsl.select(DOMAIN.NAME).from(DOMAIN)
-                    .where(DOMAIN.PROJECT_ID.eq(pid))
-                    .orderBy(DOMAIN.ID.asc())
-                    .fetch(record -> new NamedCount(record.get(DOMAIN.NAME), null));
-        }
-
         return new ProjectStatisticsDTO(generatedAt,
                 new ProjectDetails(project.getName(), project.getAbbreviation(), project.getStartDate(),
                         project.getEndDate(), remainingValiditySeconds),
-                new Counts(domains, entityTypes, entities, pseudonyms), entitiesByType, pseudonymsByDomain);
+                new Counts(pseudonymsByDomain.size(), entityTypes, entities, pseudonyms), entitiesByType, pseudonymsByDomain);
     }
 }

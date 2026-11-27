@@ -971,5 +971,255 @@ ALTER TABLE ONLY public.pseudonym
 
 
 --
+-- Counters for the project statistics: the number of pseudonyms per domain and of non-deleted
+-- entities per project-owned entity type. Counting these on demand would scan tables with
+-- hundreds of millions of rows, so triggers keep the counts up to date on every write,
+-- including set-based statements, TRUNCATE, and direct SQL.
+--
+-- Triggers only append changes to the *_count_delta log tables, so concurrent writers never wait
+-- for each other because of the counters. fold_count_deltas() moves the logged changes into the
+-- *_count tables; the backend calls it regularly. The *_counts views add both up, so a read is
+-- always exact. Writes must go through public.entity, not through its partitions, since statement
+-- triggers only fire for the table named in the statement.
+--
+
+CREATE TABLE public.pseudonym_count (
+    domain_id integer NOT NULL,
+    record_count bigint NOT NULL
+);
+
+
+ALTER TABLE public.pseudonym_count OWNER TO "trustdeck-manager";
+
+CREATE TABLE public.pseudonym_count_delta (
+    id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+    domain_id integer NOT NULL,
+    delta bigint NOT NULL
+);
+
+
+ALTER TABLE public.pseudonym_count_delta OWNER TO "trustdeck-manager";
+
+CREATE TABLE public.entity_count (
+    entity_type_id integer NOT NULL,
+    record_count bigint NOT NULL
+);
+
+
+ALTER TABLE public.entity_count OWNER TO "trustdeck-manager";
+
+CREATE TABLE public.entity_count_delta (
+    id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+    entity_type_id integer NOT NULL,
+    delta bigint NOT NULL
+);
+
+
+ALTER TABLE public.entity_count_delta OWNER TO "trustdeck-manager";
+
+ALTER TABLE ONLY public.pseudonym_count
+    ADD CONSTRAINT pseudonym_count_pkey PRIMARY KEY (domain_id);
+
+ALTER TABLE ONLY public.pseudonym_count_delta
+    ADD CONSTRAINT pseudonym_count_delta_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.entity_count
+    ADD CONSTRAINT entity_count_pkey PRIMARY KEY (entity_type_id);
+
+ALTER TABLE ONLY public.entity_count_delta
+    ADD CONSTRAINT entity_count_delta_pkey PRIMARY KEY (id);
+
+CREATE INDEX pseudonym_count_delta_domain_idx ON public.pseudonym_count_delta USING btree (domain_id);
+
+CREATE INDEX entity_count_delta_type_idx ON public.entity_count_delta USING btree (entity_type_id);
+
+--
+-- The current number of pseudonyms per domain: the folded count plus the changes not yet folded.
+-- The counter tables have no foreign keys, so that folding never waits for a domain deletion;
+-- rows of deleted domains are not shown here and are removed by the next fold.
+--
+
+CREATE VIEW public.domain_pseudonym_counts AS
+ SELECT d.id AS domain_id,
+    d.project_id,
+    (COALESCE(c.record_count, (0)::bigint) + COALESCE(( SELECT sum(x.delta) AS sum
+           FROM public.pseudonym_count_delta x
+          WHERE (x.domain_id = d.id)), (0)::numeric))::bigint AS record_count
+   FROM (public.domain d
+     LEFT JOIN public.pseudonym_count c ON ((c.domain_id = d.id)));
+
+
+ALTER VIEW public.domain_pseudonym_counts OWNER TO "trustdeck-manager";
+
+--
+-- The current number of non-deleted entities per project-owned entity type. Entities whose type
+-- is not owned by the entity's project (e.g. entities of a global base type) are not counted.
+--
+
+CREATE VIEW public.entity_type_entity_counts AS
+ SELECT t.id AS entity_type_id,
+    t.project_id,
+    (COALESCE(c.record_count, (0)::bigint) + COALESCE(( SELECT sum(x.delta) AS sum
+           FROM public.entity_count_delta x
+          WHERE (x.entity_type_id = t.id)), (0)::numeric))::bigint AS record_count
+   FROM (public.entity_type t
+     LEFT JOIN public.entity_count c ON ((c.entity_type_id = t.id)))
+  WHERE (t.project_id IS NOT NULL);
+
+
+ALTER VIEW public.entity_type_entity_counts OWNER TO "trustdeck-manager";
+
+--
+-- Inserted and deleted pseudonyms, aggregated per statement; TRUNCATE empties the counters.
+--
+
+CREATE FUNCTION public.count_pseudonyms() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog', 'public'
+    AS $$
+BEGIN
+    IF TG_OP = 'TRUNCATE' THEN
+        DELETE FROM public.pseudonym_count_delta;
+        DELETE FROM public.pseudonym_count;
+    ELSIF TG_OP = 'INSERT' THEN
+        INSERT INTO public.pseudonym_count_delta (domain_id, delta)
+        SELECT domainid, count(*) FROM new_rows WHERE domainid IS NOT NULL GROUP BY domainid;
+    ELSIF TG_OP = 'DELETE' THEN
+        INSERT INTO public.pseudonym_count_delta (domain_id, delta)
+        SELECT domainid, -count(*) FROM old_rows WHERE domainid IS NOT NULL GROUP BY domainid;
+    END IF;
+
+    RETURN NULL;
+END
+$$;
+
+
+ALTER FUNCTION public.count_pseudonyms() OWNER TO "trustdeck-manager";
+
+--
+-- A pseudonym moved to another domain. A row-level trigger, because PostgreSQL allows no column
+-- list on triggers with transition tables, and a statement-level UPDATE trigger would collect
+-- every updated row, e.g. all pseudonyms of a domain whose validity changes.
+--
+
+CREATE FUNCTION public.count_moved_pseudonym() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog', 'public'
+    AS $$
+BEGIN
+    INSERT INTO public.pseudonym_count_delta (domain_id, delta)
+    SELECT m.domain_id, m.delta FROM (VALUES (OLD.domainid, -1::bigint), (NEW.domainid, 1::bigint)) AS m(domain_id, delta)
+    WHERE m.domain_id IS NOT NULL;
+
+    RETURN NULL;
+END
+$$;
+
+
+ALTER FUNCTION public.count_moved_pseudonym() OWNER TO "trustdeck-manager";
+
+--
+-- Inserted, updated (soft-deleted, restored, moved), and deleted entities, aggregated per
+-- statement. Only entities that are not soft-deleted and whose entity type is owned by the
+-- entity's project are counted. Updates that change neither leave no log entry.
+--
+
+CREATE FUNCTION public.count_entities() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog', 'public'
+    AS $$
+BEGIN
+    IF TG_OP = 'TRUNCATE' THEN
+        DELETE FROM public.entity_count_delta;
+        DELETE FROM public.entity_count;
+    ELSIF TG_OP = 'INSERT' THEN
+        INSERT INTO public.entity_count_delta (entity_type_id, delta)
+        SELECT r.entity_type_id, count(*) FROM new_rows r
+        JOIN public.entity_type t ON t.id = r.entity_type_id AND t.project_id = r.project_id
+        WHERE NOT r.is_deleted
+        GROUP BY r.entity_type_id;
+    ELSIF TG_OP = 'DELETE' THEN
+        INSERT INTO public.entity_count_delta (entity_type_id, delta)
+        SELECT r.entity_type_id, -count(*) FROM old_rows r
+        JOIN public.entity_type t ON t.id = r.entity_type_id AND t.project_id = r.project_id
+        WHERE NOT r.is_deleted
+        GROUP BY r.entity_type_id;
+    ELSE
+        INSERT INTO public.entity_count_delta (entity_type_id, delta)
+        SELECT d.entity_type_id, sum(d.delta) FROM (
+            SELECT r.entity_type_id, 1 AS delta FROM new_rows r
+            JOIN public.entity_type t ON t.id = r.entity_type_id AND t.project_id = r.project_id
+            WHERE NOT r.is_deleted
+            UNION ALL
+            SELECT r.entity_type_id, -1 AS delta FROM old_rows r
+            JOIN public.entity_type t ON t.id = r.entity_type_id AND t.project_id = r.project_id
+            WHERE NOT r.is_deleted
+        ) AS d
+        GROUP BY d.entity_type_id
+        HAVING sum(d.delta) <> 0;
+    END IF;
+
+    RETURN NULL;
+END
+$$;
+
+
+ALTER FUNCTION public.count_entities() OWNER TO "trustdeck-manager";
+
+--
+-- Moves the logged changes into the counter tables and removes counters of deleted domains and
+-- entity types. Only changes committed when the fold starts are moved; later ones stay in the log
+-- for the next fold. Concurrent calls skip instead of waiting, so several backend instances can
+-- call it.
+--
+
+CREATE FUNCTION public.fold_count_deltas() RETURNS void
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog', 'public'
+    AS $$
+BEGIN
+    IF NOT pg_try_advisory_xact_lock(hashtext('trustdeck.fold_count_deltas')) THEN
+        RETURN;
+    END IF;
+
+    WITH moved AS (
+        DELETE FROM public.pseudonym_count_delta RETURNING domain_id, delta
+    )
+    INSERT INTO public.pseudonym_count AS c (domain_id, record_count)
+    SELECT domain_id, sum(delta) FROM moved GROUP BY domain_id
+    ON CONFLICT (domain_id) DO UPDATE SET record_count = c.record_count + EXCLUDED.record_count;
+
+    WITH moved AS (
+        DELETE FROM public.entity_count_delta RETURNING entity_type_id, delta
+    )
+    INSERT INTO public.entity_count AS c (entity_type_id, record_count)
+    SELECT entity_type_id, sum(delta) FROM moved GROUP BY entity_type_id
+    ON CONFLICT (entity_type_id) DO UPDATE SET record_count = c.record_count + EXCLUDED.record_count;
+
+    DELETE FROM public.pseudonym_count c WHERE NOT EXISTS (SELECT 1 FROM public.domain d WHERE d.id = c.domain_id);
+    DELETE FROM public.entity_count c WHERE NOT EXISTS (SELECT 1 FROM public.entity_type t WHERE t.id = c.entity_type_id);
+END
+$$;
+
+
+ALTER FUNCTION public.fold_count_deltas() OWNER TO "trustdeck-manager";
+
+CREATE TRIGGER pseudonym_count_insert AFTER INSERT ON public.pseudonym REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION public.count_pseudonyms();
+
+CREATE TRIGGER pseudonym_count_delete AFTER DELETE ON public.pseudonym REFERENCING OLD TABLE AS old_rows FOR EACH STATEMENT EXECUTE FUNCTION public.count_pseudonyms();
+
+CREATE TRIGGER pseudonym_count_truncate AFTER TRUNCATE ON public.pseudonym FOR EACH STATEMENT EXECUTE FUNCTION public.count_pseudonyms();
+
+CREATE TRIGGER pseudonym_count_move AFTER UPDATE OF domainid ON public.pseudonym FOR EACH ROW WHEN (OLD.domainid IS DISTINCT FROM NEW.domainid) EXECUTE FUNCTION public.count_moved_pseudonym();
+
+CREATE TRIGGER entity_count_insert AFTER INSERT ON public.entity REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION public.count_entities();
+
+CREATE TRIGGER entity_count_update AFTER UPDATE ON public.entity REFERENCING OLD TABLE AS old_rows NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION public.count_entities();
+
+CREATE TRIGGER entity_count_delete AFTER DELETE ON public.entity REFERENCING OLD TABLE AS old_rows FOR EACH STATEMENT EXECUTE FUNCTION public.count_entities();
+
+CREATE TRIGGER entity_count_truncate AFTER TRUNCATE ON public.entity FOR EACH STATEMENT EXECUTE FUNCTION public.count_entities();
+
+--
 -- PostgreSQL database dump complete
 --
