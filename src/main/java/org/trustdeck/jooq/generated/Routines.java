@@ -19,6 +19,7 @@ import org.trustdeck.jooq.generated.routines.Digest1;
 import org.trustdeck.jooq.generated.routines.Digest2;
 import org.trustdeck.jooq.generated.routines.Encrypt;
 import org.trustdeck.jooq.generated.routines.EncryptIv;
+import org.trustdeck.jooq.generated.routines.FoldCountDeltas;
 import org.trustdeck.jooq.generated.routines.GenRandomBytes;
 import org.trustdeck.jooq.generated.routines.GenRandomUuid;
 import org.trustdeck.jooq.generated.routines.GenSalt1;
@@ -553,6 +554,17 @@ public class Routines {
         f.set__4(__4);
 
         return f.asField();
+    }
+
+    /**
+     * Call <code>public.fold_count_deltas</code>
+     */
+    public static void foldCountDeltas(
+          Configuration configuration
+    ) {
+        FoldCountDeltas p = new FoldCountDeltas();
+
+        p.execute(configuration);
     }
 
     /**

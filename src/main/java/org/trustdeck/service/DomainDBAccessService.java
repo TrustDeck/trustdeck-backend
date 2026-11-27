@@ -58,6 +58,7 @@ import static org.jooq.impl.DSL.select;
 import static org.trustdeck.jooq.generated.Tables.DOMAIN;
 import static org.trustdeck.jooq.generated.Tables.ALGORITHM;
 import static org.trustdeck.jooq.generated.Tables.PSEUDONYM;
+import static org.trustdeck.jooq.generated.Tables.DOMAIN_PSEUDONYM_COUNTS;
 import static org.trustdeck.jooq.generated.Tables.PROJECT;
 
 /**
@@ -68,9 +69,6 @@ import static org.trustdeck.jooq.generated.Tables.PROJECT;
 @Service
 @Slf4j
 public class DomainDBAccessService {
-
-	/** Representation for a domain that is not found during counting the records in it. */
-	public static final Integer DOMAIN_NOT_FOUND = -1;
 
     /** References a jOOQ configuration object that configures jOOQ's behavior when executing queries. */
     @Autowired
@@ -488,42 +486,20 @@ public class DomainDBAccessService {
     }
 
     /**
-     * Returns the number of records in a domain
+     * Returns the number of pseudonyms in a domain. The number is read from the counters that
+     * database triggers keep up to date (see the view {@code domain_pseudonym_counts}), so no
+     * pseudonyms are counted.
      *
-     * @param domainName the name of the domain where the number of records should be retrieved from
-     * @return the counted number
+     * @param domainId the ID of the domain
+     * @return the number of pseudonyms in the domain, {@code 0} for an unknown domain
      */
-    public Integer getAmountOfPseudonymsInDomain(String domainName) {
-        try {
-            Integer count = this.dsl.transactionResult(configuration -> {
-                // Get domain
-                Domain d = this.getDomainByName(domainName);
-                
-                if (d == null) {
-                	// Domain wasn't found
-                	throw new DomainNotFoundException(domainName);
-                }
+    public long getAmountOfPseudonymsInDomain(int domainId) {
+        Long count = this.dsl.select(DOMAIN_PSEUDONYM_COUNTS.RECORD_COUNT)
+                .from(DOMAIN_PSEUDONYM_COUNTS)
+                .where(DOMAIN_PSEUDONYM_COUNTS.DOMAIN_ID.eq(domainId))
+                .fetchOne(DOMAIN_PSEUDONYM_COUNTS.RECORD_COUNT);
 
-                // Retrieve all records from a domain
-                return DSL.using(configuration)
-                        .selectCount()
-                        .from(PSEUDONYM)
-                        .where(PSEUDONYM.DOMAINID.equal(d.getId()))
-                        .fetchOne(0, Integer.class);
-                
-                // Implicit transaction commit here
-            });
-
-            // At this point the retrieval was successful
-            log.debug("Successfully retrieved the number of records in the domain.");
-            return count;
-        } catch (DomainNotFoundException e) {
-        	log.error("Domain \"" + domainName + "\" wasn't found in the database.");
-        	return DOMAIN_NOT_FOUND;
-    	} catch (Exception f) {
-            log.error("Couldn't retrieve the number of records in the domain " + domainName + " from the database: " + f.getMessage() + "\n");
-            return null;
-        }
+        return count == null ? 0L : count;
     }
 
     /**

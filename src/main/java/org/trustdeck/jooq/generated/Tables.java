@@ -10,14 +10,20 @@ import org.jooq.Result;
 import org.trustdeck.jooq.generated.tables.Algorithm;
 import org.trustdeck.jooq.generated.tables.AuditEvent;
 import org.trustdeck.jooq.generated.tables.Domain;
+import org.trustdeck.jooq.generated.tables.DomainPseudonymCounts;
 import org.trustdeck.jooq.generated.tables.Entity;
+import org.trustdeck.jooq.generated.tables.EntityCount;
+import org.trustdeck.jooq.generated.tables.EntityCountDelta;
 import org.trustdeck.jooq.generated.tables.EntityType;
+import org.trustdeck.jooq.generated.tables.EntityTypeEntityCounts;
 import org.trustdeck.jooq.generated.tables.LinkageToken;
 import org.trustdeck.jooq.generated.tables.PermissionGrant;
 import org.trustdeck.jooq.generated.tables.PgpArmorHeaders;
 import org.trustdeck.jooq.generated.tables.Project;
 import org.trustdeck.jooq.generated.tables.ProjectImage;
 import org.trustdeck.jooq.generated.tables.Pseudonym;
+import org.trustdeck.jooq.generated.tables.PseudonymCount;
+import org.trustdeck.jooq.generated.tables.PseudonymCountDelta;
 import org.trustdeck.jooq.generated.tables.records.PgpArmorHeadersRecord;
 
 
@@ -43,14 +49,34 @@ public class Tables {
     public static final Domain DOMAIN = Domain.DOMAIN;
 
     /**
+     * The table <code>public.domain_pseudonym_counts</code>.
+     */
+    public static final DomainPseudonymCounts DOMAIN_PSEUDONYM_COUNTS = DomainPseudonymCounts.DOMAIN_PSEUDONYM_COUNTS;
+
+    /**
      * The table <code>public.entity</code>.
      */
     public static final Entity ENTITY = Entity.ENTITY;
 
     /**
+     * The table <code>public.entity_count</code>.
+     */
+    public static final EntityCount ENTITY_COUNT = EntityCount.ENTITY_COUNT;
+
+    /**
+     * The table <code>public.entity_count_delta</code>.
+     */
+    public static final EntityCountDelta ENTITY_COUNT_DELTA = EntityCountDelta.ENTITY_COUNT_DELTA;
+
+    /**
      * The table <code>public.entity_type</code>.
      */
     public static final EntityType ENTITY_TYPE = EntityType.ENTITY_TYPE;
+
+    /**
+     * The table <code>public.entity_type_entity_counts</code>.
+     */
+    public static final EntityTypeEntityCounts ENTITY_TYPE_ENTITY_COUNTS = EntityTypeEntityCounts.ENTITY_TYPE_ENTITY_COUNTS;
 
     /**
      * The table <code>public.linkage_token</code>.
@@ -115,4 +141,14 @@ public class Tables {
      * The table <code>public.pseudonym</code>.
      */
     public static final Pseudonym PSEUDONYM = Pseudonym.PSEUDONYM;
+
+    /**
+     * The table <code>public.pseudonym_count</code>.
+     */
+    public static final PseudonymCount PSEUDONYM_COUNT = PseudonymCount.PSEUDONYM_COUNT;
+
+    /**
+     * The table <code>public.pseudonym_count_delta</code>.
+     */
+    public static final PseudonymCountDelta PSEUDONYM_COUNT_DELTA = PseudonymCountDelta.PSEUDONYM_COUNT_DELTA;
 }

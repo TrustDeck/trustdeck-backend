@@ -14,21 +14,29 @@ import org.trustdeck.jooq.generated.tables.Algorithm;
 import org.trustdeck.jooq.generated.tables.AuditEvent;
 import org.trustdeck.jooq.generated.tables.Domain;
 import org.trustdeck.jooq.generated.tables.Entity;
+import org.trustdeck.jooq.generated.tables.EntityCount;
+import org.trustdeck.jooq.generated.tables.EntityCountDelta;
 import org.trustdeck.jooq.generated.tables.EntityType;
 import org.trustdeck.jooq.generated.tables.LinkageToken;
 import org.trustdeck.jooq.generated.tables.PermissionGrant;
 import org.trustdeck.jooq.generated.tables.Project;
 import org.trustdeck.jooq.generated.tables.ProjectImage;
 import org.trustdeck.jooq.generated.tables.Pseudonym;
+import org.trustdeck.jooq.generated.tables.PseudonymCount;
+import org.trustdeck.jooq.generated.tables.PseudonymCountDelta;
 import org.trustdeck.jooq.generated.tables.records.AlgorithmRecord;
 import org.trustdeck.jooq.generated.tables.records.AuditEventRecord;
 import org.trustdeck.jooq.generated.tables.records.DomainRecord;
+import org.trustdeck.jooq.generated.tables.records.EntityCountDeltaRecord;
+import org.trustdeck.jooq.generated.tables.records.EntityCountRecord;
 import org.trustdeck.jooq.generated.tables.records.EntityRecord;
 import org.trustdeck.jooq.generated.tables.records.EntityTypeRecord;
 import org.trustdeck.jooq.generated.tables.records.LinkageTokenRecord;
 import org.trustdeck.jooq.generated.tables.records.PermissionGrantRecord;
 import org.trustdeck.jooq.generated.tables.records.ProjectImageRecord;
 import org.trustdeck.jooq.generated.tables.records.ProjectRecord;
+import org.trustdeck.jooq.generated.tables.records.PseudonymCountDeltaRecord;
+import org.trustdeck.jooq.generated.tables.records.PseudonymCountRecord;
 import org.trustdeck.jooq.generated.tables.records.PseudonymRecord;
 
 
@@ -50,6 +58,8 @@ public class Keys {
     public static final UniqueKey<DomainRecord> DOMAIN_PKEY = Internal.createUniqueKey(Domain.DOMAIN, DSL.name("domain_pkey"), new TableField[] { Domain.DOMAIN.ID }, true);
     public static final UniqueKey<EntityRecord> ENTITY_ENTITY_TYPE_ID_TRUSTDECK_ID_KEY = Internal.createUniqueKey(Entity.ENTITY, DSL.name("entity_entity_type_id_trustdeck_id_key"), new TableField[] { Entity.ENTITY.ENTITY_TYPE_ID, Entity.ENTITY.TRUSTDECK_ID }, true);
     public static final UniqueKey<EntityRecord> ENTITY_PKEY = Internal.createUniqueKey(Entity.ENTITY, DSL.name("entity_pkey"), new TableField[] { Entity.ENTITY.ENTITY_TYPE_ID, Entity.ENTITY.ID }, true);
+    public static final UniqueKey<EntityCountRecord> ENTITY_COUNT_PKEY = Internal.createUniqueKey(EntityCount.ENTITY_COUNT, DSL.name("entity_count_pkey"), new TableField[] { EntityCount.ENTITY_COUNT.ENTITY_TYPE_ID }, true);
+    public static final UniqueKey<EntityCountDeltaRecord> ENTITY_COUNT_DELTA_PKEY = Internal.createUniqueKey(EntityCountDelta.ENTITY_COUNT_DELTA, DSL.name("entity_count_delta_pkey"), new TableField[] { EntityCountDelta.ENTITY_COUNT_DELTA.ID }, true);
     public static final UniqueKey<EntityTypeRecord> ENTITY_TYPE_PKEY = Internal.createUniqueKey(EntityType.ENTITY_TYPE, DSL.name("entity_type_pkey"), new TableField[] { EntityType.ENTITY_TYPE.ID }, true);
     public static final UniqueKey<LinkageTokenRecord> LINKAGE_TOKEN_PK = Internal.createUniqueKey(LinkageToken.LINKAGE_TOKEN, DSL.name("linkage_token_pk"), new TableField[] { LinkageToken.LINKAGE_TOKEN.ENTITY_TYPE_ID, LinkageToken.LINKAGE_TOKEN.ENTITY_ID, LinkageToken.LINKAGE_TOKEN.TAG, LinkageToken.LINKAGE_TOKEN.TOKEN_TYPE, LinkageToken.LINKAGE_TOKEN.TOKEN_VALUE }, true);
     public static final UniqueKey<PermissionGrantRecord> PERMISSION_GRANT_PKEY = Internal.createUniqueKey(PermissionGrant.PERMISSION_GRANT, DSL.name("permission_grant_pkey"), new TableField[] { PermissionGrant.PERMISSION_GRANT.ID }, true);
@@ -61,6 +71,8 @@ public class Keys {
     public static final UniqueKey<PseudonymRecord> PSEUDONYM_IDENTIFIER_IDTYPE_DOMAINID_PSEUDONYM_KEY = Internal.createUniqueKey(Pseudonym.PSEUDONYM, DSL.name("pseudonym_identifier_idtype_domainid_pseudonym_key"), new TableField[] { Pseudonym.PSEUDONYM.IDENTIFIER, Pseudonym.PSEUDONYM.IDTYPE, Pseudonym.PSEUDONYM.DOMAINID, Pseudonym.PSEUDONYM.PSEUDONYM_ }, true);
     public static final UniqueKey<PseudonymRecord> PSEUDONYM_PKEY = Internal.createUniqueKey(Pseudonym.PSEUDONYM, DSL.name("pseudonym_pkey"), new TableField[] { Pseudonym.PSEUDONYM.ID }, true);
     public static final UniqueKey<PseudonymRecord> PSEUDONYM_PSN_DOMAINID_KEY = Internal.createUniqueKey(Pseudonym.PSEUDONYM, DSL.name("pseudonym_psn_domainid_key"), new TableField[] { Pseudonym.PSEUDONYM.DOMAINID, Pseudonym.PSEUDONYM.PSEUDONYM_ }, true);
+    public static final UniqueKey<PseudonymCountRecord> PSEUDONYM_COUNT_PKEY = Internal.createUniqueKey(PseudonymCount.PSEUDONYM_COUNT, DSL.name("pseudonym_count_pkey"), new TableField[] { PseudonymCount.PSEUDONYM_COUNT.DOMAIN_ID }, true);
+    public static final UniqueKey<PseudonymCountDeltaRecord> PSEUDONYM_COUNT_DELTA_PKEY = Internal.createUniqueKey(PseudonymCountDelta.PSEUDONYM_COUNT_DELTA, DSL.name("pseudonym_count_delta_pkey"), new TableField[] { PseudonymCountDelta.PSEUDONYM_COUNT_DELTA.ID }, true);
 
     // -------------------------------------------------------------------------
     // FOREIGN KEY definitions

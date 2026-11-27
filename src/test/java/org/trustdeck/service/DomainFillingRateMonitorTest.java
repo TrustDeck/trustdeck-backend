@@ -17,13 +17,13 @@
 
 package org.trustdeck.service;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.Clock;
@@ -31,8 +31,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
-import java.util.ArrayList;
-import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,8 +39,8 @@ import org.trustdeck.jooq.generated.tables.pojos.Algorithm;
 import org.trustdeck.jooq.generated.tables.pojos.Domain;
 
 /**
- * Tests that the filling-rate check never blocks on the database, counts each
- * domain at most once per interval, and rate-limits its warning.
+ * Tests that the filling-rate check reads the domain's pseudonym counter, never fails
+ * the request, and rate-limits its warning.
  */
 class DomainFillingRateMonitorTest {
 
@@ -50,17 +48,13 @@ class DomainFillingRateMonitorTest {
 	private final DefaultProperties defaults = new DefaultProperties();
 	private final MutableClock clock = new MutableClock();
 
-	/** Background tasks are collected and run explicitly, so tests control when a count happens. */
-	private final List<Runnable> background = new ArrayList<>();
-
 	private DomainFillingRateMonitor monitor;
 	private Domain domain;
 	private Algorithm algorithm;
 
 	@BeforeEach
 	void setUp() {
-		defaults.getAlgorithm().setFillingRateCheckInterval(Duration.ofMinutes(10));
-		monitor = new DomainFillingRateMonitor(database, defaults, background::add, clock);
+		monitor = new DomainFillingRateMonitor(database, defaults, clock);
 
 		domain = new Domain();
 		domain.setId(7);
@@ -73,69 +67,34 @@ class DomainFillingRateMonitorTest {
 		algorithm.setRandomAlgorithmDesiredSuccessProbability(0.875d);
 	}
 
-	/** The first collision only schedules the count; the request thread does not touch the database. */
+	/** Every collision reads the current counter of the domain and warns when it is above the threshold. */
 	@Test
-	void firstCollisionCountsInBackground() {
-		when(database.getAmountOfPseudonymsInDomain("test-domain")).thenReturn(100);
+	void readsCounterOnEveryCollision() {
+		when(database.getAmountOfPseudonymsInDomain(7)).thenReturn(100L, 600L);
 
 		monitor.checkAfterCollision(domain, algorithm);
+		monitor.checkAfterCollision(domain, algorithm);
 
-		verify(database, never()).getAmountOfPseudonymsInDomain("test-domain");
-		assertEquals(1, background.size());
-
-		background.getFirst().run();
-		verify(database).getAmountOfPseudonymsInDomain("test-domain");
+		verify(database, times(2)).getAmountOfPseudonymsInDomain(7);
+		// The second check already warned, so a direct check within the hour stays silent
+		assertFalse(monitor.warnIfFull(domain, algorithm, 600));
 	}
 
-	/** Within the interval the cached count is used without another database count. */
+	/** A failing database read is only logged and does not fail the request. */
 	@Test
-	void reusesCachedCountWithinInterval() {
-		when(database.getAmountOfPseudonymsInDomain("test-domain")).thenReturn(100);
-		monitor.checkAfterCollision(domain, algorithm);
-		background.removeFirst().run();
+	void ignoresFailedRead() {
+		when(database.getAmountOfPseudonymsInDomain(7)).thenThrow(new IllegalStateException("database unavailable"));
 
-		clock.advance(Duration.ofMinutes(9));
-		monitor.checkAfterCollision(domain, algorithm);
-
-		assertTrue(background.isEmpty());
-		verify(database, times(1)).getAmountOfPseudonymsInDomain("test-domain");
+		assertDoesNotThrow(() -> monitor.checkAfterCollision(domain, algorithm));
 	}
 
-	/** Collisions while a count is running do not start a second count for the same domain. */
+	/** Without a domain ID or algorithm nothing is read. */
 	@Test
-	void startsOnlyOneCountPerDomainAtATime() {
-		monitor.checkAfterCollision(domain, algorithm);
-		monitor.checkAfterCollision(domain, algorithm);
-		monitor.checkAfterCollision(domain, algorithm);
+	void skipsIncompleteInput() {
+		monitor.checkAfterCollision(new Domain(), algorithm);
+		monitor.checkAfterCollision(domain, null);
 
-		assertEquals(1, background.size());
-	}
-
-	/** An outdated count triggers a recount in the background. */
-	@Test
-	void recountsAfterInterval() {
-		when(database.getAmountOfPseudonymsInDomain("test-domain")).thenReturn(100, 200);
-		monitor.checkAfterCollision(domain, algorithm);
-		background.removeFirst().run();
-
-		clock.advance(Duration.ofMinutes(10));
-		monitor.checkAfterCollision(domain, algorithm);
-
-		assertEquals(1, background.size());
-		background.removeFirst().run();
-		verify(database, times(2)).getAmountOfPseudonymsInDomain("test-domain");
-	}
-
-	/** A failed count does not block later attempts. */
-	@Test
-	void retriesAfterFailedCount() {
-		when(database.getAmountOfPseudonymsInDomain("test-domain")).thenReturn(null, 100);
-		monitor.checkAfterCollision(domain, algorithm);
-		background.removeFirst().run();
-
-		monitor.checkAfterCollision(domain, algorithm);
-
-		assertEquals(1, background.size());
+		verifyNoInteractions(database);
 	}
 
 	/** Above the threshold the warning is logged at most once per domain per hour. */

@@ -21,15 +21,9 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -42,13 +36,9 @@ import org.trustdeck.jooq.generated.tables.pojos.Domain;
  * which generating an unused pseudonym within the configured attempts is no
  * longer reasonably probable.
  *
- * The warning needs the number of pseudonyms in the domain, which is a full
- * count over a potentially very large table. Requests therefore never wait for
- * it: counts are cached per domain for
- * {@code app.defaults.algorithm.filling-rate-check-interval}, a missing or
- * outdated count is refreshed in the background by a single thread, and at most
- * one count per domain runs at a time. The warning itself is logged at most once
- * per domain per {@link #WARNING_INTERVAL}.
+ * The number of pseudonyms in the domain is read from the counter that database
+ * triggers keep up to date, a single-row lookup. The warning is logged at most
+ * once per domain per {@link #WARNING_INTERVAL}.
  *
  * @author Armin Müller
  */
@@ -59,64 +49,45 @@ public class DomainFillingRateMonitor {
 	/** Minimum time between two filling-rate warnings for the same domain. */
 	static final Duration WARNING_INTERVAL = Duration.ofHours(1);
 
-	/** Counts the pseudonyms of a domain. */
+	/** Reads the number of pseudonyms in a domain. */
 	private final DomainDBAccessService domainDBAccessService;
 
-	/** Provides the number of attempts and the cache interval. */
+	/** Provides the number of attempts. */
 	private final DefaultProperties defaults;
-
-	/** Runs the counts outside the request thread. */
-	private final Executor executor;
 
 	/** Time source, replaceable in tests. */
 	private final Clock clock;
-
-	/** Last known pseudonym count per domain ID. */
-	private final Map<Integer, CachedCount> counts = new ConcurrentHashMap<>();
-
-	/** Domain IDs whose count is currently running. */
-	private final Set<Integer> counting = ConcurrentHashMap.newKeySet();
 
 	/** Time of the last warning per domain ID. */
 	private final Map<Integer, Instant> lastWarnings = new ConcurrentHashMap<>();
 
 	/**
-	 * Creates the monitor with its own single background thread.
+	 * Creates the monitor.
 	 *
-	 * @param domainDBAccessService service used to count the pseudonyms of a domain
-	 * @param defaults default properties containing the number of attempts and the cache interval
+	 * @param domainDBAccessService service used to read the number of pseudonyms in a domain
+	 * @param defaults default properties containing the number of attempts
 	 */
 	@Autowired
 	public DomainFillingRateMonitor(DomainDBAccessService domainDBAccessService, DefaultProperties defaults) {
-		this(domainDBAccessService, defaults, Executors.newSingleThreadExecutor(runnable -> {
-			Thread thread = new Thread(runnable, "domain-filling-rate");
-			thread.setDaemon(true);
-			return thread;
-		}), Clock.systemUTC());
+		this(domainDBAccessService, defaults, Clock.systemUTC());
 	}
 
 	/**
-	 * Creates the monitor with an explicit executor and clock.
+	 * Creates the monitor with an explicit clock.
 	 *
-	 * @param domainDBAccessService service used to count the pseudonyms of a domain
-	 * @param defaults default properties containing the number of attempts and the cache interval
-	 * @param executor executor that runs the counts
+	 * @param domainDBAccessService service used to read the number of pseudonyms in a domain
+	 * @param defaults default properties containing the number of attempts
 	 * @param clock time source
 	 */
-	DomainFillingRateMonitor(DomainDBAccessService domainDBAccessService, DefaultProperties defaults, Executor executor, Clock clock) {
+	DomainFillingRateMonitor(DomainDBAccessService domainDBAccessService, DefaultProperties defaults, Clock clock) {
 		this.domainDBAccessService = domainDBAccessService;
 		this.defaults = defaults;
-		this.executor = executor;
 		this.clock = clock;
 	}
 
 	/**
 	 * Checks the filling rate after a generated pseudonym collided with an existing one.
-	 *
-	 * Uses the cached count when it is recent enough. Otherwise a background count
-	 * is started (unless one is already running for the domain) and an outdated
-	 * cached count, if any, is used in the meantime. The method never blocks on the
-	 * database.
+	 * A failed check is only logged, so that it never fails the request.
 	 *
 	 * @param domain domain in which the collision occurred
 	 * @param algorithm the domain's algorithm
@@ -126,46 +97,10 @@ public class DomainFillingRateMonitor {
 			return;
 		}
 
-		CachedCount cached = counts.get(domain.getId());
-		Instant now = clock.instant();
-		if (cached == null || !cached.measuredAt().plus(defaults.getAlgorithm().getFillingRateCheckInterval()).isAfter(now)) {
-			refresh(domain, algorithm);
-		}
-
-		if (cached != null) {
-			warnIfFull(domain, algorithm, cached.count());
-		}
-	}
-
-	/**
-	 * Starts a background count for a domain unless one is already running.
-	 *
-	 * @param domain domain to count
-	 * @param algorithm the domain's algorithm, used to evaluate the fresh count
-	 */
-	private void refresh(Domain domain, Algorithm algorithm) {
-		Integer id = domain.getId();
-		if (!counting.add(id)) {
-			return;
-		}
-
 		try {
-			executor.execute(() -> {
-				try {
-					Integer count = domainDBAccessService.getAmountOfPseudonymsInDomain(domain.getName());
-					if (count != null && count >= 0) {
-						counts.put(id, new CachedCount(count, clock.instant()));
-						warnIfFull(domain, algorithm, count);
-					}
-				} catch (RuntimeException exception) {
-					log.debug("Counting the pseudonyms of domain \"" + domain.getName() + "\" failed: " + exception.getMessage());
-				} finally {
-					counting.remove(id);
-				}
-			});
-		} catch (RejectedExecutionException exception) {
-			// Shutting down; the next collision will try again
-			counting.remove(id);
+			warnIfFull(domain, algorithm, domainDBAccessService.getAmountOfPseudonymsInDomain(domain.getId()));
+		} catch (RuntimeException exception) {
+			log.debug("Checking the filling rate of domain \"" + domain.getName() + "\" failed: " + exception.getMessage());
 		}
 	}
 
@@ -178,7 +113,7 @@ public class DomainFillingRateMonitor {
 	 * @param count number of pseudonyms in the domain
 	 * @return {@code true} if the warning was logged
 	 */
-	boolean warnIfFull(Domain domain, Algorithm algorithm, int count) {
+	boolean warnIfFull(Domain domain, Algorithm algorithm, long count) {
 		if (algorithm.getRandomAlgorithmDesiredSuccessProbability() == null || algorithm.getPseudonymLength() == null) {
 			return false;
 		}
@@ -235,20 +170,4 @@ public class DomainFillingRateMonitor {
 
 		return due.get();
 	}
-
-	/** Stops the background thread when the application shuts down. */
-	@PreDestroy
-	void shutdown() {
-		if (executor instanceof ExecutorService service) {
-			service.shutdownNow();
-		}
-	}
-
-	/**
-	 * A pseudonym count and the time it was measured.
-	 *
-	 * @param count number of pseudonyms in the domain
-	 * @param measuredAt time of the count
-	 */
-	private record CachedCount(int count, Instant measuredAt) { }
 }
